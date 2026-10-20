@@ -57,4 +57,25 @@ describe("scena", () => {
     );
     expect(() => parseSlotModule({ ...files, "math/lines.json": undefined })).toThrow(/math\/lines.json: file mancante/);
   });
+
+  it("accetta modalità aggiunte dal modulo, con nome ed etichetta, e lo script come testo", async () => {
+    const { math, scene, script } = await loadSlotModule("slots/tempio-del-sole");
+    expect(math.reels.gold).toHaveLength(5);
+    expect(scene.modes.get("gold")?.label).toBe("Gold Spin");
+    expect(script).toContain("function onFeatureEnd");
+
+    const files = {
+      "manifest.json": { id: "prova", name: "Prova", version: "1", engineApi: 1 },
+      "math/reels.json": { rows: 1, modes: { base: [["A"], ["A"], ["A"]], bonus: [["A"], ["A"], ["X"]] } },
+      "math/lines.json": { lines: [[0, 0, 0]] },
+      "math/paytable.json": { symbols: [{ id: "A", kind: "normal" }], linePays: { A: { "3": 1 } } },
+    };
+    expect(() => parseSlotModule(files)).toThrow(/modalità bonus, il rullo 3 usa il simbolo non definito X/);
+    const reels = { rows: 1, modes: { base: [["A"], ["A"], ["A"]], Bonus: [["A"], ["A"], ["A"]] } };
+    expect(() => parseSlotModule({ ...files, "math/reels.json": reels })).toThrow(/modes.Bonus: usa lettere minuscole/);
+    const scene2 = { modes: { turbo: { label: "Turbo" } } };
+    expect(() => parseSlotModule({ ...files, "math/reels.json": { rows: 1, modes: { base: [["A"], ["A"], ["A"]] } }, "scenes/main.json": scene2 })).toThrow(
+      /modalità senza strisce dei rulli turbo/,
+    );
+  });
 });

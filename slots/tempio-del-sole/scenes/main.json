@@ -12,5 +12,11 @@
     "Q": { "color": "#0c8599" },
     "J": { "color": "#5c940d" },
     "10": { "color": "#495057" }
+  },
+  "modes": {
+    "gold": {
+      "label": "Gold Spin",
+      "description": "durante i free spin un wild espanso su 4 è d'oro e mette da parte un Gold Spin. Finiti i free spin, i Gold Spin si giocano con soli simboli alti e vincono sempre."
+    }
   }
 }

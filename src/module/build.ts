@@ -67,8 +67,9 @@ export function buildSlotMath(
   if (wilds.length > 1) problems.push(`paytable: al massimo un wild, trovati ${wilds.join(", ")}`);
   if (scatters.length > 1) problems.push(`paytable: al massimo uno scatter, trovati ${scatters.join(", ")}`);
 
-  checkStrips("modalità base", base, reelCount, rows, symbols, problems);
-  if (reels.modes.free) checkStrips("modalità free", reels.modes.free, reelCount, rows, symbols, problems);
+  for (const [mode, modeStrips] of Object.entries(reels.modes)) {
+    if (modeStrips) checkStrips(`modalità ${mode}`, modeStrips, reelCount, rows, symbols, problems);
+  }
 
   lines.lines.forEach((line, i) => {
     if (line.length !== reelCount) problems.push(`lines: la linea ${i + 1} ha ${line.length} posizioni, servono ${reelCount}`);
@@ -136,7 +137,7 @@ export function buildSlotMath(
     reelCount,
     rows,
     symbols,
-    reels: { base, free },
+    reels: { ...reels.modes, base, free },
     lines: lines.lines,
     linePays,
     wild: wilds[0] ?? null,

@@ -1,10 +1,25 @@
+import type { Rng } from "./rng.js";
+
 /** Identificatore di un simbolo, ad esempio "WILD" o "A". */
 export type SymbolId = string;
 
 export type SymbolKind = "normal" | "wild" | "scatter";
 
-/** Modalità di gioco: ognuna può avere strisce dei rulli proprie. */
-export type Mode = "base" | "free";
+/**
+ * Modalità di gioco: ognuna può avere strisce dei rulli proprie. "base" e
+ * "free" ci sono sempre; i moduli possono aggiungerne altre (per esempio
+ * "gold") che gli script fanno giocare.
+ */
+export type Mode = string;
+
+type Strips = SymbolId[][];
+
+/** Strisce dei rulli per modalità: reels[modo][rullo][posizione]. */
+export interface Reels {
+  base: Strips;
+  free: Strips;
+  [mode: string]: Strips | undefined;
+}
 
 export interface FreeSpinsConfig {
   minScatters: number;
@@ -30,8 +45,7 @@ export interface SlotMath {
   reelCount: number;
   rows: number;
   symbols: ReadonlyMap<SymbolId, SymbolKind>;
-  /** Strisce dei rulli per modalità: reels[modo][rullo][posizione]. */
-  reels: Record<Mode, SymbolId[][]>;
+  reels: Reels;
   /** Per ogni linea, la riga (0 = in alto) toccata su ciascun rullo. */
   lines: number[][];
   /** linePays.get(simbolo)[n] = pagamento per n simboli consecutivi da sinistra. */
@@ -94,9 +108,44 @@ export interface FreeSpinsResult {
   win: number;
 }
 
+/** Sequenza di spin richiesta da uno script, giocata dopo i free spin. */
+export interface PlayRequest {
+  mode: Mode;
+  spins: number;
+  /** Se vero, ogni spin della sequenza ha una vincita. */
+  guaranteeWin: boolean;
+}
+
+export interface ExtraSpinsResult {
+  mode: Mode;
+  spins: SpinResult[];
+  win: number;
+}
+
+/** Riassunto di una feature appena finita, passato agli script. */
+export interface FeatureSummary {
+  mode: Mode;
+  spins: number;
+  win: number;
+  upgradeLevel: number;
+}
+
+/**
+ * Regole aggiuntive di un modulo, chiamate dal motore durante il round (in
+ * pratica uno script Lua, vedi src/script). Le chiamate sono sincrone e
+ * l'unica fonte di casualità è l'RNG del round.
+ */
+export interface RoundHooks {
+  beginRound(rng: Rng): void;
+  onSpin(spin: SpinResult, index: number): PlayRequest | null;
+  onFeatureEnd(feature: FeatureSummary): PlayRequest | null;
+}
+
 export interface RoundResult {
   base: SpinResult;
   freeSpins: FreeSpinsResult | null;
+  /** Sequenze richieste dagli script, nell'ordine in cui sono state giocate. */
+  extra: ExtraSpinsResult[];
   /** Vincita totale del round, già limitata a maxWin. */
   totalWin: number;
   /** Se il round si è fermato perché ha raggiunto maxWin. */

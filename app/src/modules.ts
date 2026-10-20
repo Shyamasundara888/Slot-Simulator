@@ -1,8 +1,11 @@
 import { ModuleError } from "../../src/module/build.js";
 import { parseSlotModule, type SlotModule } from "../../src/module/parse.js";
 
-// Vite include nel bundle tutti i JSON dei moduli presenti in slots/.
-const files = import.meta.glob<unknown>("../../slots/*/**/*.json", { eager: true, import: "default" });
+// Vite include nel bundle tutti i JSON dei moduli presenti in slots/ e i loro script come testo.
+const files = {
+  ...import.meta.glob<unknown>("../../slots/*/**/*.json", { eager: true, import: "default" }),
+  ...import.meta.glob<string>("../../slots/*/scripts/*.lua", { eager: true, query: "?raw", import: "default" }),
+};
 
 export interface LoadedModule {
   folder: string;

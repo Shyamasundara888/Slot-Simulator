@@ -18,11 +18,18 @@ async function open(id: string): Promise<void> {
   const module = modules.find((m) => m.manifest.id === id) ?? modules[0];
   if (!module || game?.isBusy) return;
   game?.destroy();
+  game = null;
   title.textContent = module.manifest.name;
   document.getElementById("paytable-body")!.innerHTML = paytableHtml(module);
   // ?seed=... rende ripetibile la sequenza dei round, utile per provare una slot.
   const seed = new URLSearchParams(location.search).get("seed") ?? undefined;
-  game = await Game.start(stage, module, seed);
+  try {
+    game = await Game.start(stage, module, seed);
+  } catch (err) {
+    console.error(err);
+    status.textContent = `Modulo ${module.manifest.name} non avviato: controlla la console.`;
+    return;
+  }
   const url = new URL(location.href);
   url.searchParams.set("slot", module.manifest.id);
   history.replaceState(null, "", url);

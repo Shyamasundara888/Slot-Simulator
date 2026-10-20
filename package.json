@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "pixi.js": "^8.22.0",
+    "wasmoon": "^1.16.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
