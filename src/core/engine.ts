@@ -1,10 +1,32 @@
 import { evaluateLines, evaluateScatter } from "./evaluate.js";
 import type { Rng } from "./rng.js";
-import type { FreeSpinsResult, Grid, Mode, RoundResult, SlotMath, SpinResult, SymbolId } from "./types.js";
+import type {
+  ExtraSpinsResult,
+  FreeSpinsResult,
+  Grid,
+  Mode,
+  PlayRequest,
+  RoundHooks,
+  RoundResult,
+  SlotMath,
+  SpinResult,
+  SymbolId,
+} from "./types.js";
+
+/** Spin giocabili in un round tra tutte le sequenze richieste dagli script. */
+export const MAX_EXTRA_SPINS = 1_000;
+/** Tentativi per trovare uno spin vincente quando la sequenza lo garantisce. */
+export const MAX_WIN_RESAMPLES = 1_000;
+
+function stripsFor(math: SlotMath, mode: Mode): SymbolId[][] {
+  const strips = math.reels[mode];
+  if (!strips) throw new RangeError(`modalità senza strisce dei rulli: ${mode}`);
+  return strips;
+}
 
 /** Costruisce la griglia visibile a partire dalle posizioni di arresto. */
 export function gridFromStops(math: SlotMath, stops: readonly number[], mode: Mode = "base"): Grid {
-  return math.reels[mode].map((strip, reel) => {
+  return stripsFor(math, mode).map((strip, reel) => {
     const stop = stops[reel]!;
     const column = new Array<string>(math.rows);
     for (let row = 0; row < math.rows; row++) column[row] = strip[(stop + row) % strip.length]!;
@@ -62,7 +84,7 @@ export function evaluateSpin(math: SlotMath, mode: Mode, stops: number[], upgrad
 }
 
 export function spin(math: SlotMath, rng: Rng, mode: Mode = "base", upgradeLevel = 0): SpinResult {
-  const stops = math.reels[mode].map((strip) => rng.int(strip.length));
+  const stops = stripsFor(math, mode).map((strip) => rng.int(strip.length));
   return evaluateSpin(math, mode, stops, upgradeLevel);
 }
 
@@ -72,9 +94,19 @@ function scatterAward(math: SlotMath, count: number): number {
   return fs.awards[Math.min(count, fs.awards.length - 1)]!;
 }
 
-/** Gioca un round completo: lo spin base e, se attivati, i free spin. */
-export function playRound(math: SlotMath, rng: Rng): RoundResult {
+/**
+ * Gioca un round completo: lo spin base, i free spin se attivati e poi le
+ * sequenze che gli script chiedono (per esempio i Gold Spins).
+ */
+export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundResult {
+  hooks?.beginRound(rng);
+  const queue: PlayRequest[] = [];
+  const request = (req: PlayRequest | null | undefined) => {
+    if (req && req.spins > 0) queue.push(req);
+  };
+
   const base = spin(math, rng, "base");
+  request(hooks?.onSpin(base, 0));
   let total = base.win;
   let freeSpins: FreeSpinsResult | null = null;
   const fs = math.freeSpins;
@@ -108,10 +140,33 @@ export function playRound(math: SlotMath, rng: Rng): RoundResult {
         awarded += again;
       }
       awardedAfter.push(awarded);
+      request(hooks?.onSpin(result, spins.length - 1));
     }
     freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, win };
+    request(hooks?.onFeatureEnd({ mode: "free", spins: spins.length, win, upgradeLevel: level }));
+  }
+
+  const extra: ExtraSpinsResult[] = [];
+  let extraSpins = 0;
+  while (queue.length > 0 && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
+    const { mode, spins: count, guaranteeWin } = queue.shift()!;
+    const spins: SpinResult[] = [];
+    let win = 0;
+    while (spins.length < count && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
+      let result = spin(math, rng, mode);
+      for (let tries = 1; guaranteeWin && result.win === 0 && tries < MAX_WIN_RESAMPLES; tries++) {
+        result = spin(math, rng, mode);
+      }
+      spins.push(result);
+      extraSpins++;
+      win += result.win;
+      total += result.win;
+      request(hooks?.onSpin(result, spins.length - 1));
+    }
+    extra.push({ mode, spins, win });
+    request(hooks?.onFeatureEnd({ mode, spins: spins.length, win, upgradeLevel: 0 }));
   }
 
   const capped = total >= math.maxWin;
-  return { base, freeSpins, totalWin: Math.min(total, math.maxWin), capped };
+  return { base, freeSpins, extra, totalWin: Math.min(total, math.maxWin), capped };
 }

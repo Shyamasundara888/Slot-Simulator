@@ -9,6 +9,7 @@ export function tinyMath(
   lines: number[][] = [[0, 0, 0]],
   features: FeaturesFile = {},
   freeStrips?: string[][],
+  extraModes: Record<string, string[][]> = {},
 ) {
   const paytable: PaytableFile = {
     symbols: [
@@ -24,7 +25,7 @@ export function tinyMath(
     },
     scatterPays: { "2": 1, "3": 4 },
   };
-  const modes = freeStrips ? { base: strips, free: freeStrips } : { base: strips };
+  const modes = { ...extraModes, base: strips, ...(freeStrips ? { free: freeStrips } : {}) };
   return buildSlotMath({ rows, modes }, { lines }, paytable, features);
 }
 

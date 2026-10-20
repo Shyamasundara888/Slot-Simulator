@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { SlotMath, SymbolId, SymbolKind } from "../core/types.js";
+import type { Mode, SlotMath, SymbolId, SymbolKind } from "../core/types.js";
 import { buildSlotMath, ModuleError } from "./build.js";
 import {
   featuresSchema,
@@ -19,24 +19,35 @@ export const MODULE_FILES = {
   paytable: "math/paytable.json",
   features: "math/features.json",
   scene: "scenes/main.json",
+  /** Script Lua con le regole aggiuntive, letto come testo. */
+  script: "scripts/main.lua",
 } as const;
 
-const OPTIONAL_FILES: ReadonlySet<string> = new Set([MODULE_FILES.features, MODULE_FILES.scene]);
+const OPTIONAL_FILES: ReadonlySet<string> = new Set([MODULE_FILES.features, MODULE_FILES.scene, MODULE_FILES.script]);
 
 export interface SymbolStyle {
   label: string;
   color: string;
 }
 
+export interface ModeStyle {
+  label: string;
+  description?: string | undefined;
+}
+
 export interface Scene {
   background: string;
   symbols: ReadonlyMap<SymbolId, SymbolStyle>;
+  /** Solo le modalità che la scena descrive. */
+  modes: ReadonlyMap<Mode, ModeStyle>;
 }
 
 export interface SlotModule {
   manifest: Manifest;
   math: SlotMath;
   scene: Scene;
+  /** Sorgente di scripts/main.lua, se il modulo ne ha uno. */
+  script: string | null;
 }
 
 /** Colori usati per i simboli che la scena non descrive. */
@@ -55,8 +66,9 @@ function validate<S extends z.ZodTypeAny>(file: string, schema: S, raw: unknown)
 }
 
 /**
- * Valida e unisce i file di un modulo già letti come JSON, indicizzati per
- * percorso relativo (vedi MODULE_FILES). Funziona sia in Node sia nel browser.
+ * Valida e unisce i file di un modulo, indicizzati per percorso relativo (vedi
+ * MODULE_FILES): i JSON già letti come oggetti, lo script come testo.
+ * Funziona sia in Node sia nel browser.
  */
 export function parseSlotModule(files: Readonly<Record<string, unknown>>): SlotModule {
   const missing = Object.values(MODULE_FILES).filter((f) => files[f] === undefined && !OPTIONAL_FILES.has(f));
@@ -71,8 +83,20 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>): SlotM
   );
   const sceneFile = validate(MODULE_FILES.scene, sceneSchema, files[MODULE_FILES.scene] ?? {});
 
-  const unknown = Object.keys(sceneFile.symbols).filter((id) => !math.symbols.has(id));
-  if (unknown.length > 0) throw new ModuleError(unknown.map((id) => `${MODULE_FILES.scene}: simbolo non definito ${id}`));
+  const unknown = [
+    ...Object.keys(sceneFile.symbols)
+      .filter((id) => !math.symbols.has(id))
+      .map((id) => `simbolo non definito ${id}`),
+    ...Object.keys(sceneFile.modes)
+      .filter((mode) => !math.reels[mode])
+      .map((mode) => `modalità senza strisce dei rulli ${mode}`),
+  ];
+  if (unknown.length > 0) throw new ModuleError(unknown.map((p) => `${MODULE_FILES.scene}: ${p}`));
+
+  const script = files[MODULE_FILES.script] ?? null;
+  if (script !== null && typeof script !== "string") {
+    throw new ModuleError([`${MODULE_FILES.script}: lo script va passato come testo`]);
+  }
 
   const used: Record<SymbolKind, number> = { wild: 0, scatter: 0, normal: 0 };
   const symbols = new Map<SymbolId, SymbolStyle>();
@@ -85,5 +109,10 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>): SlotM
     });
   }
 
-  return { manifest, math, scene: { background: sceneFile.background ?? "#1b1430", symbols } };
+  return {
+    manifest,
+    math,
+    scene: { background: sceneFile.background ?? "#1b1430", symbols, modes: new Map(Object.entries(sceneFile.modes)) },
+    script,
+  };
 }

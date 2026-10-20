@@ -46,6 +46,9 @@ export function paytableHtml({ math, scene }: SlotModule): string {
       parts.push(`<li>Durante i free spin ogni wild espanso dà ${what.join(" e ")}.</li>`);
     }
   }
+  for (const { label, description } of scene.modes.values()) {
+    if (description) parts.push(`<li><strong>${esc(label)}</strong>: ${esc(description)}</li>`);
+  }
   if (Number.isFinite(math.maxWin)) parts.push(`<li>Vincita massima per round: ${math.maxWin}× la puntata totale.</li>`);
   parts.push(`</ul>`);
   return parts.join("");

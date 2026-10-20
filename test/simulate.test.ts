@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluateSpin } from "../src/core/engine.js";
 import { loadSlotModule } from "../src/module/load.js";
+import { ScriptRuntime } from "../src/script/runtime.js";
 import { exactRtp } from "../src/sim/exact.js";
 import { simulate } from "../src/sim/simulate.js";
 import { tinyMath } from "./helpers.js";
@@ -72,10 +73,11 @@ describe("RTP", () => {
     expect(Math.abs(result.freeSpins!.triggers - n * p)).toBeLessThan(4 * sigma);
   });
 
-  it("il modulo di esempio resta intorno al 95% di RTP", async () => {
-    const { math: demo } = await loadSlotModule("slots/tempio-del-sole");
+  it("il modulo di esempio resta intorno al 95% di RTP, Gold Spins compresi", async () => {
+    const { math: demo, script } = await loadSlotModule("slots/tempio-del-sole");
     expect(exactRtp(demo).baseRtp).toBeCloseTo(0.7352, 3);
-    const result = simulate(demo, { spins: 300_000, seed: 5 });
+    const hooks = await ScriptRuntime.create(demo, script!);
+    const result = simulate(demo, { spins: 300_000, seed: 5, hooks });
     expect(result.rtp).toBeGreaterThan(0.93);
     expect(result.rtp).toBeLessThan(0.99);
   });

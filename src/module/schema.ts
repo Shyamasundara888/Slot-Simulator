@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const symbolId = z.string().regex(/^[A-Z0-9_]+$/, "usa solo lettere maiuscole, cifre e _");
+const strips = z.array(z.array(symbolId).min(1)).min(1);
+const modeId = z.string().regex(/^[a-z][a-z0-9_]*$/, "usa lettere minuscole, cifre e _, iniziando con una lettera");
 const payTable = z.record(z.string().regex(/^\d+$/, "la chiave deve essere un numero di simboli"), z.number().nonnegative());
 
 export const manifestSchema = z
@@ -20,11 +22,18 @@ export const reelsSchema = z
     rows: z.number().int().min(1).max(10),
     modes: z
       .object({
-        base: z.array(z.array(symbolId).min(1)).min(1),
+        base: strips,
         /** Strisce dei free spin; se manca si usano quelle base. */
-        free: z.array(z.array(symbolId).min(1)).min(1).optional(),
+        free: strips.optional(),
       })
-      .strict(),
+      /** Altre modalità, giocate solo su richiesta di uno script. */
+      .catchall(strips)
+      .superRefine((modes, ctx) => {
+        for (const mode of Object.keys(modes)) {
+          const parsed = modeId.safeParse(mode);
+          if (!parsed.success) ctx.addIssue({ code: "custom", path: [mode], message: parsed.error.issues[0]!.message });
+        }
+      }),
   })
   .strict();
 
@@ -70,6 +79,10 @@ export const sceneSchema = z
   .object({
     background: color.optional(),
     symbols: z.record(symbolId, z.object({ label: z.string().min(1).optional(), color }).strict()).default({}),
+    /** Nome mostrato per le modalità aggiunte dal modulo e, facoltativa, la regola per la paytable. */
+    modes: z
+      .record(modeId, z.object({ label: z.string().min(1), description: z.string().min(1).optional() }).strict())
+      .default({}),
   })
   .strict();
 

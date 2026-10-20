@@ -17,6 +17,10 @@ export async function loadSlotModule(dir: string): Promise<SlotModule> {
         if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
         throw new ModuleError([`${file}: impossibile leggere il file (${(err as Error).message})`]);
       }
+      if (!file.endsWith(".json")) {
+        files[file] = text;
+        return;
+      }
       try {
         files[file] = JSON.parse(text);
       } catch (err) {

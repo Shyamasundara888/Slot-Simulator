@@ -1,7 +1,9 @@
 import { playRound } from "../../src/core/engine.js";
 import { createRng, type Rng } from "../../src/core/rng.js";
-import type { SpinResult } from "../../src/core/types.js";
+import type { RoundHooks, RoundResult, SpinResult } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
+import { ScriptRuntime } from "../../src/script/runtime.js";
+import wasmUri from "wasmoon/dist/glue.wasm?url";
 import { wait } from "./anim.js";
 import { SlotView } from "./slot-view.js";
 
@@ -53,6 +55,7 @@ export class Game {
   private constructor(
     private readonly module: SlotModule,
     private readonly view: SlotView,
+    private readonly hooks: RoundHooks | undefined,
     seed: number | string,
   ) {
     this.rng = createRng(seed);
@@ -70,8 +73,10 @@ export class Game {
 
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
   static async start(host: HTMLElement, module: SlotModule, seed?: number | string): Promise<Game> {
+    // Lo script si carica prima della vista: se non è valido il modulo non parte.
+    const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
     const view = await SlotView.create(host, module);
-    return new Game(module, view, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
+    return new Game(module, view, hooks, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
   }
 
   get isBusy(): boolean {
@@ -127,7 +132,17 @@ export class Game {
     this.render();
 
     // L'esito dell'intero round è deciso qui; da ora in poi è solo presentazione.
-    const round = playRound(this.module.math, this.rng);
+    let round: RoundResult;
+    try {
+      round = playRound(this.module.math, this.rng, this.hooks);
+    } catch (err) {
+      console.error(err);
+      this.balance += bet;
+      this.setStatus(`Round annullato, errore del modulo: ${(err as Error).message}`);
+      this.busy = false;
+      this.render();
+      return;
+    }
     let shown = await this.present(round.base, turbo);
     this.ui.win.textContent = money(shown);
 
@@ -150,12 +165,23 @@ export class Game {
       }
     }
 
+    for (const sequence of round.extra) {
+      const label = this.module.scene.modes.get(sequence.mode)?.label ?? `Giri ${sequence.mode}`;
+      this.setStatus(`${sequence.spins.length} × ${label}!`, "feature");
+      await wait(turbo ? 600 : 1500);
+      for (let i = 0; i < sequence.spins.length; i++) {
+        this.setStatus(`${label} ${i + 1} di ${sequence.spins.length}`, "feature");
+        shown += await this.present(sequence.spins[i]!, turbo);
+        this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
+      }
+    }
+
     const won = round.totalWin * bet;
     this.balance += won;
     saveBalance(this.balance);
     this.ui.win.textContent = money(won);
     if (round.capped) this.setStatus(`Vincita massima raggiunta: ${money(won)}`, "win");
-    else if (free) this.setStatus(`Free spin finiti: vinti ${money(free.win * bet)}`, "win");
+    else if (free || round.extra.length > 0) this.setStatus(`Bonus finito: vinti ${money(won - round.base.win * bet)}`, "win");
     else if (won > 0) this.setStatus(`Hai vinto ${money(won)}`, "win");
     else this.setStatus("Nessuna vincita");
     this.busy = false;
