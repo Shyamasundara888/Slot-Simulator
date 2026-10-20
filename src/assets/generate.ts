@@ -43,7 +43,15 @@ export type GenerateOptions = {
   log?: (line: string) => void;
 };
 
-type GeneratedRecord = { prompt: string; seed: number; workflow: string; checkpoint?: string | undefined; generator: "ComfyUI"; date: string };
+type GeneratedRecord = {
+  prompt: string;
+  seed: number;
+  workflow: string;
+  checkpoint?: string | undefined;
+  reference?: string | undefined;
+  generator: "ComfyUI";
+  date: string;
+};
 
 async function readWorkflow(dir: string, path: string | undefined, fallback: string): Promise<{ name: string; workflow: Workflow }> {
   const file = path ? join(dir, path) : join(DEFAULT_WORKFLOWS, fallback);
@@ -69,18 +77,26 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   if (unknown.length > 0) throw new ModuleError(unknown.map((id) => `--only ${id}: non è un simbolo di ${ART_FILE}${id === "background" ? " (manca background)" : ""}`));
   const chosen = options.only.length > 0 ? targets.filter((id) => options.only.includes(id)) : targets;
 
-  const symbolFlow = await readWorkflow(dir, settings.workflow, "simbolo.json");
+  // Con un riferimento di stile il workflow predefinito è quello con IP-Adapter.
+  const reference = settings.reference;
+  if (reference && !existsSync(join(dir, reference))) throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference}`]);
+  const symbolFlow = await readWorkflow(dir, settings.workflow, reference ? "simbolo-stile.json" : "simbolo.json");
+  const plainFlow = reference && !settings.workflow ? await readWorkflow(dir, undefined, "simbolo.json") : symbolFlow;
   const backgroundFlow = spec.background ? await readWorkflow(dir, settings.backgroundWorkflow, "sfondo.json") : undefined;
 
   const recordPath = join(dir, "art/raw/generated.json");
   const records = existsSync(recordPath) ? (JSON.parse(await readFile(recordPath, "utf8")) as Record<string, GeneratedRecord>) : {};
   const written: string[] = [];
   const slot = basename(dir);
+  let uploaded: string | undefined;
 
   for (const id of chosen) {
     const isBackground = id === "background";
     const name = isBackground ? "background" : id.toLowerCase();
-    const flow = isBackground ? backgroundFlow! : symbolFlow;
+    // Il simbolo che fa da riferimento non si rigenera guardando se stesso.
+    const ownFile = `art/raw/${name}.webp`;
+    const styled = !isBackground && reference !== undefined && reference !== ownFile;
+    const flow = isBackground ? backgroundFlow! : styled ? symbolFlow : plainFlow;
     const prompt = isBackground ? backgroundPrompt(spec) : symbolPrompt(spec, id, labels, "plain light grey background");
     const ownSeed = isBackground ? spec.background?.seed : spec.symbols[id]?.seed;
     const firstSeed = options.seed ?? ownSeed ?? settings.seed;
@@ -95,7 +111,10 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         log(`  ${file}: c'è già (usa --force per rifarlo)`);
         continue;
       }
-      const workflow = prepareWorkflow(flow.workflow, { prompt, seed, filenamePrefix: `slot/${slot}/${name}`, size });
+      if (styled && uploaded === undefined) {
+        uploaded = await options.client.upload(await readFile(join(dir, reference)), `${slot}-${basename(reference)}`, "slot");
+      }
+      const workflow = prepareWorkflow(flow.workflow, { prompt, seed, filenamePrefix: `slot/${slot}/${name}`, size, reference: styled ? uploaded : undefined });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
       const dims = pngSize(png!);
@@ -105,7 +124,15 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
       const kb = image.length / 1024;
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       log(`  ${file}: ${dims ? `${dims.width}x${dims.height}, ` : ""}${kb.toFixed(0)} KB, seed ${seed}, ${seconds} s${!isBackground && kb > MAX_KB ? ` (oltre ${MAX_KB} KB: riduci generate.size)` : ""}`);
-      records[file] = { prompt, seed, workflow: flow.name, checkpoint: workflowCheckpoint(flow.workflow), generator: "ComfyUI", date: new Date().toISOString() };
+      records[file] = {
+        prompt,
+        seed,
+        workflow: flow.name,
+        checkpoint: workflowCheckpoint(flow.workflow),
+        ...(styled && { reference }),
+        generator: "ComfyUI",
+        date: new Date().toISOString(),
+      };
       written.push(file);
       // Registro aggiornato a ogni immagine, così un'interruzione non perde quelle già fatte.
       await writeFile(recordPath, `${JSON.stringify(records, null, 2)}\n`);

@@ -8,6 +8,7 @@ import { generate } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
 const sfondo = JSON.parse(readFileSync("tools/comfyui/workflows/sfondo.json", "utf8")) as Workflow;
+const stile = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo-stile.json", "utf8")) as Workflow;
 
 /** PNG minimo con le misure scritte nell'intestazione IHDR. */
 function fakePng(width: number, height: number): Uint8Array<ArrayBuffer> {
@@ -34,6 +35,7 @@ type Sent = { workflow: Workflow };
 /** Finto server ComfyUI: accoda, dopo un controllo dichiara il lavoro finito e serve un PNG. */
 function fakeComfy(options: { fail?: string } = {}) {
   const sent: Sent[] = [];
+  const uploads: string[] = [];
   const pending = new Map<string, number>();
   const fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -62,10 +64,16 @@ function fakeComfy(options: { fail?: string } = {}) {
         },
       });
     }
+    if (url.pathname === "/upload/image") {
+      const form = init?.body as FormData;
+      const file = form.get("image") as File;
+      uploads.push(`${String(form.get("subfolder"))}/${file.name}`);
+      return Response.json({ name: file.name, subfolder: form.get("subfolder"), type: "input" });
+    }
     if (url.pathname === "/view") return new Response(realPng);
     return new Response("non trovato", { status: 404 });
   }) as typeof globalThis.fetch;
-  return { sent, client: new ComfyClient({ url: "http://comfy.test:8188/", fetch, pollMs: 0 }) };
+  return { sent, uploads, client: new ComfyClient({ url: "http://comfy.test:8188/", fetch, pollMs: 0 }) };
 }
 
 describe("workflow di ComfyUI", () => {
@@ -93,6 +101,13 @@ describe("workflow di ComfyUI", () => {
     expect(() => prepareWorkflow(noSave, { prompt: "x", seed: 1, filenamePrefix: "x" })).toThrow(/SaveImage/);
     const twoSamplers = { ...structuredClone(sfondo), "99": structuredClone(sfondo["5"]!) };
     expect(() => prepareWorkflow(twoSamplers, { prompt: "x", seed: 1, filenamePrefix: "x" })).toThrow(/un solo campionatore/);
+  });
+
+  it("passa il riferimento di stile al nodo LoadImage", () => {
+    const flow = prepareWorkflow(stile, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "slot/rif.webp" });
+    expect(flow["12"]!.inputs.image).toBe("slot/rif.webp");
+    expect(() => prepareWorkflow(stile, { prompt: "x", seed: 1, filenamePrefix: "x" })).toThrow(/generate.reference/);
+    expect(() => prepareWorkflow(simbolo, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "r.png" })).toThrow(/LoadImage/);
   });
 
   it("legge le misure di un PNG", () => {
@@ -159,6 +174,29 @@ describe("npm run assets -- generate", () => {
     expect(sent.map((s) => s.workflow["5"]!.inputs.seed)).toEqual([100, 101, 102]);
     expect(Object.values(sent[0]!.workflow).find((n) => n.class_type === "ImageScale")!.inputs.width).toBe(256);
     expect(existsSync(join(dir, "art/raw/ankh.webp"))).toBe(false);
+  });
+
+  it("con generate.reference usa IP-Adapter, ma non per il simbolo di riferimento", async () => {
+    copy();
+    const { sent, uploads, client } = fakeComfy();
+    await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} });
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    art.generate = { reference: "art/raw/faraone.webp" };
+    writeFileSync(artPath, JSON.stringify(art));
+
+    await generate(dir, { only: ["FARAONE", "ANKH", "SCARABEO", "background"], force: true, variants: 1, client, log: () => {} });
+    const [, faraone, ankh, scarabeo, background] = sent.map((s) => s.workflow);
+    const loadImage = (w: Workflow) => Object.values(w).find((n) => n.class_type === "LoadImage");
+    expect(loadImage(faraone!)).toBeUndefined();
+    expect(loadImage(ankh!)!.inputs.image).toBe("slot/tempio-del-sole-faraone.webp");
+    expect(loadImage(scarabeo!)!.inputs.image).toBe("slot/tempio-del-sole-faraone.webp");
+    expect(loadImage(background!)).toBeUndefined();
+    // Il riferimento si carica una volta sola.
+    expect(uploads).toEqual(["slot/tempio-del-sole-faraone.webp"]);
+    const records = JSON.parse(readFileSync(join(dir, "art/raw/generated.json"), "utf8"));
+    expect(records["art/raw/ankh.webp"]).toMatchObject({ workflow: "tools/comfyui/workflows/simbolo-stile.json", reference: "art/raw/faraone.webp" });
+    expect(records["art/raw/faraone.webp"].reference).toBeUndefined();
   });
 
   it("rifiuta simboli sconosciuti", async () => {

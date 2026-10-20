@@ -95,6 +95,11 @@ export const artSchema = z
         /** Workflow in formato API per i simboli e per lo sfondo; predefiniti quelli di tools/comfyui/workflows. */
         workflow: jsonFile.optional(),
         backgroundWorkflow: jsonFile.optional(),
+        /**
+         * Immagine guida dello stile (di solito un simbolo già generato e scelto): se c'è, i simboli
+         * si generano col workflow simbolo-stile.json (IP-Adapter), che la passa come riferimento.
+         */
+        reference: rasterFile.optional(),
         /** Seed comune a tutta la serie, per uno stile coerente. */
         seed: seed.default(777),
         /** Lato in pixel delle immagini dei simboli salvate in art/raw. */

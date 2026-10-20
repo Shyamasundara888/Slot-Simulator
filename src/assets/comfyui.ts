@@ -30,6 +30,8 @@ export type PrepareOptions = {
   seed: number;
   /** Sottocartella e nome nell'output di ComfyUI, per esempio "slot/tempio-del-sole/faraone". */
   filenamePrefix: string;
+  /** Nome dell'immagine di riferimento già caricata in ComfyUI (vedi ComfyClient.upload), per il nodo LoadImage. */
+  reference?: string | undefined;
   /** Se c'è, l'immagine viene ridimensionata a questa misura prima di salvarla. */
   size?: { width: number; height: number } | undefined;
 };
@@ -49,6 +51,14 @@ export function prepareWorkflow(source: Workflow, options: PrepareOptions): Work
   const seedKey = "seed" in sampler.inputs ? "seed" : "noise_seed" in sampler.inputs ? "noise_seed" : undefined;
   if (!seedKey) throw new ComfyError("il campionatore non ha un ingresso seed");
   sampler.inputs[seedKey] = options.seed;
+
+  const loads = Object.values(workflow).filter((n) => n.class_type === "LoadImage");
+  if (options.reference !== undefined) {
+    if (loads.length !== 1) throw new ComfyError(`per usare un riferimento il workflow deve avere un solo nodo LoadImage, ne ha ${loads.length}`);
+    loads[0]!.inputs.image = options.reference;
+  } else if (loads.length > 0) {
+    throw new ComfyError("il workflow carica un'immagine di riferimento (LoadImage): indica generate.reference in art.json");
+  }
 
   const saves = Object.entries(workflow).filter(([, n]) => n.class_type === "SaveImage");
   if (saves.length !== 1) throw new ComfyError(`il workflow deve avere un solo nodo SaveImage, ne ha ${saves.length}`);
@@ -117,6 +127,17 @@ export class ComfyClient {
       throw new ComfyError(`ComfyUI ${path.split("?")[0]}: errore ${response.status}${body ? ` (${body.slice(0, 500)})` : ""}`);
     }
     return response;
+  }
+
+  /** Carica un'immagine nella cartella input di ComfyUI e restituisce il nome da dare a LoadImage. */
+  async upload(bytes: Uint8Array, filename: string, subfolder: string): Promise<string> {
+    const form = new FormData();
+    form.append("image", new Blob([bytes as Uint8Array<ArrayBuffer>]), filename);
+    form.append("subfolder", subfolder);
+    form.append("overwrite", "true");
+    const result = (await (await this.request("/upload/image", { method: "POST", body: form })).json()) as { name?: string; subfolder?: string };
+    if (!result.name) throw new ComfyError("ComfyUI non ha restituito il nome dell'immagine caricata");
+    return result.subfolder ? `${result.subfolder}/${result.name}` : result.name;
   }
 
   /** Mette in coda il workflow, aspetta che finisca e restituisce le immagini salvate. */
