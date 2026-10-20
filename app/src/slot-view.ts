@@ -146,7 +146,7 @@ export class SlotView {
     app.stage.addChild(this.winLayer);
     this.winText = new Text({
       text: "",
-      style: { fill: 0xffffff, fontSize: 56, fontWeight: "800", stroke: { color: 0x1b1430, width: 8 } },
+      style: { fill: 0xffffff, fontSize: 56, fontWeight: "800", stroke: { color: 0x1b1430, width: 8, join: "round" } },
     });
     this.winText.anchor.set(0.5);
     this.winText.position.set(STAGE_WIDTH / 2, STAGE_HEIGHT / 2);
@@ -194,7 +194,7 @@ export class SlotView {
           fill: 0xffffff,
           fontSize: Math.min(34, (w * 1.6) / Math.max(3, style.label.length)),
           fontWeight: "700",
-          stroke: { color: 0x000000, width: 4 },
+          stroke: { color: 0x000000, width: 4, join: "round" },
         },
       });
       label.anchor.set(0.5);

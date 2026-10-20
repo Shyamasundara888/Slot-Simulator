@@ -1,0 +1,26 @@
+{
+  "symbols": [
+    { "id": "SPADA", "kind": "wild" },
+    { "id": "FORZIERE", "kind": "scatter" },
+    { "id": "DRAGO", "kind": "normal" },
+    { "id": "CAVALIERE", "kind": "normal" },
+    { "id": "MAGO", "kind": "normal" },
+    { "id": "ARCIERE", "kind": "normal" },
+    { "id": "POZIONE", "kind": "normal" },
+    { "id": "SCUDO", "kind": "normal" },
+    { "id": "MONETA", "kind": "normal" },
+    { "id": "CHIAVE", "kind": "normal" }
+  ],
+  "linePays": {
+    "SPADA": { "3": 50, "4": 200, "5": 1000 },
+    "DRAGO": { "2": 2, "3": 25, "4": 100, "5": 500 },
+    "CAVALIERE": { "3": 20, "4": 75, "5": 250 },
+    "MAGO": { "3": 15, "4": 50, "5": 150 },
+    "ARCIERE": { "3": 10, "4": 40, "5": 125 },
+    "POZIONE": { "3": 5, "4": 20, "5": 80 },
+    "SCUDO": { "3": 5, "4": 15, "5": 60 },
+    "MONETA": { "3": 4, "4": 10, "5": 50 },
+    "CHIAVE": { "3": 4, "4": 10, "5": 50 }
+  },
+  "scatterPays": { "3": 2, "4": 10, "5": 50 }
+}

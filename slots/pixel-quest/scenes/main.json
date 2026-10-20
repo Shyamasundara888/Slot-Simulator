@@ -1,0 +1,21 @@
+{
+  "background": "#0f1a2b",
+  "symbols": {
+    "SPADA": { "label": "Spada", "color": "#868e96" },
+    "FORZIERE": { "label": "Forziere", "color": "#b8860b" },
+    "DRAGO": { "label": "Drago", "color": "#c92a2a" },
+    "CAVALIERE": { "label": "Cavaliere", "color": "#1864ab" },
+    "MAGO": { "label": "Mago", "color": "#7048e8" },
+    "ARCIERE": { "label": "Arciere", "color": "#2b8a3e" },
+    "POZIONE": { "label": "Pozione", "color": "#d6336c" },
+    "SCUDO": { "label": "Scudo", "color": "#5c7cfa" },
+    "MONETA": { "label": "Moneta", "color": "#f59f00" },
+    "CHIAVE": { "label": "Chiave", "color": "#495057" }
+  },
+  "modes": {
+    "boss": {
+      "label": "Boss Spin",
+      "description": "nei free spin ogni 3 spin vincenti di fila sbloccano un Boss Spin. Finiti i free spin, i Boss Spin si giocano con soli personaggi e spade e vincono sempre."
+    }
+  }
+}

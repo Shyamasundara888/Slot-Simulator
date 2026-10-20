@@ -14,9 +14,11 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p app",
     "test": "vitest run",
-    "sim": "tsx src/cli/sim.ts"
+    "sim": "tsx src/cli/sim.ts",
+    "mod": "tsx src/cli/mod.ts"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
     "pixi.js": "^8.22.0",
     "wasmoon": "^1.16.0",
     "zod": "^3.25.76"
