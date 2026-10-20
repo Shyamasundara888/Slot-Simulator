@@ -123,7 +123,8 @@ describe("workflow di ComfyUI", () => {
   });
 });
 
-describe("npm run assets -- generate", () => {
+// La conversione in WebP (sharp, effort 6) prende mezzo secondo a immagine sui runner di CI.
+describe("npm run assets -- generate", { timeout: 30_000 }, () => {
   let dir = "";
   afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });
