@@ -1,21 +1,24 @@
 /// <reference lib="webworker" />
-// Calcoli lunghi dell'editor, fuori dal thread della pagina: simulazione e ricerca di un seed.
+// Calcoli lunghi dell'editor, fuori dal thread della pagina: simulazione, ricerca di un seed, prova dello script.
 import { playRound } from "../../../src/core/engine.js";
 import { createRng } from "../../../src/core/rng.js";
 import type { RoundHooks } from "../../../src/core/types.js";
 import { ModuleError } from "../../../src/module/build.js";
 import { parseSlotModule } from "../../../src/module/parse.js";
 import { ScriptRuntime } from "../../../src/script/runtime.js";
+import { type ScriptTrial, trialScript } from "../../../src/script/trial.js";
 import { simulate, type SimulationResult } from "../../../src/sim/simulate.js";
 import wasmUri from "wasmoon/dist/glue.wasm?url";
 
 export type WorkerRequest =
   | { kind: "simulate"; files: Record<string, unknown>; spins: number; seed: string }
-  | { kind: "findSeed"; files: Record<string, unknown>; feature: "free" | "extra"; limit: number };
+  | { kind: "findSeed"; files: Record<string, unknown>; feature: "free" | "extra"; limit: number }
+  | { kind: "checkScript"; files: Record<string, unknown>; rounds: number };
 
 export type WorkerResponse =
   | { kind: "simulated"; result: SimulationResult }
   | { kind: "seed"; seed: string | null }
+  | { kind: "scriptChecked"; trial: ScriptTrial }
   | { kind: "error"; message: string };
 
 async function prepare(files: Record<string, unknown>) {
@@ -26,6 +29,11 @@ async function prepare(files: Record<string, unknown>) {
 }
 
 async function handle(request: WorkerRequest): Promise<WorkerResponse> {
+  if (request.kind === "checkScript") {
+    const module = parseSlotModule(request.files);
+    if (module.script === null) return { kind: "scriptChecked", trial: { problems: [], hooks: [], rounds: 0, extraRounds: 0, failure: null } };
+    return { kind: "scriptChecked", trial: await trialScript(module.math, module.script, request.rounds, { wasmUri }) };
+  }
   const { math, hooks } = await prepare(request.files);
   if (request.kind === "simulate") {
     return { kind: "simulated", result: simulate(math, { spins: request.spins, seed: request.seed, hooks }) };
