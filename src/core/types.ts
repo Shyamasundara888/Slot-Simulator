@@ -28,6 +28,10 @@ export interface FreeSpinsConfig {
   retrigger: boolean;
   /** Free spin aggiunti per ogni wild espanso durante i free spin. */
   extraSpinsPerExpandedWild: number;
+  /** Quanto sale il moltiplicatore dei free spin per ogni wild espanso (0 = nessun moltiplicatore). */
+  multiplierPerExpandedWild: number;
+  /** Moltiplicatore massimo dei free spin. */
+  maxMultiplier: number;
   /** Se ogni wild espanso durante i free spin fa salire di livello i simboli. */
   upgradeOnExpandedWild: boolean;
   /** Simboli dal meno al più pagante: al livello L i primi L diventano upgradeLadder[L]. */
@@ -91,7 +95,9 @@ export interface SpinResult {
   scatterCount: number;
   lineWins: LineWin[];
   scatterWin: ScatterWin | null;
-  /** Vincita dello spin in multipli della puntata totale. */
+  /** Moltiplicatore applicato alla vincita dello spin (1 se non c'è). */
+  multiplier: number;
+  /** Vincita dello spin in multipli della puntata totale, moltiplicatore compreso. */
   win: number;
 }
 
@@ -105,6 +111,8 @@ export interface FreeSpinsResult {
   awardedAfter: number[];
   /** Livello di upgrade raggiunto alla fine. */
   upgradeLevel: number;
+  /** Moltiplicatore raggiunto alla fine. */
+  multiplier: number;
   win: number;
 }
 
@@ -114,10 +122,13 @@ export interface PlayRequest {
   spins: number;
   /** Se vero, ogni spin della sequenza ha una vincita. */
   guaranteeWin: boolean;
+  /** Moltiplicatore delle vincite di ogni spin della sequenza. */
+  multiplier: number;
 }
 
 export interface ExtraSpinsResult {
   mode: Mode;
+  multiplier: number;
   spins: SpinResult[];
   win: number;
 }
@@ -128,6 +139,7 @@ export interface FeatureSummary {
   spins: number;
   win: number;
   upgradeLevel: number;
+  multiplier: number;
 }
 
 /**

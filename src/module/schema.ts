@@ -58,11 +58,18 @@ export const featuresSchema = z
         trigger: z.object({ minScatters: z.number().int().min(1), spins: payTable }).strict(),
         retrigger: z.boolean().default(false),
         perExpandedWild: z
-          .object({ extraSpins: z.number().int().min(0).default(0), upgrade: z.boolean().default(false) })
+          .object({
+            extraSpins: z.number().int().min(0).default(0),
+            upgrade: z.boolean().default(false),
+            /** Quanto sale il moltiplicatore dei free spin per ogni wild espanso. */
+            multiplier: z.number().int().min(0).default(0),
+          })
           .strict()
           .optional(),
         /** Dal simbolo meno pagante al più pagante. */
         upgradeLadder: z.array(symbolId).min(2).optional(),
+        /** Moltiplicatore massimo dei free spin. */
+        maxMultiplier: z.number().int().min(1).max(1_000).default(10),
         maxSpins: z.number().int().min(1).max(10_000).default(1_000),
       })
       .strict()

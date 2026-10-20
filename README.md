@@ -2,7 +2,7 @@
 
 Motore per creare slot machine moddabili: ogni slot è un **modulo** con regole, matematica, grafica e script separati, caricato da un motore comune.
 
-Stato attuale: **fasi 1-5**. Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot con grafica provvisoria. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, Gold Spins) e Pixel Quest (5x4, Combo e Boss Spin). La bozza di architettura completa è nel documento di progetto.
+Stato attuale: **fasi 1-6**. Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli, moltiplicatori e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot, con immagini, animazioni e suoni presi dal modulo. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, moltiplicatore nei free spin e Gold Spins, volatilità alta) e Pixel Quest (5x4, Combo e Boss Spin, volatilità medio-alta). La bozza di architettura completa è nel documento di progetto.
 
 ![Il client con il Tempio del Sole: tre scatter attivano i free spin](docs/client.png)
 
@@ -24,9 +24,9 @@ npm install
 | `npm run sim -- slots/tempio-del-sole --spins 5000000 --seed 42` | numero di round e seed a scelta; lo stesso seed dà sempre lo stesso risultato |
 | `npm run sim -- slots/tempio-del-sole --exact` | RTP esatto dello spin base e frequenza esatta dei free spin, in meno di un secondo |
 | `npm run sim -- slots/tempio-del-sole --json` | risultato in JSON |
-| `npm run sim -- mods/pixel-quest-0.2.0.zip` | il simulatore legge anche un mod in zip, senza installarlo |
+| `npm run sim -- mods/pixel-quest-0.3.0.zip` | il simulatore legge anche un mod in zip, senza installarlo |
 | `npm run mod -- install mio-mod.zip` | controlla il mod (script compreso) e lo estrae in `slots/<id>/`; con `--force` sostituisce un modulo esistente |
-| `npm run mod -- pack slots/pixel-quest` | controlla il modulo e crea `mods/pixel-quest-0.2.0.zip`, pronto da condividere |
+| `npm run mod -- pack slots/pixel-quest` | controlla il modulo e crea `mods/pixel-quest-0.3.0.zip`, pronto da condividere |
 | `npm run mod -- check mio-mod.zip` | controlla un mod (zip o cartella) senza installarlo |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi TypeScript |
@@ -34,25 +34,25 @@ npm install
 Un **round** è uno spin base più gli eventuali free spin che attiva e le sequenze che lo script del modulo richiede. Se il modulo ha uno script, il simulatore lo esegue; `--exact` invece lo ignora. Esempio di output:
 
 ```
-Tempio del Sole 0.4.0: 2.000.000 round, seed 1, 28.0 s
+Tempio del Sole 0.5.0: 8.000.000 round, seed 1, 89.1 s
   script scripts/main.lua con hook onSpin, onFeatureEnd
-  RTP simulato        95.08% ± 0.73% (95%)
-    spin base         73.79%  (esatto 73.52%)
-    free spin         17.58%
-    modalità gold     3.71%
-  Frequenza vincite   28.24% (1 round su 3.5)
-  Deviazione std      5.30x
-  Vincita massima     531.40x (round n. 544995)
+  RTP simulato        94.92% ± 0.79% (95%)
+    spin base         65.14%  (esatto 65.17%)
+    free spin         23.56%
+    modalità gold     6.22%
+  Frequenza vincite   32.51% (1 round su 3.1)
+  Deviazione std      11.40x
+  Vincita massima     4921.00x (round n. 3453)
   Tetto di vincita    5000x, raggiunto 0 volte
   Free spin:
-    attivazione       1 round su 176 (esatto 1 su 175.4)
-    spin per bonus    17.5 in media
-    vincita media     30.93x
+    attivazione       1 round su 386 (esatto 1 su 388.4)
+    spin per bonus    10.6 in media
+    vincita media     90.93x
     upgrade medio     livello 2.53
   Modalità gold (richiesta dallo script):
-    sequenze          1 round su 284
-    spin per sequenza 1.8 in media
-    vincita media     10.55x
+    sequenze          1 round su 759
+    spin per sequenza 1.4 in media
+    vincita media     47.20x
 ```
 
 ## Formato di un modulo
@@ -83,10 +83,11 @@ Regole di pagamento:
 {
   "expandingWild": { "reels": [2, 3, 4] },
   "freeSpins": {
-    "trigger": { "minScatters": 3, "spins": { "3": 12 } },
+    "trigger": { "minScatters": 3, "spins": { "3": 10 } },
     "retrigger": true,
-    "perExpandedWild": { "extraSpins": 1, "upgrade": true },
-    "upgradeLadder": ["GATTO", "SCARABEO", "ANKH", "FARAONE"]
+    "perExpandedWild": { "upgrade": true, "multiplier": 1 },
+    "upgradeLadder": ["GATTO", "SCARABEO", "ANKH", "FARAONE"],
+    "maxMultiplier": 25
   },
   "maxWin": 5000
 }
@@ -94,7 +95,8 @@ Regole di pagamento:
 
 - **Wild espandenti:** sui rulli indicati (da 1) un wild copre tutta la colonna, tranne gli scatter, che restano visibili e contano.
 - **Free spin:** partono con `minScatters` scatter nello spin base e usano le strisce `free` se ci sono. Con `retrigger` gli scatter durante i free spin ne aggiungono altri.
-- **Per ogni wild espanso durante i free spin:** `extraSpins` free spin in più e, con `upgrade`, un livello di upgrade per gli spin successivi. Al livello L i primi L simboli di `upgradeLadder` diventano il simbolo di posizione L.
+- **Per ogni wild espanso durante i free spin:** `extraSpins` free spin in più; con `upgrade`, un livello di upgrade per gli spin successivi (al livello L i primi L simboli di `upgradeLadder` diventano il simbolo di posizione L); con `multiplier`, tanto in più al moltiplicatore delle vincite.
+- **Moltiplicatore dei free spin:** parte da ×1, sale con i wild espansi già nello spin in cui compaiono e resta fino alla fine dei free spin, fino a `maxMultiplier` (predefinito 10). È la leva principale della volatilità: senza, su 10 linee una griglia piena del simbolo più alto vale al massimo 500 volte la puntata.
 - **Tetto di vincita:** `maxWin` limita la vincita di un round, in multipli della puntata totale, e ferma i free spin quando viene raggiunto.
 - `maxSpins` (predefinito 1000) è un limite di sicurezza ai free spin di un round.
 
@@ -114,17 +116,17 @@ end
 
 function onFeatureEnd(feature)    -- quando finiscono i free spin o una sequenza
   if feature.mode == "free" and (round.gold or 0) > 0 then
-    return { mode = "gold", spins = round.gold, guaranteeWin = true }
+    return { mode = "gold", spins = round.gold, guaranteeWin = true, multiplier = feature.multiplier }
   end
 end
 ```
 
 | Hook | Quando | Dati ricevuti |
 | --- | --- | --- |
-| `onSpin(spin)` | dopo ogni spin, nelle modalità di `spinModes` (tutte se manca) | `mode`, `index` (da 1), `win`, `wilds` (wild espansi), `scatters`, `level` (upgrade) |
-| `onFeatureEnd(feature)` | alla fine dei free spin e di ogni sequenza richiesta | `mode`, `spins`, `win`, `level` |
+| `onSpin(spin)` | dopo ogni spin, nelle modalità di `spinModes` (tutte se manca) | `mode`, `index` (da 1), `win`, `wilds` (wild espansi), `scatters`, `level` (upgrade), `multiplier` |
+| `onFeatureEnd(feature)` | alla fine dei free spin e di ogni sequenza richiesta | `mode`, `spins`, `win`, `level`, `multiplier` (quello raggiunto) |
 
-- Entrambi possono restituire `nil` oppure `{ mode = "...", spins = n, guaranteeWin = true }`: le sequenze richieste si giocano dopo i free spin, una dopo l'altra. Con `guaranteeWin` ogni spin della sequenza viene rigiocato finché non vince.
+- Entrambi possono restituire `nil` oppure `{ mode = "...", spins = n, guaranteeWin = true, multiplier = m }`: le sequenze richieste si giocano dopo i free spin, una dopo l'altra. Con `guaranteeWin` ogni spin della sequenza viene rigiocato finché non vince; `multiplier` (da 1 a 1000, predefinito 1) moltiplica la vincita di ogni spin della sequenza.
 - `round` è una tabella vuota all'inizio di ogni round, per lo stato dello script. Le vincite sono in multipli della puntata totale.
 - `math.random` usa l'RNG del motore: con lo stesso seed lo script fa sempre le stesse scelte. Si può usare solo dentro gli hook.
 - Lo script gira isolato (Lua 5.4 in WebAssembly, con wasmoon): niente `io`, `os`, `require`, `load`, `debug` né coroutine, al massimo 1.000.000 di istruzioni per chiamata e 16 MB di memoria. Un errore annulla il round e indica la riga dello script.

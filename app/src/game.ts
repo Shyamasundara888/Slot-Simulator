@@ -137,16 +137,19 @@ export class Game {
   }
 
   /** Gioca uno spin già deciso dal motore: rulli, trasformazioni, vincite. */
-  private async present(spin: SpinResult, turbo: boolean): Promise<number> {
+  /** Mostra uno spin; `onRevealed` viene chiamata quando griglia ed espansioni sono visibili, prima delle vincite. */
+  private async present(spin: SpinResult, turbo: boolean, onRevealed?: () => void): Promise<number> {
     this.sounds.play("spin");
     await this.view.spin(spin.reelGrid, turbo);
     if (spin.grid.some((column, reel) => column.some((s, row) => s !== spin.reelGrid[reel]![row]))) {
       await this.view.reveal(spin.reelGrid, spin.grid, turbo);
     }
+    onRevealed?.();
     const credits = spin.win * this.bet;
     if (credits > 0) {
       this.sounds.play(spin.win >= BIG_WIN ? "bigWin" : "win");
-      this.view.showWins(spin.lineWins, spin.scatterWin, spin.reelGrid, money(credits));
+      const multiplier = spin.multiplier > 1 ? ` (×${spin.multiplier})` : "";
+      this.view.showWins(spin.lineWins, spin.scatterWin, spin.reelGrid, `${money(credits)}${multiplier}`);
       await wait(turbo ? 450 : 1100);
     }
     return credits;
@@ -191,19 +194,26 @@ export class Game {
           spin.upgradeLevel > 0
             ? ` · upgrade: ${ladder.slice(0, spin.upgradeLevel).map(label).join(", ")} → ${label(ladder[spin.upgradeLevel]!)}`
             : "";
-        this.setStatus(`Free spin ${i + 1} di ${total}${level}`, "feature");
-        shown += await this.present(spin, turbo);
+        // Prima dello spin si vede il moltiplicatore già raggiunto: quello nuovo arriva con i wild di questo spin.
+        const status = (m: number) => `Free spin ${i + 1} di ${total}${m > 1 ? ` · moltiplicatore ×${m}` : ""}${level}`;
+        const before = i === 0 ? 1 : free.spins[i - 1]!.multiplier;
+        this.setStatus(status(before), "feature");
+        shown += await this.present(spin, turbo, () => {
+          if (spin.multiplier !== before) this.setStatus(status(spin.multiplier), "feature");
+        });
         this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
       }
     }
 
     for (const sequence of round.extra) {
       const label = this.module.scene.modes.get(sequence.mode)?.label ?? `Giri ${sequence.mode}`;
-      this.setStatus(`${sequence.spins.length} × ${label}!`, "feature");
+      const intro = sequence.multiplier > 1 ? `, con moltiplicatore ×${sequence.multiplier}` : "";
+      this.setStatus(`${sequence.spins.length} × ${label}${intro}!`, "feature");
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       for (let i = 0; i < sequence.spins.length; i++) {
-        this.setStatus(`${label} ${i + 1} di ${sequence.spins.length}`, "feature");
+        const multiplier = sequence.multiplier > 1 ? ` · moltiplicatore ×${sequence.multiplier}` : "";
+        this.setStatus(`${label} ${i + 1} di ${sequence.spins.length}${multiplier}`, "feature");
         shown += await this.present(sequence.spins[i]!, turbo);
         this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
       }

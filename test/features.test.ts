@@ -82,6 +82,30 @@ describe("free spin", () => {
     expect(round.freeSpins!.spins.map((s) => s.upgradeLevel)).toEqual([0, 1, 1]);
   });
 
+  it("ogni wild espanso fa salire il moltiplicatore, già nello spin in cui compare", () => {
+    const multiplied = tinyMath(
+      strips,
+      1,
+      [[0, 0, 0]],
+      {
+        expandingWild: { reels: [2] },
+        freeSpins: {
+          trigger: { minScatters: 3, spins: { "3": 2 } },
+          perExpandedWild: { extraSpins: 1, multiplier: 2 },
+          maxMultiplier: 4,
+        },
+      },
+      free,
+    );
+    // Base: S S S paga 4. Free: B W B (×3, +1 spin), B B B (×3), B W B (×4 per il tetto, +1 spin), A B A senza vincite.
+    const round = playRound(multiplied, scriptedRng([1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 1, 2]));
+    const spins = round.freeSpins!.spins;
+    expect(spins.map((s) => s.multiplier)).toEqual([3, 3, 4, 4]);
+    expect(spins.map((s) => s.win)).toEqual([15, 15, 20, 0]);
+    expect(round.freeSpins!.multiplier).toBe(4);
+    expect(round.totalWin).toBe(54);
+  });
+
   it("il tetto di vincita ferma il round", () => {
     const capped = tinyMath(strips, 1, [[0, 0, 0]], { ...features, maxWin: 5 }, free);
     // Base: S S S paga 4; il primo free spin B B B paga 5 → 9, limitato a 5.
@@ -114,6 +138,14 @@ describe("validazione delle funzioni", () => {
       const problems = (err as ModuleError).problems.join("\n");
       expect(problems).toContain("il rullo 4 non esiste");
       expect(problems).toContain("S non è un simbolo normale");
+    }
+    try {
+      tinyMath(strips, 1, [[0, 0, 0]], {
+        freeSpins: { trigger: { minScatters: 3, spins: { "3": 5 } }, perExpandedWild: { multiplier: 1 } },
+      });
+      expect.unreachable();
+    } catch (err) {
+      expect((err as ModuleError).problems.join("\n")).toContain("il moltiplicatore per wild espanso richiede expandingWild");
     }
   });
 });

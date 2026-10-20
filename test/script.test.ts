@@ -109,6 +109,22 @@ describe("hook nel round", () => {
     expect(round.extra[0]!.spins[0]!.win).toBe(5);
   });
 
+  it("il moltiplicatore della sequenza vale per ogni spin e arriva allo script", async () => {
+    const script = await create(`
+      function onSpin(spin)
+        if spin.mode == "base" then return { mode = "gold", spins = 2, multiplier = 3 } end
+        round.seen = (round.seen or "") .. spin.multiplier .. ":" .. spin.win .. " "
+      end
+      function onFeatureEnd(feature)
+        if feature.multiplier ~= 3 or round.seen ~= "3:30 3:30 " then error(round.seen) end
+      end
+    `);
+    const round = playRound(math, scriptedRng([0, 1, 2, 0, 0, 0, 0, 0, 0]), script);
+    expect(round.extra[0]!.multiplier).toBe(3);
+    expect(round.extra[0]!.spins.map((s) => s.win)).toEqual([30, 30]);
+    expect(round.totalWin).toBe(60);
+  });
+
   it("rifiuta le richieste non valide", async () => {
     const bad = async (ret: string) => {
       const script = await create(`function onSpin(spin) if spin.mode == "base" then return ${ret} end end`);
@@ -117,6 +133,7 @@ describe("hook nel round", () => {
     expect(await bad('{ mode = "turbo", spins = 1 }')).toThrow(ScriptError);
     expect(await bad('{ mode = "gold", spins = 1.5 }')).toThrow(/spins non valido/);
     expect(await bad("42")).toThrow(/ha restituito number/);
+    expect(await bad('{ mode = "gold", spins = 1, multiplier = 0 }')).toThrow(/multiplier deve essere un numero tra 1 e 1000/);
   });
 
   it("spinModes limita le chiamate di onSpin", async () => {

@@ -23,7 +23,7 @@
   "modes": {
     "boss": {
       "label": "Boss Spin",
-      "description": "nei free spin ogni 3 spin vincenti di fila sbloccano un Boss Spin. Finiti i free spin, i Boss Spin si giocano con soli personaggi e spade e vincono sempre."
+      "description": "nei free spin ogni 5 spin vincenti di fila sbloccano un Boss Spin. Finiti i free spin, i Boss Spin si giocano con soli personaggi e spade, vincono sempre e valgono il doppio della combo più lunga (×10 con 5 vincite di fila, ×14 con 7)."
     }
   }
 }

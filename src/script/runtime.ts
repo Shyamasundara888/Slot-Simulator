@@ -8,6 +8,8 @@ import { MODULE_FILES } from "../module/parse.js";
 export const INSTRUCTION_LIMIT = 1_000_000;
 /** Memoria massima dello stato Lua di un modulo. */
 export const MEMORY_LIMIT = 16 * 1024 * 1024;
+/** Moltiplicatore massimo che uno script può chiedere per una sequenza. */
+export const MAX_MULTIPLIER = 1_000;
 
 /** Errore sollevato da uno script mentre il motore gioca un round. */
 export class ScriptError extends Error {
@@ -74,13 +76,15 @@ function dispatch.load(source)
     spinModes = modes,
   }
 end
-function dispatch.spin(id, mode, index, win, wilds, scatters, level)
+function dispatch.spin(id, mode, index, win, wilds, scatters, level, multiplier)
   begin(id)
-  return guarded(onSpin, { mode = mode, index = index, win = win, wilds = wilds, scatters = scatters, level = level })
+  return guarded(onSpin, {
+    mode = mode, index = index, win = win, wilds = wilds, scatters = scatters, level = level, multiplier = multiplier,
+  })
 end
-function dispatch.featureEnd(id, mode, spins, win, level)
+function dispatch.featureEnd(id, mode, spins, win, level, multiplier)
   begin(id)
-  return guarded(onFeatureEnd, { mode = mode, spins = spins, win = win, level = level })
+  return guarded(onFeatureEnd, { mode = mode, spins = spins, win = win, level = level, multiplier = multiplier })
 end
 return dispatch
 `;
@@ -93,8 +97,8 @@ interface LoadInfo {
 
 type Dispatch = {
   load(source: string): LoadInfo;
-  spin(id: number, mode: string, index: number, win: number, wilds: number, scatters: number, level: number): unknown;
-  featureEnd(id: number, mode: string, spins: number, win: number, level: number): unknown;
+  spin(id: number, mode: string, index: number, win: number, wilds: number, scatters: number, level: number, multiplier: number): unknown;
+  featureEnd(id: number, mode: string, spins: number, win: number, level: number, multiplier: number): unknown;
 };
 
 export interface ScriptOptions {
@@ -176,15 +180,24 @@ export class ScriptRuntime implements RoundHooks {
   onSpin(spin: SpinResult, index: number): PlayRequest | null {
     if (!this.info.onSpin || (this.spinModes && !this.spinModes.has(spin.mode))) return null;
     const raw = this.call("onSpin", () =>
-      this.dispatch.spin(this.round, spin.mode, index + 1, spin.win, spin.expandedReels.length, spin.scatterCount, spin.upgradeLevel),
+      this.dispatch.spin(
+        this.round,
+        spin.mode,
+        index + 1,
+        spin.win,
+        spin.expandedReels.length,
+        spin.scatterCount,
+        spin.upgradeLevel,
+        spin.multiplier,
+      ),
     );
     return this.toRequest("onSpin", raw);
   }
 
   onFeatureEnd(feature: FeatureSummary): PlayRequest | null {
     if (!this.info.onFeatureEnd) return null;
-    const { mode, spins, win, upgradeLevel } = feature;
-    const raw = this.call("onFeatureEnd", () => this.dispatch.featureEnd(this.round, mode, spins, win, upgradeLevel));
+    const { mode, spins, win, upgradeLevel, multiplier } = feature;
+    const raw = this.call("onFeatureEnd", () => this.dispatch.featureEnd(this.round, mode, spins, win, upgradeLevel, multiplier));
     return this.toRequest("onFeatureEnd", raw);
   }
 
@@ -196,17 +209,20 @@ export class ScriptRuntime implements RoundHooks {
     }
   }
 
-  /** Lo hook può restituire nil o { mode = "...", spins = n, guaranteeWin = true }. */
+  /** Lo hook può restituire nil o { mode = "...", spins = n, guaranteeWin = true, multiplier = m }. */
   private toRequest(hook: string, raw: unknown): PlayRequest | null {
     if (raw === null || raw === undefined) return null;
     const fail = (why: string): never => {
       throw new ScriptError(`${hook} deve restituire nil o { mode = "...", spins = n }: ${why}`);
     };
     if (typeof raw !== "object") fail(`ha restituito ${typeof raw}`);
-    const { mode, spins, guaranteeWin = false } = raw as Record<string, unknown>;
+    const { mode, spins, guaranteeWin = false, multiplier = 1 } = raw as Record<string, unknown>;
     if (typeof mode !== "string" || !this.math.reels[mode]) fail(`modalità senza strisce dei rulli ${String(mode)}`);
     if (typeof spins !== "number" || !Number.isInteger(spins) || spins < 0) fail(`spins non valido ${String(spins)}`);
     if (typeof guaranteeWin !== "boolean") fail("guaranteeWin deve essere true o false");
-    return { mode: mode as string, spins: spins as number, guaranteeWin: guaranteeWin as boolean };
+    if (typeof multiplier !== "number" || !Number.isFinite(multiplier) || multiplier < 1 || multiplier > MAX_MULTIPLIER) {
+      fail(`multiplier deve essere un numero tra 1 e ${MAX_MULTIPLIER}, non ${String(multiplier)}`);
+    }
+    return { mode: mode as string, spins: spins as number, guaranteeWin: guaranteeWin as boolean, multiplier: multiplier as number };
   }
 }

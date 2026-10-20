@@ -112,6 +112,10 @@ export function buildSlotMath(
     const upgrade = fs.perExpandedWild?.upgrade ?? false;
     if (upgrade && ladder.length === 0) problems.push("features.freeSpins: l'upgrade richiede upgradeLadder");
     if (upgrade && expandingWildReels.size === 0) problems.push("features.freeSpins: l'upgrade richiede expandingWild");
+    const multiplierStep = fs.perExpandedWild?.multiplier ?? 0;
+    if (multiplierStep > 0 && expandingWildReels.size === 0) {
+      problems.push("features.freeSpins: il moltiplicatore per wild espanso richiede expandingWild");
+    }
     if (new Set(ladder).size !== ladder.length) problems.push("features.freeSpins.upgradeLadder: simboli ripetuti");
     for (const s of ladder) {
       if (symbols.get(s) !== "normal") problems.push(`features.freeSpins.upgradeLadder: ${s} non è un simbolo normale`);
@@ -124,6 +128,8 @@ export function buildSlotMath(
       awards,
       retrigger: fs.retrigger,
       extraSpinsPerExpandedWild: fs.perExpandedWild?.extraSpins ?? 0,
+      multiplierPerExpandedWild: multiplierStep,
+      maxMultiplier: fs.maxMultiplier,
       upgradeOnExpandedWild: upgrade,
       upgradeLadder: ladder,
       maxSpins: fs.maxSpins,
