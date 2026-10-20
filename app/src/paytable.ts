@@ -50,12 +50,15 @@ export function paytableHtml({ math, scene }: SlotModule, assets: ReadonlyMap<st
         ? `${fs.minScatters} o più scatter danno ${awards[0]!.spins} free spin`
         : `Gli scatter danno free spin: ${awards.map(({ n, spins }, i) => `${n}${i === awards.length - 1 ? " o più" : ""}: ${spins}`).join(", ")}`;
     parts.push(`<li>${text}${fs.retrigger ? ", riattivabili" : ""}.</li>`);
-    if (fs.extraSpinsPerExpandedWild > 0 || fs.upgradeOnExpandedWild) {
+    if (fs.extraSpinsPerExpandedWild > 0 || fs.upgradeOnExpandedWild || fs.multiplierPerExpandedWild > 0) {
       const what = [
         fs.extraSpinsPerExpandedWild > 0 ? `${fs.extraSpinsPerExpandedWild} free spin in più` : "",
+        fs.multiplierPerExpandedWild > 0
+          ? `+${fs.multiplierPerExpandedWild} al moltiplicatore delle vincite (parte da ×1, al massimo ×${fs.maxMultiplier}, vale già per lo spin in cui il wild compare)`
+          : "",
         fs.upgradeOnExpandedWild ? `un upgrade dei simboli (${fs.upgradeLadder.map((s) => esc(scene.symbols.get(s)!.label)).join(" → ")})` : "",
       ].filter(Boolean);
-      parts.push(`<li>Durante i free spin ogni wild espanso dà ${what.join(" e ")}.</li>`);
+      parts.push(`<li>Durante i free spin ogni wild espanso dà ${what.length > 1 ? `${what.slice(0, -1).join(", ")} e ${what.at(-1)}` : what[0]}.</li>`);
     }
   }
   for (const { label, description } of scene.modes.values()) {

@@ -80,7 +80,12 @@ export function evaluateSpin(math: SlotMath, mode: Mode, stops: number[], upgrad
   const scatterWin = evaluateScatter(math, grid);
   const lineTotal = lineWins.reduce((sum, w) => sum + w.pay, 0);
   const win = lineTotal / math.lines.length + (scatterWin?.pay ?? 0);
-  return { mode, upgradeLevel, stops, reelGrid, grid, expandedReels, scatterCount, lineWins, scatterWin, win };
+  return { mode, upgradeLevel, stops, reelGrid, grid, expandedReels, scatterCount, lineWins, scatterWin, multiplier: 1, win };
+}
+
+/** Applica un moltiplicatore alla vincita di uno spin. */
+function multiply(result: SpinResult, multiplier: number): SpinResult {
+  return multiplier === 1 ? result : { ...result, multiplier, win: result.win * multiplier };
 }
 
 export function spin(math: SlotMath, rng: Rng, mode: Mode = "base", upgradeLevel = 0): SpinResult {
@@ -116,6 +121,7 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
     let remaining = initial;
     let awarded = initial;
     let level = 0;
+    let multiplier = 1;
     const maxLevel = Math.max(0, fs.upgradeLadder.length - 1);
     const spins: SpinResult[] = [];
     const awardedAfter: number[] = [];
@@ -123,12 +129,15 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
 
     while (remaining > 0 && spins.length < fs.maxSpins && total < math.maxWin) {
       remaining--;
-      const result = spin(math, rng, "free", level);
+      const drawn = spin(math, rng, "free", level);
+      const wilds = drawn.expandedReels.length;
+      // I wild espansi fanno salire il moltiplicatore già per lo spin in cui compaiono.
+      multiplier = Math.min(fs.maxMultiplier, multiplier + wilds * fs.multiplierPerExpandedWild);
+      const result = multiply(drawn, multiplier);
       spins.push(result);
       win += result.win;
       total += result.win;
 
-      const wilds = result.expandedReels.length;
       if (wilds > 0) {
         remaining += wilds * fs.extraSpinsPerExpandedWild;
         awarded += wilds * fs.extraSpinsPerExpandedWild;
@@ -142,14 +151,14 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
       awardedAfter.push(awarded);
       request(hooks?.onSpin(result, spins.length - 1));
     }
-    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, win };
-    request(hooks?.onFeatureEnd({ mode: "free", spins: spins.length, win, upgradeLevel: level }));
+    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, multiplier, win };
+    request(hooks?.onFeatureEnd({ mode: "free", spins: spins.length, win, upgradeLevel: level, multiplier }));
   }
 
   const extra: ExtraSpinsResult[] = [];
   let extraSpins = 0;
   while (queue.length > 0 && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
-    const { mode, spins: count, guaranteeWin } = queue.shift()!;
+    const { mode, spins: count, guaranteeWin, multiplier } = queue.shift()!;
     const spins: SpinResult[] = [];
     let win = 0;
     while (spins.length < count && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
@@ -157,14 +166,15 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
       for (let tries = 1; guaranteeWin && result.win === 0 && tries < MAX_WIN_RESAMPLES; tries++) {
         result = spin(math, rng, mode);
       }
+      result = multiply(result, multiplier);
       spins.push(result);
       extraSpins++;
       win += result.win;
       total += result.win;
       request(hooks?.onSpin(result, spins.length - 1));
     }
-    extra.push({ mode, spins, win });
-    request(hooks?.onFeatureEnd({ mode, spins: spins.length, win, upgradeLevel: 0 }));
+    extra.push({ mode, multiplier, spins, win });
+    request(hooks?.onFeatureEnd({ mode, spins: spins.length, win, upgradeLevel: 0, multiplier }));
   }
 
   const capped = total >= math.maxWin;

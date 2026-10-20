@@ -73,12 +73,14 @@ describe("RTP", () => {
     expect(Math.abs(result.freeSpins!.triggers - n * p)).toBeLessThan(4 * sigma);
   });
 
-  it("il modulo di esempio resta intorno al 95% di RTP, Gold Spins compresi", async () => {
+  it("il modulo di esempio resta intorno al 95% di RTP, Gold Spins compresi, ed è molto volatile", async () => {
     const { math: demo, script } = await loadSlotModule("slots/tempio-del-sole");
-    expect(exactRtp(demo).baseRtp).toBeCloseTo(0.7352, 3);
+    expect(exactRtp(demo).baseRtp).toBeCloseTo(0.6517, 3);
     const hooks = await ScriptRuntime.create(demo, script!);
     const result = simulate(demo, { spins: 300_000, seed: 5, hooks });
-    expect(result.rtp).toBeGreaterThan(0.93);
-    expect(result.rtp).toBeLessThan(0.99);
+    // Con una deviazione standard di 11x, su 300.000 round l'RTP simulato oscilla di circa ±4%.
+    expect(result.rtp).toBeGreaterThan(0.88);
+    expect(result.rtp).toBeLessThan(1.03);
+    expect(result.stdDev).toBeGreaterThan(8);
   });
 });
