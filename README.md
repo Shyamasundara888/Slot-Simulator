@@ -136,6 +136,7 @@ Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i mod
 
 - Il motore decide l'intero round prima che parta l'animazione; il client mostra soltanto l'esito: rulli che si fermano uno alla volta, celle trasformate da upgrade ed espansioni, linee vincenti, contatore dei free spin e delle sequenze richieste dagli script (per esempio "Gold Spin 1 di 2").
 - Saldo virtuale di 1.000 crediti, salvato nel browser; puntata totale da 0,10 a 50; modalità turbo; paytable generata dalla matematica del modulo.
+- Statistiche per slot, divise tra sessione (dura finché resta aperta la scheda) e totale: round giocati, puntato, vinto, bilancio, vincita massima, bonus attivati e ritorno osservato. Il bilancio di sessione e quello totale della slot aperta sono sempre visibili in basso; il pulsante Statistiche mostra il dettaglio e il riepilogo di tutte le slot.
 - Barra spaziatrice per girare. `?slot=<id>` apre una slot precisa, `?seed=<valore>` rende ripetibile la sequenza dei round.
 - Finché un modulo non ha asset, i simboli sono tessere colorate con l'etichetta definita in `scenes/main.json`; i simboli senza stile ricevono un colore predefinito.
 

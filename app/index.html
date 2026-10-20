@@ -25,14 +25,29 @@
       </div>
       <button id="spin" class="spin" type="button">Gira</button>
       <div class="meter"><span>Vincita</span><strong id="win">0,00</strong></div>
+      <div class="meter" title="Vinto meno puntato su questa slot, da quando hai aperto la scheda">
+        <span>Bilancio sessione</span><strong id="net-session" class="net">0,00</strong>
+      </div>
+      <div class="meter" title="Vinto meno puntato su questa slot, da sempre">
+        <span>Bilancio totale</span><strong id="net-total" class="net">0,00</strong>
+      </div>
       <label class="toggle"><input id="turbo" type="checkbox" /> Turbo</label>
       <button id="paytable-open" type="button">Paytable</button>
+      <button id="stats-open" type="button">Statistiche</button>
       <button id="reset" type="button">Azzera saldo</button>
     </footer>
     <dialog id="paytable">
       <h2>Paytable</h2>
       <div id="paytable-body"></div>
       <form method="dialog"><button>Chiudi</button></form>
+    </dialog>
+    <dialog id="stats">
+      <h2>Statistiche</h2>
+      <div id="stats-body"></div>
+      <form method="dialog" class="dialog-actions">
+        <button>Chiudi</button>
+        <button id="stats-reset" type="button" formnovalidate>Azzera statistiche</button>
+      </form>
     </dialog>
     <script type="module" src="./src/main.ts"></script>
   </body>

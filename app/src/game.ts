@@ -5,15 +5,15 @@ import type { SlotModule } from "../../src/module/parse.js";
 import { ScriptRuntime } from "../../src/script/runtime.js";
 import wasmUri from "wasmoon/dist/glue.wasm?url";
 import { wait } from "./anim.js";
+import { money, signedMoney, trend } from "./format.js";
 import { SlotView } from "./slot-view.js";
+import { net, type StatsStore } from "./stats.js";
 
 /** Puntate totali disponibili, in crediti. */
 const BET_LEVELS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
 const START_BALANCE = 1000;
 const STORAGE_KEY = "slot-simulator:balance";
 
-const money = (credits: number) =>
-  credits.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function readBalance(): number {
   try {
@@ -44,6 +44,8 @@ export class Game {
     balance: $<HTMLElement>("balance"),
     bet: $<HTMLElement>("bet"),
     win: $<HTMLElement>("win"),
+    netSession: $<HTMLElement>("net-session"),
+    netTotal: $<HTMLElement>("net-total"),
     status: $<HTMLElement>("status"),
     spin: $<HTMLButtonElement>("spin"),
     betDown: $<HTMLButtonElement>("bet-down"),
@@ -56,6 +58,7 @@ export class Game {
     private readonly module: SlotModule,
     private readonly view: SlotView,
     private readonly hooks: RoundHooks | undefined,
+    private readonly stats: StatsStore,
     seed: number | string,
   ) {
     this.rng = createRng(seed);
@@ -72,11 +75,11 @@ export class Game {
   }
 
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
-  static async start(host: HTMLElement, module: SlotModule, seed?: number | string): Promise<Game> {
+  static async start(host: HTMLElement, module: SlotModule, stats: StatsStore, seed?: number | string): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
     const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
     const view = await SlotView.create(host, module);
-    return new Game(module, view, hooks, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
+    return new Game(module, view, hooks, stats, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
   }
 
   get isBusy(): boolean {
@@ -93,6 +96,11 @@ export class Game {
     this.render();
   }
 
+  /** Aggiorna i contatori, per esempio dopo aver azzerato le statistiche. */
+  refresh(): void {
+    this.render();
+  }
+
   private render(): void {
     this.ui.balance.textContent = money(this.balance);
     this.ui.bet.textContent = money(this.bet);
@@ -100,6 +108,11 @@ export class Game {
     this.ui.betDown.disabled = this.busy || this.betIndex === 0;
     this.ui.betUp.disabled = this.busy || this.betIndex === BET_LEVELS.length - 1;
     this.ui.reset.disabled = this.busy;
+    const { session, total } = this.stats.get(this.module.manifest.id);
+    for (const [el, s] of [[this.ui.netSession, session], [this.ui.netTotal, total]] as const) {
+      el.textContent = signedMoney(net(s));
+      el.className = `net ${trend(net(s))}`.trim();
+    }
   }
 
   private setStatus(text: string, tone: "" | "win" | "feature" = ""): void {
@@ -179,6 +192,7 @@ export class Game {
     const won = round.totalWin * bet;
     this.balance += won;
     saveBalance(this.balance);
+    this.stats.record(this.module.manifest.id, bet, won, free !== null || round.extra.length > 0);
     this.ui.win.textContent = money(won);
     if (round.capped) this.setStatus(`Vincita massima raggiunta: ${money(won)}`, "win");
     else if (free || round.extra.length > 0) this.setStatus(`Bonus finito: vinti ${money(won - round.base.win * bet)}`, "win");
