@@ -32,6 +32,9 @@ export type PrepareOptions = {
   filenamePrefix: string;
   /** Nome dell'immagine di riferimento già caricata in ComfyUI (vedi ComfyClient.upload), per il nodo LoadImage. */
   reference?: string | undefined;
+  /** Peso e modo del riferimento nei nodi IPAdapter; se mancano restano quelli del workflow. */
+  referenceWeight?: number | undefined;
+  referenceMode?: string | undefined;
   /** Se c'è, l'immagine viene ridimensionata a questa misura prima di salvarla. */
   size?: { width: number; height: number } | undefined;
 };
@@ -56,6 +59,11 @@ export function prepareWorkflow(source: Workflow, options: PrepareOptions): Work
   if (options.reference !== undefined) {
     if (loads.length !== 1) throw new ComfyError(`per usare un riferimento il workflow deve avere un solo nodo LoadImage, ne ha ${loads.length}`);
     loads[0]!.inputs.image = options.reference;
+    for (const node of Object.values(workflow)) {
+      if (!node.class_type.startsWith("IPAdapter") || !("weight" in node.inputs)) continue;
+      if (options.referenceWeight !== undefined) node.inputs.weight = options.referenceWeight;
+      if (options.referenceMode !== undefined && "weight_type" in node.inputs) node.inputs.weight_type = options.referenceMode;
+    }
   } else if (loads.length > 0) {
     throw new ComfyError("il workflow carica un'immagine di riferimento (LoadImage): indica generate.reference in art.json");
   }
@@ -178,4 +186,63 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } | 
   if (bytes.length < 24 || signature.some((b, i) => bytes[i] !== b)) return undefined;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   return { width: view.getUint32(16), height: view.getUint32(20) };
+}
+
+/**
+ * Toglie dal canale alfa i frammenti staccati dal soggetto, che lo scontorno a volte lascia sui bordi:
+ * resta visibile solo la parte connessa più grande (più le parti grandi almeno `keep` volte quella).
+ * `rgba` sono pixel grezzi, 4 byte per pixel; viene modificato sul posto e restituisce i pixel tolti.
+ */
+export function removeFragments(rgba: Uint8Array, width: number, height: number, keep = 0.05): number {
+  const label = new Int32Array(width * height);
+  const sizes: number[] = [0];
+  const stack: number[] = [];
+  for (let start = 0; start < label.length; start++) {
+    if (label[start] !== 0 || rgba[start * 4 + 3]! < 16) continue;
+    const id = sizes.length;
+    let size = 0;
+    label[start] = id;
+    stack.push(start);
+    while (stack.length > 0) {
+      const p = stack.pop()!;
+      size++;
+      const x = p % width;
+      const y = (p - x) / width;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]] as const) {
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const q = ny * width + nx;
+        if (label[q] === 0 && rgba[q * 4 + 3]! >= 16) {
+          label[q] = id;
+          stack.push(q);
+        }
+      }
+    }
+    sizes.push(size);
+  }
+  const largest = Math.max(...sizes);
+  let removed = 0;
+  for (let p = 0; p < label.length; p++) {
+    const id = label[p]!;
+    // Anche i pixel quasi trasparenti attorno a un frammento tolto spariscono, così non resta un alone.
+    if (id === 0 ? rgba[p * 4 + 3]! > 0 && !nearKept(p) : sizes[id]! < largest * keep) {
+      if (rgba[p * 4 + 3]! > 0) removed++;
+      rgba[p * 4 + 3] = 0;
+    }
+  }
+  return removed;
+
+  function nearKept(p: number): boolean {
+    const x = p % width;
+    const y = (p - x) / width;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+        const id = label[ny * width + nx]!;
+        if (id !== 0 && sizes[id]! >= largest * keep) return true;
+      }
+    }
+    return false;
+  }
 }

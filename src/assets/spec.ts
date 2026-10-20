@@ -100,6 +100,12 @@ export const artSchema = z
          * si generano col workflow simbolo-stile.json (IP-Adapter), che la passa come riferimento.
          */
         reference: rasterFile.optional(),
+        /** Quanto conta il riferimento (nodi IPAdapter): più basso passa meno la forma del riferimento. */
+        referenceWeight: z.number().min(0).max(2).optional(),
+        /** Modo dell'IP-Adapter, per esempio "style transfer" o "strong style transfer". */
+        referenceMode: z.string().optional(),
+        /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
+        cleanup: z.boolean().default(true),
         /** Seed comune a tutta la serie, per uno stile coerente. */
         seed: seed.default(777),
         /** Lato in pixel delle immagini dei simboli salvate in art/raw. */

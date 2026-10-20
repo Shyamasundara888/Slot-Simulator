@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 import { backgroundPrompt, symbolPrompt } from "./build.js";
-import { pngSize, prepareWorkflow, workflowCheckpoint, type ComfyClient, type Workflow } from "./comfyui.js";
+import { pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type ComfyClient, type Workflow } from "./comfyui.js";
 import { artSchema, type ArtSpec } from "./spec.js";
 
 export const ART_FILE = "art/art.json";
@@ -49,6 +49,8 @@ type GeneratedRecord = {
   workflow: string;
   checkpoint?: string | undefined;
   reference?: string | undefined;
+  referenceWeight?: number | undefined;
+  referenceMode?: string | undefined;
   generator: "ComfyUI";
   date: string;
 };
@@ -114,22 +116,35 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
       if (styled && uploaded === undefined) {
         uploaded = await options.client.upload(await readFile(join(dir, reference)), `${slot}-${basename(reference)}`, "slot");
       }
-      const workflow = prepareWorkflow(flow.workflow, { prompt, seed, filenamePrefix: `slot/${slot}/${name}`, size, reference: styled ? uploaded : undefined });
+      const workflow = prepareWorkflow(flow.workflow, {
+        prompt,
+        seed,
+        filenamePrefix: `slot/${slot}/${name}`,
+        size,
+        ...(styled && { reference: uploaded, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
+      });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
       const dims = pngSize(png!);
-      const image = await sharp(png!).webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 }).toBuffer();
+      let pixels = sharp(png!);
+      let cleaned = 0;
+      if (!isBackground && settings.cleanup) {
+        const { data, info } = await sharp(png!).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        cleaned = removeFragments(data, info.width, info.height);
+        pixels = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
+      }
+      const image = await pixels.webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 }).toBuffer();
       await mkdir(dirname(join(dir, file)), { recursive: true });
       await writeFile(join(dir, file), image);
       const kb = image.length / 1024;
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
-      log(`  ${file}: ${dims ? `${dims.width}x${dims.height}, ` : ""}${kb.toFixed(0)} KB, seed ${seed}, ${seconds} s${!isBackground && kb > MAX_KB ? ` (oltre ${MAX_KB} KB: riduci generate.size)` : ""}`);
+      log(`  ${file}: ${dims ? `${dims.width}x${dims.height}, ` : ""}${kb.toFixed(0)} KB, seed ${seed}, ${seconds} s${cleaned > 0 ? `, tolti ${cleaned} pixel di frammenti` : ""}${!isBackground && kb > MAX_KB ? ` (oltre ${MAX_KB} KB: riduci generate.size)` : ""}`);
       records[file] = {
         prompt,
         seed,
         workflow: flow.name,
         checkpoint: workflowCheckpoint(flow.workflow),
-        ...(styled && { reference }),
+        ...(styled && { reference, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
         generator: "ComfyUI",
         date: new Date().toISOString(),
       };
@@ -147,7 +162,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   } else if (unlinked.length > 0) {
     log(`Per usarle aggiungi in ${ART_FILE}:`);
     for (const id of unlinked) log(id === "background" ? `  background: "image": "art/raw/background.webp"` : `  ${id}: "image": "art/raw/${id.toLowerCase()}.webp"`);
-    log("poi npm run assets -- build.");
+    log("poi npm run assets -- build (in PowerShell: npm.cmd run assets -- build).");
   }
   return written;
 }

@@ -100,13 +100,15 @@ Per ogni simbolo il comando prende lo stesso prompt di `art/prompts.md` (con "pl
 
 Il comando non cambia `art/art.json`: alla fine stampa le righe `"image": ...` da aggiungere ai simboli. Poi `npm run assets -- build slots/<id>` come sempre.
 
-**Uno stile per tutta la serie.** Genera prima il simbolo più importante, scegli la variante migliore e mettila in `generate.reference`; poi rigenera gli altri con `--force`. Il comando carica il riferimento in ComfyUI una volta sola, lo passa al nodo `LoadImage` del workflow e lo annota in `generated.json`. Il simbolo di riferimento stesso e lo sfondo si generano senza riferimento. Serve IP-Adapter installato in ComfyUI (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
+**Uno stile per tutta la serie.** Genera prima il simbolo più importante, scegli la variante migliore e mettila in `generate.reference`; poi rigenera gli altri con `--force`. Il comando carica il riferimento in ComfyUI una volta sola, lo passa al nodo `LoadImage` del workflow e lo annota in `generated.json`. Il simbolo di riferimento stesso e lo sfondo si generano senza riferimento. Il riferimento passa anche un po' di composizione (alla prima prova un ankh è venuto dentro lo stesso medaglione dello scarabeo): descrivi bene la forma nel `prompt` del simbolo, abbassa `referenceWeight` e genera 2-3 varianti. Serve IP-Adapter installato in ComfyUI (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
 
 Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
 
 | Campo di `art.json` | Significato |
 | --- | --- |
 | `generate.reference` | immagine guida dello stile in `art/`, di solito un simbolo già generato e scelto (`art/raw/faraone.webp`): i simboli si generano col workflow `simbolo-stile.json` (IP-Adapter) che ne copia lo stile |
+| `generate.referenceWeight`, `generate.referenceMode` | peso (0,8 nel workflow) e modo (`style transfer`) dell'IP-Adapter; se i simboli copiano anche la forma del riferimento, prova 0,5-0,6 o `strong style transfer` |
+| `generate.cleanup` (`true`) | toglie dai simboli i frammenti staccati che lo scontorno lascia sui bordi, tenendo solo il soggetto |
 | `generate.seed` (`777`) | seed di tutta la serie |
 | `generate.size` (`512`) | lato in pixel dei simboli salvati (ComfyUI li rimpicciolisce prima di salvarli) |
 | `generate.backgroundSize` | `[larghezza, altezza]` dello sfondo; se manca resta quella del workflow (1344x768) |

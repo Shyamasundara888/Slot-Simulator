@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { ComfyClient, ComfyError, pngSize, prepareWorkflow, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
+import { ComfyClient, ComfyError, pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
 import { generate } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
@@ -106,8 +106,26 @@ describe("workflow di ComfyUI", () => {
   it("passa il riferimento di stile al nodo LoadImage", () => {
     const flow = prepareWorkflow(stile, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "slot/rif.webp" });
     expect(flow["12"]!.inputs.image).toBe("slot/rif.webp");
+    expect(flow["15"]!.inputs).toMatchObject({ weight: 0.8, weight_type: "style transfer" });
+    const lighter = prepareWorkflow(stile, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "r", referenceWeight: 0.55, referenceMode: "strong style transfer" });
+    expect(lighter["15"]!.inputs).toMatchObject({ weight: 0.55, weight_type: "strong style transfer" });
     expect(() => prepareWorkflow(stile, { prompt: "x", seed: 1, filenamePrefix: "x" })).toThrow(/generate.reference/);
     expect(() => prepareWorkflow(simbolo, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "r.png" })).toThrow(/LoadImage/);
+  });
+
+  it("toglie i frammenti staccati dal soggetto e ne lascia il bordo morbido", () => {
+    const w = 20;
+    const rgba = new Uint8Array(w * w * 4);
+    const set = (x: number, y: number, a: number) => (rgba[(y * w + x) * 4 + 3] = a);
+    for (let y = 5; y < 15; y++) for (let x = 5; x < 15; x++) set(x, y, 255); // soggetto 10x10
+    set(4, 10, 8); // bordo sfumato del soggetto
+    set(1, 1, 255); // frammento
+    set(2, 1, 6); // alone del frammento
+    expect(removeFragments(rgba, w, w)).toBe(2);
+    expect(rgba[(1 * w + 1) * 4 + 3]).toBe(0);
+    expect(rgba[(1 * w + 2) * 4 + 3]).toBe(0);
+    expect(rgba[(10 * w + 4) * 4 + 3]).toBe(8);
+    expect(rgba[(10 * w + 10) * 4 + 3]).toBe(255);
   });
 
   it("legge le misure di un PNG", () => {
