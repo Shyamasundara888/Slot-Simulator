@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { gridFromStops, evaluateGrid } from "../src/core/engine.js";
+import { evaluateSpin } from "../src/core/engine.js";
 import { loadSlotModule } from "../src/module/load.js";
 import { exactRtp } from "../src/sim/exact.js";
 import { simulate } from "../src/sim/simulate.js";
 import { tinyMath } from "./helpers.js";
 
-/** RTP per enumerazione completa delle posizioni di arresto: il riferimento più semplice. */
+/** RTP dello spin base per enumerazione completa delle posizioni di arresto: il riferimento più semplice. */
 function bruteForceRtp(math: ReturnType<typeof tinyMath>): number {
-  const lengths = math.reels.map((s) => s.length);
+  const lengths = math.reels.base.map((s) => s.length);
   const total = lengths.reduce((a, b) => a * b, 1);
   let sum = 0;
   const stops = new Array(lengths.length).fill(0);
@@ -17,7 +17,7 @@ function bruteForceRtp(math: ReturnType<typeof tinyMath>): number {
       stops[r] = rest % lengths[r]!;
       rest = Math.floor(rest / lengths[r]!);
     }
-    sum += evaluateGrid(math, [...stops], gridFromStops(math, stops)).totalWin;
+    sum += evaluateSpin(math, "base", [...stops]).win;
   }
   return sum / total;
 }
@@ -38,7 +38,13 @@ describe("RTP", () => {
   );
 
   it("il calcolo esatto coincide con l'enumerazione completa", () => {
-    expect(exactRtp(math).rtp).toBeCloseTo(bruteForceRtp(math), 10);
+    expect(exactRtp(math).baseRtp).toBeCloseTo(bruteForceRtp(math), 10);
+  });
+
+  it("il calcolo esatto resta corretto con i wild espandenti", () => {
+    const expanding = tinyMath(math.reels.base, 2, math.lines, { expandingWild: { reels: [2, 3] } });
+    expect(exactRtp(expanding).baseRtp).toBeCloseTo(bruteForceRtp(expanding), 10);
+    expect(exactRtp(expanding).baseRtp).not.toBeCloseTo(exactRtp(math).baseRtp, 3);
   });
 
   it("le probabilità del numero di scatter sommano a 1", () => {
@@ -48,17 +54,29 @@ describe("RTP", () => {
 
   it("la simulazione converge all'RTP esatto", () => {
     const result = simulate(math, { spins: 200_000, seed: 3 });
-    expect(Math.abs(result.rtp - exactRtp(math).rtp)).toBeLessThan(result.rtpConfidence95 * 1.5);
+    expect(Math.abs(result.rtp - exactRtp(math).baseRtp)).toBeLessThan(result.rtpConfidence95 * 1.5);
   });
 
   it("la simulazione è riproducibile con lo stesso seed", () => {
     expect(simulate(math, { spins: 5_000, seed: "abc" })).toEqual(simulate(math, { spins: 5_000, seed: "abc" }));
   });
 
-  it("il modulo di esempio resta vicino al 95% di RTP", async () => {
+  it("la frequenza dei free spin simulata converge a quella esatta", () => {
+    const withFree = tinyMath(math.reels.base, 2, math.lines, {
+      freeSpins: { trigger: { minScatters: 2, spins: { "2": 3 } } },
+    });
+    const n = 100_000;
+    const result = simulate(withFree, { spins: n, seed: 9 });
+    const p = exactRtp(withFree).freeSpinsProbability;
+    const sigma = Math.sqrt(n * p * (1 - p));
+    expect(Math.abs(result.freeSpins!.triggers - n * p)).toBeLessThan(4 * sigma);
+  });
+
+  it("il modulo di esempio resta intorno al 95% di RTP", async () => {
     const { math: demo } = await loadSlotModule("slots/tempio-del-sole");
-    const { rtp } = exactRtp(demo);
-    expect(rtp).toBeGreaterThan(0.94);
-    expect(rtp).toBeLessThan(0.96);
+    expect(exactRtp(demo).baseRtp).toBeCloseTo(0.7406, 3);
+    const result = simulate(demo, { spins: 300_000, seed: 5 });
+    expect(result.rtp).toBeGreaterThan(0.93);
+    expect(result.rtp).toBeLessThan(0.99);
   });
 });

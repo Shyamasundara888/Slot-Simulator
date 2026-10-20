@@ -18,7 +18,13 @@ export const manifestSchema = z
 export const reelsSchema = z
   .object({
     rows: z.number().int().min(1).max(10),
-    modes: z.object({ base: z.array(z.array(symbolId).min(1)).min(1) }).strict(),
+    modes: z
+      .object({
+        base: z.array(z.array(symbolId).min(1)).min(1),
+        /** Strisce dei free spin; se manca si usano quelle base. */
+        free: z.array(z.array(symbolId).min(1)).min(1).optional(),
+      })
+      .strict(),
   })
   .strict();
 
@@ -34,7 +40,31 @@ export const paytableSchema = z
   })
   .strict();
 
+export const featuresSchema = z
+  .object({
+    /** Rulli (da 1) su cui un wild si espande a coprire tutta la colonna. */
+    expandingWild: z.object({ reels: z.array(z.number().int().min(1)).min(1) }).strict().optional(),
+    freeSpins: z
+      .object({
+        trigger: z.object({ minScatters: z.number().int().min(1), spins: payTable }).strict(),
+        retrigger: z.boolean().default(false),
+        perExpandedWild: z
+          .object({ extraSpins: z.number().int().min(0).default(0), upgrade: z.boolean().default(false) })
+          .strict()
+          .optional(),
+        /** Dal simbolo meno pagante al più pagante. */
+        upgradeLadder: z.array(symbolId).min(2).optional(),
+        maxSpins: z.number().int().min(1).max(10_000).default(1_000),
+      })
+      .strict()
+      .optional(),
+    /** Vincita massima di un round, in multipli della puntata totale. */
+    maxWin: z.number().positive().optional(),
+  })
+  .strict();
+
 export type Manifest = z.infer<typeof manifestSchema>;
 export type ReelsFile = z.infer<typeof reelsSchema>;
 export type LinesFile = z.infer<typeof linesSchema>;
 export type PaytableFile = z.infer<typeof paytableSchema>;
+export type FeaturesFile = z.input<typeof featuresSchema>;

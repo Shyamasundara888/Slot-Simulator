@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateGrid, gridFromStops } from "../src/core/engine.js";
+import { evaluateSpin, gridFromStops } from "../src/core/engine.js";
 import { evaluateScatter, evaluateSymbols } from "../src/core/evaluate.js";
 import { tinyMath } from "./helpers.js";
 
@@ -40,8 +40,8 @@ describe("griglia e scatter", () => {
 
   it("divide le vincite su linea per il numero di linee", () => {
     const m = tinyMath([["A", "B"], ["A", "B"], ["A", "B"]], 2, [[0, 0, 0], [1, 1, 1]]);
-    const result = evaluateGrid(m, [0, 0, 0], gridFromStops(m, [0, 0, 0]));
+    const result = evaluateSpin(m, "base", [0, 0, 0]);
     expect(result.lineWins.map((w) => w.pay)).toEqual([10, 5]);
-    expect(result.totalWin).toBe(7.5);
+    expect(result.win).toBe(7.5);
   });
 });
