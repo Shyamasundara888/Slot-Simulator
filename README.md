@@ -90,6 +90,8 @@ Il caricatore controlla la coerenza tra i file (simboli non definiti, linee fuor
 
 ## Il client
 
+A ogni merge su `main` il client viene pubblicato su GitHub Pages (`.github/workflows/pages.yml`), all'indirizzo https://shyamasundara888.github.io/Slot-Simulator/. Va attivato una volta in Settings → Pages scegliendo "GitHub Actions" come sorgente; su un repository privato serve un piano GitHub a pagamento.
+
 Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i moduli presenti in `slots/` e li mostra nel menu in alto.
 
 - Il motore decide l'intero round prima che parta l'animazione; il client mostra soltanto l'esito: rulli che si fermano uno alla volta, celle trasformate da upgrade ed espansioni, linee vincenti, contatore dei free spin.
