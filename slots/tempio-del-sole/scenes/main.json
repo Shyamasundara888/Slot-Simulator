@@ -1,0 +1,16 @@
+{
+  "background": "#1b1430",
+  "symbols": {
+    "SOLE": { "label": "Sole", "color": "#f5b301" },
+    "PORTALE": { "label": "Portale", "color": "#d6336c" },
+    "FARAONE": { "label": "Faraone", "color": "#c92a2a" },
+    "ANKH": { "label": "Ankh", "color": "#e8590c" },
+    "SCARABEO": { "label": "Scarabeo", "color": "#2b8a3e" },
+    "GATTO": { "label": "Gatto", "color": "#1971c2" },
+    "A": { "color": "#5f3dc4" },
+    "K": { "color": "#862e9c" },
+    "Q": { "color": "#0c8599" },
+    "J": { "color": "#5c940d" },
+    "10": { "color": "#495057" }
+  }
+}

@@ -4,9 +4,9 @@
     "base": [
       ["ANKH", "10", "K", "ANKH", "J", "K", "J", "Q", "10", "J", "K", "J", "GATTO", "10", "GATTO", "A", "SCARABEO", "10", "K", "GATTO", "SCARABEO", "A", "Q", "SCARABEO", "Q", "FARAONE", "Q", "A", "J", "A", "FARAONE", "PORTALE", "Q", "10"],
       ["10", "Q", "GATTO", "ANKH", "A", "10", "J", "SCARABEO", "K", "SCARABEO", "ANKH", "K", "10", "FARAONE", "Q", "J", "K", "10", "FARAONE", "Q", "K", "SOLE", "A", "SCARABEO", "A", "GATTO", "J", "Q", "A", "10", "GATTO", "J", "PORTALE", "Q", "J"],
-      ["10", "A", "J", "SCARABEO", "10", "Q", "ANKH", "GATTO", "Q", "A", "10", "SCARABEO", "Q", "10", "GATTO", "K", "J", "K", "10", "K", "SCARABEO", "ANKH", "K", "FARAONE", "J", "A", "PORTALE", "J", "SOLE", "GATTO", "Q", "J", "A", "Q", "FARAONE"],
       ["K", "SCARABEO", "J", "A", "10", "SCARABEO", "K", "SOLE", "A", "GATTO", "Q", "FARAONE", "J", "A", "ANKH", "K", "J", "PORTALE", "GATTO", "FARAONE", "ANKH", "Q", "10", "J", "10", "J", "Q", "10", "A", "10", "SCARABEO", "Q", "K", "Q", "GATTO"],
-      ["GATTO", "A", "J", "GATTO", "K", "10", "FARAONE", "J", "A", "K", "J", "SCARABEO", "Q", "10", "SCARABEO", "Q", "ANKH", "FARAONE", "A", "K", "ANKH", "A", "GATTO", "Q", "10", "K", "J", "PORTALE", "10", "Q", "10", "J", "Q", "SCARABEO"]
+      ["A", "Q", "J", "A", "SOLE", "SCARABEO", "J", "10", "K", "PORTALE", "K", "GATTO", "J", "Q", "K", "A", "ANKH", "A", "SCARABEO", "J", "GATTO", "Q", "10", "K", "J", "Q", "ANKH", "10", "SCARABEO", "FARAONE", "10", "GATTO", "10", "Q", "FARAONE"],
+      ["J", "10", "J", "GATTO", "10", "SCARABEO", "PORTALE", "A", "10", "FARAONE", "ANKH", "A", "Q", "J", "K", "A", "J", "Q", "K", "Q", "GATTO", "SCARABEO", "10", "J", "GATTO", "10", "ANKH", "FARAONE", "SCARABEO", "K", "A", "Q", "K", "Q"]
     ],
     "free": [
       ["K", "10", "K", "A", "10", "J", "K", "Q", "10", "Q", "10", "SCARABEO", "Q", "FARAONE", "GATTO", "SCARABEO", "PORTALE", "10", "J", "GATTO", "J", "A", "Q", "J", "GATTO", "J", "Q", "10", "K", "ANKH", "A", "ANKH", "Q", "SCARABEO", "J", "A"],

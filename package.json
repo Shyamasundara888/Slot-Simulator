@@ -8,18 +8,23 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "vite",
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
+    "build:app": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p app",
     "test": "vitest run",
     "sim": "tsx src/cli/sim.ts"
   },
   "dependencies": {
+    "pixi.js": "^8.22.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
+    "vite": "^6.4.4",
     "vitest": "^3.2.7"
   }
 }

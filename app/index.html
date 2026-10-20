@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slot Simulator</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1 id="title">Slot Simulator</h1>
+      <label class="picker">Slot <select id="slot"></select></label>
+    </header>
+    <main>
+      <div id="stage"></div>
+      <p id="status" class="status" aria-live="polite">Premi Gira o la barra spaziatrice</p>
+    </main>
+    <footer class="controls">
+      <div class="meter"><span>Saldo</span><strong id="balance">0,00</strong></div>
+      <div class="bet">
+        <button id="bet-down" type="button" aria-label="Puntata più bassa">−</button>
+        <div class="meter"><span>Puntata</span><strong id="bet">1,00</strong></div>
+        <button id="bet-up" type="button" aria-label="Puntata più alta">+</button>
+      </div>
+      <button id="spin" class="spin" type="button">Gira</button>
+      <div class="meter"><span>Vincita</span><strong id="win">0,00</strong></div>
+      <label class="toggle"><input id="turbo" type="checkbox" /> Turbo</label>
+      <button id="paytable-open" type="button">Paytable</button>
+      <button id="reset" type="button">Azzera saldo</button>
+    </footer>
+    <dialog id="paytable">
+      <h2>Paytable</h2>
+      <div id="paytable-body"></div>
+      <form method="dialog"><button>Chiudi</button></form>
+    </dialog>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

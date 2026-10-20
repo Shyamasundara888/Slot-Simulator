@@ -65,6 +65,8 @@ export interface ScatterWin {
 
 export interface SpinResult {
   mode: Mode;
+  /** Livello di upgrade con cui è stato valutato lo spin. */
+  upgradeLevel: number;
   stops: number[];
   /** Griglia estratta dai rulli, prima di upgrade ed espansioni. */
   reelGrid: Grid;
@@ -80,9 +82,13 @@ export interface SpinResult {
 }
 
 export interface FreeSpinsResult {
+  /** Free spin assegnati dallo spin base. */
+  initial: number;
   /** Free spin assegnati in totale, riattivazioni ed extra compresi. */
   awarded: number;
   spins: SpinResult[];
+  /** awardedAfter[i] = free spin assegnati in totale dopo lo spin i: serve per mostrare il contatore. */
+  awardedAfter: number[];
   /** Livello di upgrade raggiunto alla fine. */
   upgradeLevel: number;
   win: number;

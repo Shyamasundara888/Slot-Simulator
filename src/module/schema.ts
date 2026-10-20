@@ -63,8 +63,19 @@ export const featuresSchema = z
   })
   .strict();
 
+const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "usa un colore esadecimale come #ffcc00");
+
+/** Presentazione provvisoria: colori ed etichette dei simboli, finché non ci sono asset grafici. */
+export const sceneSchema = z
+  .object({
+    background: color.optional(),
+    symbols: z.record(symbolId, z.object({ label: z.string().min(1).optional(), color }).strict()).default({}),
+  })
+  .strict();
+
 export type Manifest = z.infer<typeof manifestSchema>;
 export type ReelsFile = z.infer<typeof reelsSchema>;
 export type LinesFile = z.infer<typeof linesSchema>;
 export type PaytableFile = z.infer<typeof paytableSchema>;
 export type FeaturesFile = z.input<typeof featuresSchema>;
+export type SceneFile = z.infer<typeof sceneSchema>;

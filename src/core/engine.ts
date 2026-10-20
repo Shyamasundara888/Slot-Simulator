@@ -20,15 +20,19 @@ export function upgradeGrid(grid: Grid, ladder: readonly SymbolId[], level: numb
   return grid.map((column) => column.map((s) => (upgraded.has(s) ? target : s)));
 }
 
-/** Espande i wild sui rulli abilitati; restituisce la nuova griglia e i rulli espansi. */
+/**
+ * Espande i wild sui rulli abilitati: coprono tutta la colonna tranne gli
+ * scatter, che restano visibili e continuano a contare.
+ */
 export function expandWilds(math: SlotMath, grid: Grid): { grid: Grid; expandedReels: number[] } {
   const { wild } = math;
+  const scatter = math.scatter?.symbol;
   const expandedReels: number[] = [];
   if (wild === null || math.expandingWildReels.size === 0) return { grid, expandedReels };
   const out = grid.map((column, reel) => {
     if (!math.expandingWildReels.has(reel) || !column.includes(wild)) return column;
     expandedReels.push(reel);
-    return column.map(() => wild);
+    return column.map((s) => (s === scatter ? s : wild));
   });
   return { grid: out, expandedReels };
 }
@@ -41,21 +45,20 @@ function countSymbol(grid: Grid, symbol: SymbolId | undefined): number {
 }
 
 /**
- * Valuta uno spin già estratto. Ordine: upgrade dei simboli, conteggio degli
- * scatter sulla griglia dei rulli, espansione dei wild, vincite.
+ * Valuta uno spin già estratto. Ordine: upgrade dei simboli, espansione dei
+ * wild, vincite su linea e scatter.
  */
 export function evaluateSpin(math: SlotMath, mode: Mode, stops: number[], upgradeLevel = 0): SpinResult {
   const reelGrid = gridFromStops(math, stops, mode);
   const ladder = math.freeSpins?.upgradeLadder ?? [];
   const upgraded = upgradeGrid(reelGrid, ladder, upgradeLevel);
-  const scatterCount = countSymbol(upgraded, math.scatter?.symbol);
   const { grid, expandedReels } = expandWilds(math, upgraded);
+  const scatterCount = countSymbol(grid, math.scatter?.symbol);
   const lineWins = evaluateLines(math, grid);
-  // Lo scatter paga sulla griglia prima dell'espansione: un wild espanso non lo cancella.
-  const scatterWin = evaluateScatter(math, upgraded);
+  const scatterWin = evaluateScatter(math, grid);
   const lineTotal = lineWins.reduce((sum, w) => sum + w.pay, 0);
   const win = lineTotal / math.lines.length + (scatterWin?.pay ?? 0);
-  return { mode, stops, reelGrid, grid, expandedReels, scatterCount, lineWins, scatterWin, win };
+  return { mode, upgradeLevel, stops, reelGrid, grid, expandedReels, scatterCount, lineWins, scatterWin, win };
 }
 
 export function spin(math: SlotMath, rng: Rng, mode: Mode = "base", upgradeLevel = 0): SpinResult {
@@ -83,6 +86,7 @@ export function playRound(math: SlotMath, rng: Rng): RoundResult {
     let level = 0;
     const maxLevel = Math.max(0, fs.upgradeLadder.length - 1);
     const spins: SpinResult[] = [];
+    const awardedAfter: number[] = [];
     let win = 0;
 
     while (remaining > 0 && spins.length < fs.maxSpins && total < math.maxWin) {
@@ -103,8 +107,9 @@ export function playRound(math: SlotMath, rng: Rng): RoundResult {
         remaining += again;
         awarded += again;
       }
+      awardedAfter.push(awarded);
     }
-    freeSpins = { awarded, spins, upgradeLevel: level, win };
+    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, win };
   }
 
   const capped = total >= math.maxWin;
