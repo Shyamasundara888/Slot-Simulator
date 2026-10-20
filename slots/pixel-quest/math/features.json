@@ -1,0 +1,7 @@
+{
+  "freeSpins": {
+    "trigger": { "minScatters": 3, "spins": { "3": 10, "4": 15, "5": 25 } },
+    "retrigger": true
+  },
+  "maxWin": 5000
+}

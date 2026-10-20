@@ -10,7 +10,12 @@
   <body>
     <header class="top">
       <h1 id="title">Slot Simulator</h1>
-      <label class="picker">Slot <select id="slot"></select></label>
+      <div class="picker">
+        <label>Slot <select id="slot"></select></label>
+        <button id="mod-import" type="button" title="Aggiungi una slot da uno zip">Importa mod</button>
+        <button id="mod-remove" type="button" hidden>Rimuovi mod</button>
+        <input id="mod-file" type="file" accept=".zip,application/zip" hidden />
+      </div>
     </header>
     <main>
       <div id="stage"></div>
