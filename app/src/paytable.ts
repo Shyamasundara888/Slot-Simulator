@@ -3,11 +3,15 @@ import type { SlotModule } from "../../src/module/parse.js";
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Paytable in HTML, generata dalla matematica del modulo. */
-export function paytableHtml({ math, scene }: SlotModule): string {
+export function paytableHtml({ math, scene }: SlotModule, assets: ReadonlyMap<string, string>): string {
   const counts = Array.from({ length: math.reelCount - 1 }, (_, i) => i + 2);
   const name = (id: string) => {
     const style = scene.symbols.get(id)!;
-    return `<span class="swatch" style="background:${style.color}"></span>${esc(style.label)}`;
+    const url = style.image && assets.get(style.image);
+    const icon = url
+      ? `<img class="icon" src="${esc(url)}" alt="">`
+      : `<span class="swatch" style="background:${style.color}"></span>`;
+    return `${icon}${esc(style.label)}`;
   };
   // Nell'ordine della paytable del modulo, non in quello delle chiavi dell'oggetto.
   const rows = [...math.symbols.keys()]
@@ -37,7 +41,15 @@ export function paytableHtml({ math, scene }: SlotModule): string {
   }
   const fs = math.freeSpins;
   if (fs) {
-    parts.push(`<li>${fs.minScatters} o più scatter danno ${fs.awards[fs.minScatters]} free spin${fs.retrigger ? ", riattivabili" : ""}.</li>`);
+    // Solo i numeri di scatter in cui cambia il premio: l'ultimo vale anche per tutti quelli dopo.
+    const awards = fs.awards
+      .map((spins, n) => ({ spins, n }))
+      .filter(({ spins, n }) => n >= fs.minScatters && spins !== fs.awards[n - 1]);
+    const text =
+      awards.length === 1
+        ? `${fs.minScatters} o più scatter danno ${awards[0]!.spins} free spin`
+        : `Gli scatter danno free spin: ${awards.map(({ n, spins }, i) => `${n}${i === awards.length - 1 ? " o più" : ""}: ${spins}`).join(", ")}`;
+    parts.push(`<li>${text}${fs.retrigger ? ", riattivabili" : ""}.</li>`);
     if (fs.extraSpinsPerExpandedWild > 0 || fs.upgradeOnExpandedWild) {
       const what = [
         fs.extraSpinsPerExpandedWild > 0 ? `${fs.extraSpinsPerExpandedWild} free spin in più` : "",

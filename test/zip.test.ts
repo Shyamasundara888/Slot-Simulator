@@ -2,8 +2,8 @@ import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { ModuleError } from "../src/module/build.js";
 import { loadSlotModule, readModuleDir } from "../src/module/load.js";
-import { parseSlotModule } from "../src/module/parse.js";
-import { readModuleZip, unpackModuleZip, writeModuleZip, ZIP_LIMITS } from "../src/module/zip.js";
+import { parseSlotModule, sceneAssets } from "../src/module/parse.js";
+import { assetPaths, parseModuleZip, readModuleZip, unpackModuleZip, writeModuleZip, ZIP_LIMITS } from "../src/module/zip.js";
 import { ScriptRuntime } from "../src/script/runtime.js";
 import { simulate } from "../src/sim/simulate.js";
 
@@ -69,5 +69,49 @@ describe("Pixel Quest", async () => {
     expect(result.extra.boss?.sequences).toBeGreaterThan(10);
     expect(result.rtp).toBeGreaterThan(0.8);
     expect(result.rtp).toBeLessThan(1.1);
+  });
+});
+
+describe("asset dei moduli", () => {
+  const scene = (value: unknown) => ({ ...tiny, "scenes/main.json": json(value) });
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+  const symbolA = (style: object) => ({ A: { label: "A", color: "#888888", ...style } });
+
+  it("lo zip porta con sé gli asset usati dalla scena", () => {
+    const zip = zipSync({
+      ...scene({ backgroundImage: "assets/sfondo.png", symbols: symbolA({ image: "assets/a.png", winFrames: ["assets/a.png"] }) }),
+      "assets/sfondo.png": png,
+      "assets/a.png": png,
+    });
+    const { module, raw } = parseModuleZip(zip);
+    expect(assetPaths(raw).sort()).toEqual(["assets/a.png", "assets/sfondo.png"]);
+    expect(raw["assets/a.png"]).toEqual(png);
+    expect(sceneAssets(module.scene).sort()).toEqual(["assets/a.png", "assets/sfondo.png"]);
+    expect(module.scene.symbols.get("A")).toMatchObject({ image: "assets/a.png", fps: 8 });
+  });
+
+  it("segnala gli asset che mancano", () => {
+    const zip = zipSync({
+      ...scene({ sounds: { win: "assets/vinci.wav" }, symbols: symbolA({ image: "assets/a.png" }) }),
+      "assets/a.png": png,
+    });
+    expect(() => parseModuleZip(zip)).toThrow(/asset mancante assets\/vinci.wav/);
+  });
+
+  it("accetta solo percorsi in assets/ con un formato conosciuto", () => {
+    for (const image of ["sfondo.png", "assets/../manifest.json", "assets/a.exe", "assets/a b.png"]) {
+      expect(() => parseModuleZip(zipSync(scene({ symbols: symbolA({ image }) })))).toThrow(ModuleError);
+    }
+    expect(() => parseModuleZip(zipSync(scene({ sounds: { jackpot: "assets/a.wav" } })))).toThrow(ModuleError);
+  });
+
+  it("Pixel Quest ha immagini, frame di vincita e suoni", async () => {
+    const raw = await readModuleDir("slots/pixel-quest");
+    const module = await loadSlotModule("slots/pixel-quest");
+    const used = sceneAssets(module.scene);
+    expect(used.every((path) => path in raw)).toBe(true);
+    expect(module.scene.backgroundImage).toBe("assets/background.svg");
+    expect(Object.keys(module.scene.sounds).sort()).toEqual(["bigWin", "feature", "spin", "stop", "win"]);
+    for (const [, style] of module.scene.symbols) expect(style.winFrames).toHaveLength(2);
   });
 });

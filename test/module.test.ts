@@ -37,8 +37,8 @@ describe("moduli", () => {
 describe("scena", () => {
   it("usa colori ed etichette della scena e completa i simboli mancanti", async () => {
     const { scene } = await loadSlotModule("slots/tempio-del-sole");
-    expect(scene.symbols.get("SOLE")).toEqual({ label: "Sole", color: "#f5b301" });
-    expect(scene.symbols.get("A")).toEqual({ label: "A", color: "#5f3dc4" });
+    expect(scene.symbols.get("SOLE")).toMatchObject({ label: "Sole", color: "#f5b301" });
+    expect(scene.symbols.get("A")).toMatchObject({ label: "A", color: "#5f3dc4" });
     expect(scene.symbols.size).toBe(11);
   });
 

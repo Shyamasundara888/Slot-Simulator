@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite, Text, type Texture } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from "pixi.js";
 import type { Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { easeOutBack, tween } from "./anim.js";
@@ -8,8 +8,24 @@ export const STAGE_WIDTH = 900;
 export const STAGE_HEIGHT = 520;
 const GAP = 8;
 const LINE_COLORS = [0xffd43b, 0x69db7c, 0x4dabf7, 0xff8787, 0xda77f2, 0x63e6be, 0xffa94d, 0x74c0fc, 0xa9e34b, 0xf783ac];
+/** Tinta delle celle che non fanno parte di una vincita. */
+const DIMMED = 0x5a5a5a;
 
 const toHex = (color: string) => Number.parseInt(color.slice(1), 16);
+
+/** Carica un'immagine (anche SVG o blob:) come texture PixiJS. */
+async function loadTexture(url: string): Promise<Texture> {
+  const img = new Image();
+  img.src = url;
+  await img.decode();
+  return Texture.from(img);
+}
+
+/** Animazione di vincita di un simbolo: fotogrammi già della misura della cella. */
+interface WinAnimation {
+  frames: Texture[];
+  fps: number;
+}
 
 /** Un rullo: rows + 2 sprite (uno sopra e uno sotto l'area visibile) che scorrono verso il basso. */
 class ReelView {
@@ -56,6 +72,17 @@ class ReelView {
   /** Sprite della riga visibile `row`, a rullo fermo. */
   cell(row: number): Sprite {
     return this.sprites[row + 1]!;
+  }
+
+  /** Simbolo mostrato nella riga visibile `row`. */
+  symbolAt(row: number): SymbolId {
+    return this.symbols[row + 1]!;
+  }
+
+  /** Rimette le texture dei simboli, per esempio dopo un'animazione. */
+  refresh(): void {
+    this.layout();
+    for (const sprite of this.sprites) sprite.scale.set(1);
   }
 
   setVisible(column: readonly SymbolId[]): void {
@@ -115,12 +142,27 @@ export class SlotView {
   private readonly cellW: number;
   private readonly cellH: number;
   private speed = 2.2;
+  private readonly animations = new Map<SymbolId, WinAnimation>();
+
+  private winAnimation: ((ticker: Ticker) => void) | null = null;
 
   private constructor(
     private readonly app: Application,
     private readonly module: SlotModule,
+    images: ReadonlyMap<string, Texture>,
+    private readonly onReelStop: () => void,
   ) {
     const { math, scene } = module;
+    const background = scene.backgroundImage && images.get(scene.backgroundImage);
+    if (background) {
+      // Adatta l'immagine a tutto lo stage, tagliando i bordi che avanzano.
+      const sprite = new Sprite(background);
+      const scale = Math.max(STAGE_WIDTH / background.width, STAGE_HEIGHT / background.height);
+      sprite.scale.set(scale);
+      sprite.anchor.set(0.5);
+      sprite.position.set(STAGE_WIDTH / 2, STAGE_HEIGHT / 2);
+      app.stage.addChild(sprite);
+    }
     this.cellW = Math.min(160, (STAGE_WIDTH - 40 - GAP * (math.reelCount - 1)) / math.reelCount);
     this.cellH = Math.min(140, (STAGE_HEIGHT - 80 - GAP * (math.rows - 1)) / math.rows);
     const gridW = math.reelCount * this.cellW + (math.reelCount - 1) * GAP;
@@ -134,7 +176,12 @@ export class SlotView {
       .stroke({ width: 3, color: 0xf5b301, alpha: 0.6 });
     app.stage.addChild(frame);
 
-    const textures = this.buildTextures(scene.symbols);
+    const textures = this.buildTextures(scene.symbols, images);
+    for (const [id, style] of scene.symbols) {
+      if (!style.winFrames) continue;
+      const frames = style.winFrames.map((path) => this.imageTile(id, images.get(path)!));
+      this.animations.set(id, { frames, fps: style.fps });
+    }
     math.reels.base.forEach((strip, i) => {
       const reel = new ReelView(strip, textures, math.rows, this.cellW, this.cellH);
       reel.container.x = this.gridX + i * (this.cellW + GAP);
@@ -157,7 +204,32 @@ export class SlotView {
     });
   }
 
-  static async create(host: HTMLElement, module: SlotModule): Promise<SlotView> {
+  /**
+   * Crea la vista. `assets` dà l'URL di ogni asset del modulo; `onReelStop`
+   * viene chiamato quando si ferma ciascun rullo (per il suono).
+   */
+  static async create(
+    host: HTMLElement,
+    module: SlotModule,
+    assets: ReadonlyMap<string, string>,
+    onReelStop: () => void = () => {},
+  ): Promise<SlotView> {
+    const images = new Map<string, Texture>();
+    const { scene } = module;
+    const paths = new Set<string>();
+    if (scene.backgroundImage) paths.add(scene.backgroundImage);
+    for (const style of scene.symbols.values()) for (const p of [style.image, ...(style.winFrames ?? [])]) if (p) paths.add(p);
+    await Promise.all(
+      [...paths].map(async (path) => {
+        const url = assets.get(path);
+        if (!url) throw new Error(`asset mancante ${path}`);
+        try {
+          images.set(path, await loadTexture(url));
+        } catch {
+          throw new Error(`immagine non leggibile ${path}`);
+        }
+      }),
+    );
     const app = new Application();
     await app.init({
       width: STAGE_WIDTH,
@@ -168,14 +240,36 @@ export class SlotView {
       autoDensity: true,
     });
     host.replaceChildren(app.canvas);
-    return new SlotView(app, module);
+    return new SlotView(app, module, images, onReelStop);
   }
 
-  private buildTextures(styles: SlotModule["scene"]["symbols"]): Map<SymbolId, Texture> {
+  /** Tessera della misura della cella con l'immagine centrata, sul colore del simbolo. */
+  private imageTile(id: SymbolId, image: Texture): Texture {
+    const w = this.cellW;
+    const h = this.cellH;
+    const style = this.module.scene.symbols.get(id)!;
+    const tile = new Container();
+    tile.addChild(new Graphics().roundRect(0, 0, w, h, 12).fill(toHex(style.color)));
+    const sprite = new Sprite(image);
+    const scale = Math.min(w / image.width, h / image.height);
+    sprite.scale.set(scale);
+    sprite.anchor.set(0.5);
+    sprite.position.set(w / 2, h / 2);
+    tile.addChild(sprite);
+    const texture = this.app.renderer.generateTexture({ target: tile, resolution: 2 });
+    tile.destroy({ children: true });
+    return texture;
+  }
+
+  private buildTextures(styles: SlotModule["scene"]["symbols"], images: ReadonlyMap<string, Texture>): Map<SymbolId, Texture> {
     const textures = new Map<SymbolId, Texture>();
     const w = this.cellW;
     const h = this.cellH;
     for (const [id, style] of styles) {
+      if (style.image) {
+        textures.set(id, this.imageTile(id, images.get(style.image)!));
+        continue;
+      }
       const color = toHex(style.color);
       const kind = this.module.math.symbols.get(id);
       const tile = new Container();
@@ -224,7 +318,7 @@ export class SlotView {
     for (const reel of this.reels) reel.start();
     await new Promise((r) => setTimeout(r, turbo ? 120 : 380));
     for (let i = 0; i < this.reels.length; i++) {
-      const done = this.reels[i]!.stop(this.app, reelGrid[i]!, turbo ? 160 : 320);
+      const done = this.reels[i]!.stop(this.app, reelGrid[i]!, turbo ? 160 : 320).then(this.onReelStop);
       if (i === this.reels.length - 1) await done;
       else await new Promise((r) => setTimeout(r, turbo ? 60 : 170));
     }
@@ -272,16 +366,41 @@ export class SlotView {
     }
     if (winning.size > 0) {
       this.reels.forEach((reel, i) => {
-        for (let row = 0; row < math.rows; row++) reel.cell(row).alpha = winning.has(`${i}:${row}`) ? 1 : 0.35;
+        // Scurite con una tinta invece che con la trasparenza, così lo sfondo non traspare dalle celle.
+        for (let row = 0; row < math.rows; row++) reel.cell(row).tint = winning.has(`${i}:${row}`) ? 0xffffff : DIMMED;
       });
+      this.animateWins(winning);
     }
     this.winText.text = amount ?? "";
   }
 
+  /** Anima le celle vincenti: i fotogrammi della scena se ci sono, altrimenti una pulsazione. */
+  private animateWins(winning: ReadonlySet<string>): void {
+    const cells = [...winning].map((key) => {
+      const [reel, row] = key.split(":").map(Number) as [number, number];
+      const view = this.reels[reel]!;
+      return { sprite: view.cell(row), animation: this.animations.get(view.symbolAt(row)) };
+    });
+    let elapsed = 0;
+    this.winAnimation = (ticker) => {
+      elapsed += ticker.deltaMS / 1000;
+      for (const { sprite, animation } of cells) {
+        if (animation) sprite.texture = animation.frames[Math.floor(elapsed * animation.fps) % animation.frames.length]!;
+        else sprite.scale.set(1 + 0.06 * Math.sin(elapsed * Math.PI * 3));
+      }
+    };
+    this.app.ticker.add(this.winAnimation);
+  }
+
   clearWins(): void {
+    if (this.winAnimation) {
+      this.app.ticker.remove(this.winAnimation);
+      this.winAnimation = null;
+      for (const reel of this.reels) reel.refresh();
+    }
     this.winLayer.clear();
     this.winText.text = "";
-    for (const reel of this.reels) for (let row = 0; row < this.module.math.rows; row++) reel.cell(row).alpha = 1;
+    for (const reel of this.reels) for (let row = 0; row < this.module.math.rows; row++) reel.cell(row).tint = 0xffffff;
   }
 
   destroy(): void {

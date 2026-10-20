@@ -24,9 +24,9 @@ npm install
 | `npm run sim -- slots/tempio-del-sole --spins 5000000 --seed 42` | numero di round e seed a scelta; lo stesso seed dà sempre lo stesso risultato |
 | `npm run sim -- slots/tempio-del-sole --exact` | RTP esatto dello spin base e frequenza esatta dei free spin, in meno di un secondo |
 | `npm run sim -- slots/tempio-del-sole --json` | risultato in JSON |
-| `npm run sim -- mods/pixel-quest-0.1.0.zip` | il simulatore legge anche un mod in zip, senza installarlo |
+| `npm run sim -- mods/pixel-quest-0.2.0.zip` | il simulatore legge anche un mod in zip, senza installarlo |
 | `npm run mod -- install mio-mod.zip` | controlla il mod (script compreso) e lo estrae in `slots/<id>/`; con `--force` sostituisce un modulo esistente |
-| `npm run mod -- pack slots/pixel-quest` | controlla il modulo e crea `mods/pixel-quest-0.1.0.zip`, pronto da condividere |
+| `npm run mod -- pack slots/pixel-quest` | controlla il modulo e crea `mods/pixel-quest-0.2.0.zip`, pronto da condividere |
 | `npm run mod -- check mio-mod.zip` | controlla un mod (zip o cartella) senza installarlo |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi TypeScript |
@@ -66,8 +66,9 @@ slots/tempio-del-sole/
   math/lines.json      linee di pagamento: per ogni rullo, la riga toccata (0 = in alto)
   math/paytable.json   simboli, pagamenti su linea e pagamenti scatter
   math/features.json   facoltativo: wild espandenti, free spin, upgrade, tetto di vincita
-  scenes/main.json     facoltativo: colore di sfondo, colori ed etichette dei simboli, nomi delle modalità
+  scenes/main.json     facoltativo: sfondo, aspetto dei simboli, suoni, nomi delle modalità
   scripts/main.lua     facoltativo: regole aggiuntive in Lua
+  assets/              facoltativo: immagini e suoni usati da scenes/main.json
 ```
 
 Regole di pagamento:
@@ -130,6 +131,33 @@ end
 - In un round si giocano al massimo 1.000 spin richiesti dagli script, e il tetto di vincita vale anche per loro.
 - Per dare un nome a una modalità nel client: `"modes": { "gold": { "label": "Gold Spin", "description": "..." } }` in `scenes/main.json`; la descrizione compare nella paytable.
 
+### Scena e asset (`scenes/main.json`, `assets/`)
+
+La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. Ogni campo è facoltativo; un simbolo senza immagine è una tessera colorata con la sua etichetta.
+
+```json
+{
+  "background": "#0f1a2b",
+  "backgroundImage": "assets/background.svg",
+  "symbols": {
+    "DRAGO": {
+      "label": "Drago",
+      "color": "#7a1f1f",
+      "image": "assets/symbols/drago.svg",
+      "winFrames": ["assets/symbols/drago-glow.svg", "assets/symbols/drago.svg"],
+      "fps": 6
+    }
+  },
+  "sounds": { "spin": "assets/sounds/spin.wav", "win": "assets/sounds/win.wav" }
+}
+```
+
+- `backgroundImage` copre tutta l'area di gioco; `image` va al centro della tessera del simbolo, adattata senza deformarla.
+- `winFrames` sono i fotogrammi mostrati in ciclo quando il simbolo fa parte di una vincita, a `fps` fotogrammi al secondo (8 se manca, al massimo 60). Senza fotogrammi il simbolo vincente pulsa.
+- `sounds` collega un suono a un evento: `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20 volte la puntata) e `feature` (free spin e sequenze degli script).
+- Formati: PNG, JPG, WebP, GIF e SVG per le immagini; MP3, OGG e WAV per i suoni. I percorsi partono da `assets/` e usano solo lettere, cifre, `-`, `_` e `.`.
+- Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella. Gli asset di Pixel Quest sono originali e generati da `node tools/pixel-quest-assets.mjs` (pixel art in SVG, suoni a 8 bit in WAV).
+
 Il caricatore controlla la coerenza tra i file (simboli non definiti, linee fuori griglia, pagamenti impossibili) e riporta tutti i problemi in un solo messaggio.
 
 ## Il client
@@ -143,7 +171,7 @@ Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i mod
 - Statistiche per slot, divise tra sessione (dura finché resta aperta la scheda) e totale: round giocati, puntato, vinto, bilancio, vincita massima, bonus attivati e ritorno osservato. Il bilancio di sessione e quello totale della slot aperta sono sempre visibili in basso; il pulsante Statistiche mostra il dettaglio e il riepilogo di tutte le slot.
 - **Importa mod** carica una slot da uno zip senza ricompilare il sito: il mod viene controllato (script compreso), salvato nel browser (IndexedDB) e compare nel menu con "(mod)". **Rimuovi mod** lo toglie. Un mod non può usare l'id di una slot inclusa nel sito.
 - Barra spaziatrice per girare. `?slot=<id>` apre una slot precisa, `?seed=<valore>` rende ripetibile la sequenza dei round.
-- Finché un modulo non ha asset, i simboli sono tessere colorate con l'etichetta definita in `scenes/main.json`; i simboli senza stile ricevono un colore predefinito.
+- Immagini, sfondo, animazioni di vincita e suoni arrivano dalla scena del modulo, anche per i mod importati. Il pulsante **Audio** compare solo se la slot ha suoni e la scelta resta salvata nel browser. Senza asset i simboli sono tessere colorate con l'etichetta della scena; i simboli senza stile ricevono un colore predefinito.
 
 ## Come funziona
 
@@ -158,6 +186,5 @@ Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i mod
 
 ## Prossime fasi
 
-6. Asset nei moduli: immagini, animazioni e suoni al posto delle tessere colorate.
 7. Editor visuale, dopo che il motore si è stabilizzato.
 8. API per integrare le slot in un gioco più grande.

@@ -6,8 +6,13 @@ import { ScriptRuntime } from "../../src/script/runtime.js";
 import wasmUri from "wasmoon/dist/glue.wasm?url";
 import { wait } from "./anim.js";
 import { money, signedMoney, trend } from "./format.js";
+import type { ClientModule } from "./modules.js";
 import { SlotView } from "./slot-view.js";
+import { setMuted, Sounds } from "./sound.js";
 import { net, type StatsStore } from "./stats.js";
+
+/** Da questa vincita, in multipli della puntata totale, si sente il suono della vincita grande. */
+const BIG_WIN = 20;
 
 /** Puntate totali disponibili, in crediti. */
 const BET_LEVELS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
@@ -52,6 +57,7 @@ export class Game {
     betUp: $<HTMLButtonElement>("bet-up"),
     turbo: $<HTMLInputElement>("turbo"),
     reset: $<HTMLButtonElement>("reset"),
+    mute: $<HTMLButtonElement>("mute"),
   };
 
   private constructor(
@@ -59,12 +65,19 @@ export class Game {
     private readonly view: SlotView,
     private readonly hooks: RoundHooks | undefined,
     private readonly stats: StatsStore,
+    private readonly sounds: Sounds,
     seed: number | string,
   ) {
     this.rng = createRng(seed);
     this.ui.spin.onclick = () => void this.spin();
     this.ui.betDown.onclick = () => this.changeBet(-1);
     this.ui.betUp.onclick = () => this.changeBet(1);
+    this.ui.mute.hidden = !sounds.available;
+    this.ui.mute.onclick = () => {
+      sounds.muted = !sounds.muted;
+      setMuted(sounds.muted);
+      this.render();
+    };
     this.ui.reset.onclick = () => {
       if (this.busy) return;
       this.balance = START_BALANCE;
@@ -75,11 +88,12 @@ export class Game {
   }
 
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
-  static async start(host: HTMLElement, module: SlotModule, stats: StatsStore, seed?: number | string): Promise<Game> {
+  static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
     const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
-    const view = await SlotView.create(host, module);
-    return new Game(module, view, hooks, stats, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
+    const sounds = new Sounds(module.scene, assets);
+    const view = await SlotView.create(host, module, assets, () => sounds.play("stop"));
+    return new Game(module, view, hooks, stats, sounds, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
   }
 
   get isBusy(): boolean {
@@ -108,6 +122,8 @@ export class Game {
     this.ui.betDown.disabled = this.busy || this.betIndex === 0;
     this.ui.betUp.disabled = this.busy || this.betIndex === BET_LEVELS.length - 1;
     this.ui.reset.disabled = this.busy;
+    this.ui.mute.textContent = this.sounds.muted ? "Audio: no" : "Audio: sì";
+    this.ui.mute.setAttribute("aria-pressed", String(!this.sounds.muted));
     const { session, total } = this.stats.get(this.module.manifest.id);
     for (const [el, s] of [[this.ui.netSession, session], [this.ui.netTotal, total]] as const) {
       el.textContent = signedMoney(net(s));
@@ -122,12 +138,14 @@ export class Game {
 
   /** Gioca uno spin già deciso dal motore: rulli, trasformazioni, vincite. */
   private async present(spin: SpinResult, turbo: boolean): Promise<number> {
+    this.sounds.play("spin");
     await this.view.spin(spin.reelGrid, turbo);
     if (spin.grid.some((column, reel) => column.some((s, row) => s !== spin.reelGrid[reel]![row]))) {
       await this.view.reveal(spin.reelGrid, spin.grid, turbo);
     }
     const credits = spin.win * this.bet;
     if (credits > 0) {
+      this.sounds.play(spin.win >= BIG_WIN ? "bigWin" : "win");
       this.view.showWins(spin.lineWins, spin.scatterWin, spin.reelGrid, money(credits));
       await wait(turbo ? 450 : 1100);
     }
@@ -162,6 +180,7 @@ export class Game {
     const free = round.freeSpins;
     if (free) {
       this.setStatus(`${free.initial} free spin!`, "feature");
+      this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       const ladder = this.module.math.freeSpins?.upgradeLadder ?? [];
       for (let i = 0; i < free.spins.length; i++) {
@@ -181,6 +200,7 @@ export class Game {
     for (const sequence of round.extra) {
       const label = this.module.scene.modes.get(sequence.mode)?.label ?? `Giri ${sequence.mode}`;
       this.setStatus(`${sequence.spins.length} × ${label}!`, "feature");
+      this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       for (let i = 0; i < sequence.spins.length; i++) {
         this.setStatus(`${label} ${i + 1} di ${sequence.spins.length}`, "feature");
