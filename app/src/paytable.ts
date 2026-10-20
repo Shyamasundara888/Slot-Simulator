@@ -1,4 +1,5 @@
 import type { SlotModule } from "../../src/module/parse.js";
+import { listText, t } from "./i18n/index.js";
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -22,14 +23,14 @@ export function paytableHtml({ math, scene }: SlotModule, assets: ReadonlyMap<st
     .map(([id, pays]) => `<tr><td>${name(id)}</td>${counts.map((n) => `<td>${pays[n] || "–"}</td>`).join("")}</tr>`)
     .join("");
   const parts = [
-    `<table><thead><tr><th>Simbolo</th>${counts.map((n) => `<th>${n}×</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`,
+    `<table><thead><tr><th>${t("pt.symbol")}</th>${counts.map((n) => `<th>${n}×</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`,
     `<ul>`,
-    `<li>Vincite su linea in multipli della puntata per linea (${math.lines.length} linee), da sinistra a destra.</li>`,
+    `<li>${t("pt.lines", { lines: math.lines.length })}</li>`,
   ];
-  if (math.wild) parts.push(`<li>${name(math.wild)} sostituisce tutti i simboli tranne lo scatter.</li>`);
+  if (math.wild) parts.push(`<li>${t("pt.wild", { wild: name(math.wild) })}</li>`);
   if (math.expandingWildReels.size > 0) {
     const reels = [...math.expandingWildReels].map((r) => r + 1).join(", ");
-    parts.push(`<li>Sui rulli ${reels} il wild si espande su tutto il rullo.</li>`);
+    parts.push(`<li>${t("pt.expanding", { reels })}</li>`);
   }
   if (math.scatter) {
     const pays = math.scatter.pays
@@ -37,7 +38,7 @@ export function paytableHtml({ math, scene }: SlotModule, assets: ReadonlyMap<st
       .filter(({ p, n }) => p > 0 && math.scatter!.pays[n - 1] !== p)
       .map(({ p, n }) => `${n}: ${p}×`)
       .join(", ");
-    parts.push(`<li>${name(math.scatter.symbol)} paga ovunque, in multipli della puntata totale: ${pays}.</li>`);
+    parts.push(`<li>${t("pt.scatter", { scatter: name(math.scatter.symbol), pays })}</li>`);
   }
   const fs = math.freeSpins;
   if (fs) {
@@ -47,24 +48,24 @@ export function paytableHtml({ math, scene }: SlotModule, assets: ReadonlyMap<st
       .filter(({ spins, n }) => n >= fs.minScatters && spins !== fs.awards[n - 1]);
     const text =
       awards.length === 1
-        ? `${fs.minScatters} o più scatter danno ${awards[0]!.spins} free spin`
-        : `Gli scatter danno free spin: ${awards.map(({ n, spins }, i) => `${n}${i === awards.length - 1 ? " o più" : ""}: ${spins}`).join(", ")}`;
-    parts.push(`<li>${text}${fs.retrigger ? ", riattivabili" : ""}.</li>`);
+        ? t("pt.freeOne", { min: fs.minScatters, spins: awards[0]!.spins })
+        : t("pt.freeMany", {
+            list: awards.map(({ n, spins }, i) => `${i === awards.length - 1 ? t("pt.orMore", { n }) : n}: ${spins}`).join(", "),
+          });
+    parts.push(`<li>${text}${fs.retrigger ? t("pt.retrigger") : ""}.</li>`);
     if (fs.extraSpinsPerExpandedWild > 0 || fs.upgradeOnExpandedWild || fs.multiplierPerExpandedWild > 0) {
       const what = [
-        fs.extraSpinsPerExpandedWild > 0 ? `${fs.extraSpinsPerExpandedWild} free spin in più` : "",
-        fs.multiplierPerExpandedWild > 0
-          ? `+${fs.multiplierPerExpandedWild} al moltiplicatore delle vincite (parte da ×1, al massimo ×${fs.maxMultiplier}, vale già per lo spin in cui il wild compare)`
-          : "",
-        fs.upgradeOnExpandedWild ? `un upgrade dei simboli (${fs.upgradeLadder.map((s) => esc(scene.symbols.get(s)!.label)).join(" → ")})` : "",
+        fs.extraSpinsPerExpandedWild > 0 ? t("pt.extraSpins", { n: fs.extraSpinsPerExpandedWild }) : "",
+        fs.multiplierPerExpandedWild > 0 ? t("pt.multiplier", { n: fs.multiplierPerExpandedWild, max: fs.maxMultiplier }) : "",
+        fs.upgradeOnExpandedWild ? t("pt.upgrade", { ladder: fs.upgradeLadder.map((s) => esc(scene.symbols.get(s)!.label)).join(" → ") }) : "",
       ].filter(Boolean);
-      parts.push(`<li>Durante i free spin ogni wild espanso dà ${what.length > 1 ? `${what.slice(0, -1).join(", ")} e ${what.at(-1)}` : what[0]}.</li>`);
+      parts.push(`<li>${t("pt.perWild", { what: listText(what) })}</li>`);
     }
   }
   for (const { label, description } of scene.modes.values()) {
     if (description) parts.push(`<li><strong>${esc(label)}</strong>: ${esc(description)}</li>`);
   }
-  if (Number.isFinite(math.maxWin)) parts.push(`<li>Vincita massima per round: ${math.maxWin}× la puntata totale.</li>`);
+  if (Number.isFinite(math.maxWin)) parts.push(`<li>${t("pt.maxWin", { max: math.maxWin })}</li>`);
   parts.push(`</ul>`);
   return parts.join("");
 }

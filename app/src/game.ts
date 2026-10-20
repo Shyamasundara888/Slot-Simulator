@@ -6,6 +6,7 @@ import { ScriptRuntime } from "../../src/script/runtime.js";
 import wasmUri from "wasmoon/dist/glue.wasm?url";
 import { wait } from "./anim.js";
 import { money, signedMoney, trend } from "./format.js";
+import { t } from "./i18n/index.js";
 import type { ClientModule } from "./modules.js";
 import { SlotView } from "./slot-view.js";
 import { setMuted, Sounds } from "./sound.js";
@@ -41,7 +42,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 /** Collega motore, vista e controlli HTML. Il saldo è virtuale e condiviso tra le slot. */
 export class Game {
-  private balance = readBalance();
+  private balance: number;
   private betIndex = BET_LEVELS.indexOf(1);
   private busy = false;
   private readonly rng: Rng;
@@ -67,11 +68,15 @@ export class Game {
     private readonly stats: StatsStore,
     private readonly sounds: Sounds,
     seed: number | string,
+    /** Falso nell'anteprima dell'editor: il saldo riparte da capo e non viene salvato. */
+    private readonly persist: boolean,
   ) {
+    this.balance = persist ? readBalance() : START_BALANCE;
     this.rng = createRng(seed);
     this.ui.spin.onclick = () => void this.spin();
     this.ui.betDown.onclick = () => this.changeBet(-1);
     this.ui.betUp.onclick = () => this.changeBet(1);
+    this.ui.win.textContent = money(0);
     this.ui.mute.hidden = !sounds.available;
     this.ui.mute.onclick = () => {
       sounds.muted = !sounds.muted;
@@ -81,19 +86,23 @@ export class Game {
     this.ui.reset.onclick = () => {
       if (this.busy) return;
       this.balance = START_BALANCE;
-      saveBalance(this.balance);
+      this.saveBalance();
       this.render();
     };
     this.render();
   }
 
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
-  static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string): Promise<Game> {
+  static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string, persist = true): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
     const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
     const sounds = new Sounds(module.scene, assets);
     const view = await SlotView.create(host, module, assets, () => sounds.play("stop"));
-    return new Game(module, view, hooks, stats, sounds, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!);
+    return new Game(module, view, hooks, stats, sounds, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!, persist);
+  }
+
+  private saveBalance(): void {
+    if (this.persist) saveBalance(this.balance);
   }
 
   get isBusy(): boolean {
@@ -122,7 +131,7 @@ export class Game {
     this.ui.betDown.disabled = this.busy || this.betIndex === 0;
     this.ui.betUp.disabled = this.busy || this.betIndex === BET_LEVELS.length - 1;
     this.ui.reset.disabled = this.busy;
-    this.ui.mute.textContent = this.sounds.muted ? "Audio: no" : "Audio: sì";
+    this.ui.mute.textContent = t(this.sounds.muted ? "game.audioOff" : "game.audioOn");
     this.ui.mute.setAttribute("aria-pressed", String(!this.sounds.muted));
     const { session, total } = this.stats.get(this.module.manifest.id);
     for (const [el, s] of [[this.ui.netSession, session], [this.ui.netTotal, total]] as const) {
@@ -172,7 +181,7 @@ export class Game {
     } catch (err) {
       console.error(err);
       this.balance += bet;
-      this.setStatus(`Round annullato, errore del modulo: ${(err as Error).message}`);
+      this.setStatus(t("game.roundError", { error: (err as Error).message }));
       this.busy = false;
       this.render();
       return;
@@ -182,7 +191,7 @@ export class Game {
 
     const free = round.freeSpins;
     if (free) {
-      this.setStatus(`${free.initial} free spin!`, "feature");
+      this.setStatus(t("game.freeStart", { n: free.initial }), "feature");
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       const ladder = this.module.math.freeSpins?.upgradeLadder ?? [];
@@ -192,10 +201,10 @@ export class Game {
         const label = (id: string) => this.module.scene.symbols.get(id)?.label ?? id;
         const level =
           spin.upgradeLevel > 0
-            ? ` · upgrade: ${ladder.slice(0, spin.upgradeLevel).map(label).join(", ")} → ${label(ladder[spin.upgradeLevel]!)}`
+            ? t("game.upgrade", { from: ladder.slice(0, spin.upgradeLevel).map(label).join(", "), to: label(ladder[spin.upgradeLevel]!) })
             : "";
         // Prima dello spin si vede il moltiplicatore già raggiunto: quello nuovo arriva con i wild di questo spin.
-        const status = (m: number) => `Free spin ${i + 1} di ${total}${m > 1 ? ` · moltiplicatore ×${m}` : ""}${level}`;
+        const status = (m: number) => `${t("game.freeSpin", { i: i + 1, n: total })}${m > 1 ? t("game.multiplier", { m }) : ""}${level}`;
         const before = i === 0 ? 1 : free.spins[i - 1]!.multiplier;
         this.setStatus(status(before), "feature");
         shown += await this.present(spin, turbo, () => {
@@ -206,14 +215,14 @@ export class Game {
     }
 
     for (const sequence of round.extra) {
-      const label = this.module.scene.modes.get(sequence.mode)?.label ?? `Giri ${sequence.mode}`;
-      const intro = sequence.multiplier > 1 ? `, con moltiplicatore ×${sequence.multiplier}` : "";
-      this.setStatus(`${sequence.spins.length} × ${label}${intro}!`, "feature");
+      const label = this.module.scene.modes.get(sequence.mode)?.label ?? t("game.modeFallback", { mode: sequence.mode });
+      const intro = sequence.multiplier > 1 ? t("game.withMultiplier", { m: sequence.multiplier }) : "";
+      this.setStatus(t("game.sequenceStart", { n: sequence.spins.length, label, intro }), "feature");
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       for (let i = 0; i < sequence.spins.length; i++) {
-        const multiplier = sequence.multiplier > 1 ? ` · moltiplicatore ×${sequence.multiplier}` : "";
-        this.setStatus(`${label} ${i + 1} di ${sequence.spins.length}${multiplier}`, "feature");
+        const multiplier = sequence.multiplier > 1 ? t("game.multiplier", { m: sequence.multiplier }) : "";
+        this.setStatus(`${t("game.sequenceSpin", { label, i: i + 1, n: sequence.spins.length })}${multiplier}`, "feature");
         shown += await this.present(sequence.spins[i]!, turbo);
         this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
       }
@@ -221,13 +230,13 @@ export class Game {
 
     const won = round.totalWin * bet;
     this.balance += won;
-    saveBalance(this.balance);
+    this.saveBalance();
     this.stats.record(this.module.manifest.id, bet, won, free !== null || round.extra.length > 0);
     this.ui.win.textContent = money(won);
-    if (round.capped) this.setStatus(`Vincita massima raggiunta: ${money(won)}`, "win");
-    else if (free || round.extra.length > 0) this.setStatus(`Bonus finito: vinti ${money(won - round.base.win * bet)}`, "win");
-    else if (won > 0) this.setStatus(`Hai vinto ${money(won)}`, "win");
-    else this.setStatus("Nessuna vincita");
+    if (round.capped) this.setStatus(t("game.capped", { money: money(won) }), "win");
+    else if (free || round.extra.length > 0) this.setStatus(t("game.bonusEnd", { money: money(won - round.base.win * bet) }), "win");
+    else if (won > 0) this.setStatus(t("game.won", { money: money(won) }), "win");
+    else this.setStatus(t("game.noWin"));
     this.busy = false;
     this.render();
   }

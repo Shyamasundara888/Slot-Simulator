@@ -2,7 +2,7 @@
 
 Motore per creare slot machine moddabili: ogni slot è un **modulo** con regole, matematica, grafica e script separati, caricato da un motore comune.
 
-Stato attuale: **fasi 1-6**. Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli, moltiplicatori e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot, con immagini, animazioni e suoni presi dal modulo. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, moltiplicatore nei free spin e Gold Spins, volatilità alta) e Pixel Quest (5x4, Combo e Boss Spin, volatilità medio-alta). La bozza di architettura completa è nel documento di progetto.
+Stato attuale: **fasi 1-6** e prima parte della **fase 7** (editor visuale). Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli, moltiplicatori e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot, con immagini, animazioni e suoni presi dal modulo. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, moltiplicatore nei free spin e Gold Spins, volatilità alta) e Pixel Quest (5x4, Combo e Boss Spin, volatilità medio-alta). La bozza di architettura completa è nel documento di progetto.
 
 ![Il client con il Tempio del Sole: tre scatter attivano i free spin](docs/client.png)
 
@@ -212,7 +212,25 @@ Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i mod
 - Statistiche per slot, divise tra sessione (dura finché resta aperta la scheda) e totale: round giocati, puntato, vinto, bilancio, vincita massima, bonus attivati e ritorno osservato. Il bilancio di sessione e quello totale della slot aperta sono sempre visibili in basso; il pulsante Statistiche mostra il dettaglio e il riepilogo di tutte le slot.
 - **Importa mod** carica una slot da uno zip senza ricompilare il sito: il mod viene controllato (script compreso), salvato nel browser (IndexedDB) e compare nel menu con "(mod)". **Rimuovi mod** lo toglie. Un mod non può usare l'id di una slot inclusa nel sito.
 - Barra spaziatrice per girare. `?slot=<id>` apre una slot precisa, `?seed=<valore>` rende ripetibile la sequenza dei round.
+- Interfaccia in italiano e in inglese, con il menu in alto a destra o `?lang=it|en`. I testi stanno in `app/src/i18n/`: per un'altra lingua basta un file con le stesse chiavi di `it.ts`. Nomi, etichette e descrizioni delle slot restano quelli scritti nel modulo.
+- **Modifica** apre la slot nell'editor visuale, **Nuova slot** ne crea una dal modello `templates/slot-base` (vedi sotto).
 - Immagini, sfondo, animazioni di vincita e suoni arrivano dalla scena del modulo, anche per i mod importati. Il pulsante **Audio** compare solo se la slot ha suoni e la scelta resta salvata nel browser. Senza asset i simboli sono tessere colorate con l'etichetta della scena; i simboli senza stile ricevono un colore predefinito.
+
+### Editor visuale
+
+L'editor sta nella stessa pagina: a sinistra le schede, a destra l'anteprima giocabile della bozza. Scrive gli stessi file di un modulo, quindi una slot fatta con l'editor si può ritoccare a prompt e viceversa.
+
+![L'editor sul Tempio del Sole: simboli, numeri della simulazione e anteprima con un free spin](docs/editor.png)
+
+- Schede **Generale** (id, nome, versione, autore, descrizione, griglia, colore di sfondo), **Simboli** (id, tipo, etichetta, colore, ordine; rinominare un id aggiorna tutti i file) e **Paytable** (pagamenti su linea e scatter).
+- Ogni modifica passa dalla validazione del motore: i problemi compaiono in alto con i messaggi di `docs/errori.md` e il campo sbagliato si colora.
+- L'RTP esatto dello spin base si aggiorna a ogni modifica. **Simula** gioca da 100.000 a 5 milioni di round in un worker e mostra RTP totale, quote di base, free spin e sequenze degli script, deviazione standard e vincita massima.
+- L'anteprima riparte a ogni modifica valida, con un saldo e statistiche a parte. **Trova un seed** cerca un seed il cui primo round attiva i free spin o le sequenze dello script.
+- Annulla e ripeti (anche Ctrl+Z e Ctrl+Shift+Z). La bozza si salva da sola nel browser e si riprende riaprendo l'editor sulla stessa slot; **Ricomincia dall'originale** la butta.
+- **Scarica zip** crea lo stesso zip di `npm run mod -- pack`, **Aggiungi al menu come mod** lo installa nel browser. Una slot inclusa nel sito si modifica come copia: per aggiungerla al menu va cambiato l'id.
+- `?edit=<id>` apre l'editor su una slot, `?edit=new` su una slot nuova.
+
+Le prossime parti aggiungono linee, rulli e funzioni, poi lo script Lua, poi grafica e suoni.
 
 ## Come funziona
 
@@ -227,5 +245,5 @@ Il client (`app/`) è una pagina Vite con PixiJS. Include nel bundle tutti i mod
 
 ## Prossime fasi
 
-7. Editor visuale, dopo che il motore si è stabilizzato.
+7. Editor visuale: fatte le schede Generale, Simboli e Paytable; mancano linee, rulli e funzioni, script, grafica e suoni.
 8. API per integrare le slot in un gioco più grande.

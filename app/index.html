@@ -11,48 +11,56 @@
     <header class="top">
       <h1 id="title">Slot Simulator</h1>
       <div class="picker">
-        <label>Slot <select id="slot"></select></label>
-        <button id="mod-import" type="button" title="Aggiungi una slot da uno zip">Importa mod</button>
-        <button id="mod-remove" type="button" hidden>Rimuovi mod</button>
+        <label><span data-i18n="top.slot">Slot</span> <select id="slot"></select></label>
+        <button id="edit-new" type="button" data-i18n="top.new" data-i18n-title="top.newTitle">Nuova slot</button>
+        <button id="edit-open" type="button" data-i18n="top.edit" data-i18n-title="top.editTitle">Modifica</button>
+        <button id="mod-import" type="button" data-i18n="top.import" data-i18n-title="top.importTitle">Importa mod</button>
+        <button id="mod-remove" type="button" data-i18n="top.remove" hidden>Rimuovi mod</button>
         <input id="mod-file" type="file" accept=".zip,application/zip" hidden />
+        <select id="language" data-i18n-label="top.language"></select>
       </div>
     </header>
+    <div class="layout">
+    <aside id="editor" hidden></aside>
+    <div class="play">
     <main>
       <div id="stage"></div>
-      <p id="status" class="status" aria-live="polite">Premi Gira o la barra spaziatrice</p>
+      <p id="status" class="status" aria-live="polite" data-i18n="status.ready">Premi Gira o la barra spaziatrice</p>
     </main>
     <footer class="controls">
-      <div class="meter"><span>Saldo</span><strong id="balance">0,00</strong></div>
+      <div class="meter"><span data-i18n="ui.balance">Saldo</span><strong id="balance">0,00</strong></div>
       <div class="bet">
-        <button id="bet-down" type="button" aria-label="Puntata più bassa">−</button>
-        <div class="meter"><span>Puntata</span><strong id="bet">1,00</strong></div>
-        <button id="bet-up" type="button" aria-label="Puntata più alta">+</button>
+        <button id="bet-down" type="button" data-i18n-label="ui.betDown">−</button>
+        <div class="meter"><span data-i18n="ui.bet">Puntata</span><strong id="bet">1,00</strong></div>
+        <button id="bet-up" type="button" data-i18n-label="ui.betUp">+</button>
       </div>
-      <button id="spin" class="spin" type="button">Gira</button>
-      <div class="meter"><span>Vincita</span><strong id="win">0,00</strong></div>
-      <div class="meter" title="Vinto meno puntato su questa slot, da quando hai aperto la scheda">
-        <span>Bilancio sessione</span><strong id="net-session" class="net">0,00</strong>
+      <button id="spin" class="spin" type="button" data-i18n="ui.spin">Gira</button>
+      <div class="meter"><span data-i18n="ui.win">Vincita</span><strong id="win">0,00</strong></div>
+      <div class="meter" data-i18n-title="ui.netSessionTitle">
+        <span data-i18n="ui.netSession">Bilancio sessione</span><strong id="net-session" class="net">0,00</strong>
       </div>
-      <div class="meter" title="Vinto meno puntato su questa slot, da sempre">
-        <span>Bilancio totale</span><strong id="net-total" class="net">0,00</strong>
+      <div class="meter" data-i18n-title="ui.netTotalTitle">
+        <span data-i18n="ui.netTotal">Bilancio totale</span><strong id="net-total" class="net">0,00</strong>
       </div>
-      <label class="toggle"><input id="turbo" type="checkbox" /> Turbo</label>
+      <label class="toggle"><input id="turbo" type="checkbox" /> <span data-i18n="ui.turbo">Turbo</span></label>
       <button id="mute" type="button" hidden>Audio: sì</button>
-      <button id="paytable-open" type="button">Paytable</button>
-      <button id="stats-open" type="button">Statistiche</button>
-      <button id="reset" type="button">Azzera saldo</button>
+      <button id="paytable-open" type="button" data-i18n="ui.paytable">Paytable</button>
+      <button id="stats-open" type="button" data-i18n="ui.stats">Statistiche</button>
+      <button id="reset" type="button" data-i18n="ui.resetBalance">Azzera saldo</button>
     </footer>
+    </div>
+    </div>
     <dialog id="paytable">
-      <h2>Paytable</h2>
+      <h2 data-i18n="ui.paytable">Paytable</h2>
       <div id="paytable-body"></div>
-      <form method="dialog"><button>Chiudi</button></form>
+      <form method="dialog"><button data-i18n="ui.close">Chiudi</button></form>
     </dialog>
     <dialog id="stats">
-      <h2>Statistiche</h2>
+      <h2 data-i18n="ui.stats">Statistiche</h2>
       <div id="stats-body"></div>
       <form method="dialog" class="dialog-actions">
-        <button>Chiudi</button>
-        <button id="stats-reset" type="button" formnovalidate>Azzera statistiche</button>
+        <button data-i18n="ui.close">Chiudi</button>
+        <button id="stats-reset" type="button" formnovalidate data-i18n="ui.resetStats">Azzera statistiche</button>
       </form>
     </dialog>
     <script type="module" src="./src/main.ts"></script>

@@ -1,6 +1,8 @@
-/** Crediti con due decimali, nel formato italiano. */
+import { locale } from "./i18n/index.js";
+
+/** Crediti con due decimali, nel formato della lingua scelta. */
 export const money = (credits: number) =>
-  credits.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  credits.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Come money, con il segno + davanti ai valori positivi. */
 export const signedMoney = (credits: number) => (credits > 0 ? `+${money(credits)}` : money(credits));

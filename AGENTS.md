@@ -6,7 +6,7 @@ Questo file è il punto d'ingresso per chi lavora sul repo tramite un assistente
 
 Slot Simulator è un motore per creare slot machine **moddabili**, un "Tabletop Simulator per le slot". Una slot è un **modulo**: una cartella in `slots/<id>/` fatta di file JSON (matematica, scena, asset), uno script Lua facoltativo e le immagini e i suoni. Il motore in TypeScript decide l'esito di ogni round; il client nel browser (PixiJS) mostra soltanto quell'esito. Un simulatore misura RTP e volatilità. I moduli si scambiano come zip (mod).
 
-Le slot si creano e si modificano scrivendo file: per questo tutto si può fare anche solo con dei prompt, chiedendo a un assistente AI di seguire questa documentazione. Un editor visuale arriverà dopo.
+Le slot si creano e si modificano scrivendo file: per questo tutto si può fare anche solo con dei prompt, chiedendo a un assistente AI di seguire questa documentazione. L'editor visuale nel client (pulsante **Modifica**) scrive gli stessi file, quindi una slot può passare dall'editor ai prompt e viceversa.
 
 ## Dove leggere
 
@@ -60,12 +60,15 @@ npm run mod -- pack slots/<id>                # crea mods/<id>-<versione>.zip da
 | `src/sim/` | RTP esatto dello spin base e simulazione Monte Carlo |
 | `src/assets/` | generatore degli asset da `art/art.json` |
 | `src/cli/` | comandi `sim`, `mod`, `assets` |
+| `src/edit/` | operazioni sui moduli usate dall'editor: bozza, rinomina e rimozione di simboli, pagamenti, griglia, zip |
 | `app/` | client Vite + PixiJS |
+| `app/src/editor/` | editor visuale: stato e pannelli, schede, worker per simulazione e ricerca di seed |
+| `app/src/i18n/` | testi dell'interfaccia: `it.ts` di riferimento, `en.ts` con le stesse chiavi |
 | `test/` | test vitest |
 
 ## Convenzioni
 
-- Testi, commenti, messaggi d'errore e documentazione sono in italiano. Gli id dei simboli sono in maiuscolo (`DRAGO`, `A`, `10`), gli id dei moduli e delle modalità in minuscolo (`pixel-quest`, `gold`).
+- Testi, commenti, messaggi d'errore e documentazione sono in italiano. I testi che il client mostra vanno nei file di `app/src/i18n/` (italiano e inglese insieme), mai scritti direttamente nel codice. Gli id dei simboli sono in maiuscolo (`DRAGO`, `A`, `10`), gli id dei moduli e delle modalità in minuscolo (`pixel-quest`, `gold`).
 - Le vincite sono sempre in **multipli della puntata**: le linee in multipli della puntata per linea, scatter e totali in multipli della puntata totale.
 - Quando cambi la matematica o l'aspetto di una slot pubblicata, alza la versione in `manifest.json`.
 - Nel README e nelle PR riporta i numeri misurati (RTP con intervallo, deviazione standard, vincita massima, frequenza dei bonus), non stime.
