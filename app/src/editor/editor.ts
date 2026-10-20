@@ -6,7 +6,8 @@ import { locale, t } from "../i18n/index.js";
 import { deleteDraft, loadDraft, saveDraft } from "../mod-store.js";
 import { assetUrls, type ClientModule, errorText, releaseAssets } from "../modules.js";
 import { h } from "./dom.js";
-import { generalTab, paytableTab, symbolsTab, type Tab, type TabContext, TABS } from "./tabs.js";
+import { generalTab, paytableTab, symbolsTab, type EditorView, type Tab, type TabContext, TABS } from "./tabs.js";
+import { featuresTab, linesTab, reelsTab } from "./tabs-math.js";
 import type { WorkerRequest, WorkerResponse } from "./worker.js";
 
 /** Quello che l'editor chiede alla pagina che lo ospita. */
@@ -50,6 +51,7 @@ export class Editor {
   private past: ModuleDraft[] = [];
   private future: ModuleDraft[] = [];
   private tab: Tab = "general";
+  private view: EditorView = { mode: "base", manualStrips: false };
   private check: DraftCheck = { module: null, problems: [] };
   private lastValid: SlotModule | null = null;
   private exact: ExactResult | null = null;
@@ -293,7 +295,9 @@ export class Editor {
 
   private shortcut(e: KeyboardEvent): void {
     const target = e.target as HTMLElement;
-    if (!(e.ctrlKey || e.metaKey) || target.matches("input, textarea") || document.querySelector("dialog[open]")) return;
+    // In un campo con modifiche non ancora salvate vale l'annulla del browser; altrimenti quello dell'editor.
+    const editing = target.matches("input, textarea") && (target as HTMLInputElement).value !== target.dataset.saved;
+    if (!(e.ctrlKey || e.metaKey) || editing || document.querySelector("dialog[open]")) return;
     const key = e.key.toLowerCase();
     if (key === "z" && !e.shiftKey) this.undo();
     else if ((key === "z" && e.shiftKey) || key === "y") this.redo();
@@ -323,8 +327,14 @@ export class Editor {
         this.notice = text;
         this.queueRender();
       },
+      view: this.view,
+      setView: (change) => {
+        this.view = { ...this.view, ...change };
+        this.queueRender();
+      },
     };
-    const body = { general: generalTab, symbols: symbolsTab, paytable: paytableTab }[this.tab](ctx);
+    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab };
+    const body = tabs[this.tab](ctx);
     this.markProblems(body);
 
     this.root.replaceChildren(

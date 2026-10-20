@@ -26,16 +26,26 @@ export interface TabContext {
   apply(change: (draft: ModuleDraft) => void): void;
   /** Mostra un avviso sopra la scheda, per esempio un id già usato. */
   notify(text: string): void;
+  /** Scelte di visualizzazione che restano tra un disegno e l'altro, come la modalità dei rulli aperta. */
+  view: EditorView;
+  setView(change: Partial<EditorView>): void;
 }
 
-export const TABS = ["general", "symbols", "paytable"] as const;
+export interface EditorView {
+  /** Modalità dei rulli mostrata nella scheda Rulli. */
+  mode: string;
+  /** Vero se la scheda Rulli mostra le strisce simbolo per simbolo. */
+  manualStrips: boolean;
+}
+
+export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features"] as const;
 export type Tab = (typeof TABS)[number];
 
 const SYMBOL_ID = /^[A-Z0-9_]+$/;
 const KINDS: readonly SymbolKind[] = ["normal", "wild", "scatter"];
 
 /** Campo di testo legato a un percorso: `data-path` collega gli errori del motore al campo. */
-function textField(path: string, value: string, onChange: (value: string) => void, attrs: Record<string, string | number> = {}) {
+export function textField(path: string, value: string, onChange: (value: string) => void, attrs: Record<string, string | number> = {}) {
   return h("input", {
     type: "text",
     value,
@@ -46,7 +56,7 @@ function textField(path: string, value: string, onChange: (value: string) => voi
   });
 }
 
-function numberField(path: string, value: number | undefined, onChange: (value: number | null) => void, attrs: Record<string, string | number> = {}) {
+export function numberField(path: string, value: number | undefined, onChange: (value: number | null) => void, attrs: Record<string, string | number> = {}) {
   return h("input", {
     type: "number",
     min: 0,
@@ -59,7 +69,7 @@ function numberField(path: string, value: number | undefined, onChange: (value: 
   });
 }
 
-const row = (label: string, field: HTMLElement, hint?: string) =>
+export const row = (label: string, field: HTMLElement, hint?: string) =>
   h("label", { class: "ed-field" }, h("span", {}, label), field, hint ? h("small", {}, hint) : null);
 
 export function generalTab(ctx: TabContext): HTMLElement {
