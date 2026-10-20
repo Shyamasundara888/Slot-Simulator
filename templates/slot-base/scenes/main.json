@@ -1,0 +1,14 @@
+{
+  "background": "#1b1430",
+  "symbols": {
+    "WILD": { "label": "Wild", "color": "#f5b301" },
+    "SCATTER": { "label": "Scatter", "color": "#d6336c" },
+    "H1": { "label": "Alto 1", "color": "#c92a2a" },
+    "H2": { "label": "Alto 2", "color": "#e8590c" },
+    "H3": { "label": "Alto 3", "color": "#2b8a3e" },
+    "L1": { "label": "A", "color": "#5f3dc4" },
+    "L2": { "label": "K", "color": "#862e9c" },
+    "L3": { "label": "Q", "color": "#0c8599" },
+    "L4": { "label": "J", "color": "#5c940d" }
+  }
+}

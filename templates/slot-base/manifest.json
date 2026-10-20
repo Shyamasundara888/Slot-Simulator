@@ -1,0 +1,8 @@
+{
+  "id": "slot-base",
+  "name": "Slot base",
+  "version": "0.1.0",
+  "author": "Slot Simulator",
+  "description": "Modello di partenza 5x3 a 10 linee: wild, scatter e free spin. Copialo in slots/<nuovo-id>/ e cambia id, nome e simboli.",
+  "engineApi": 1
+}

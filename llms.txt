@@ -1,0 +1,22 @@
+# Slot Simulator
+
+> Motore open source per creare slot machine moddabili (TypeScript + PixiJS + Lua). Una slot è una cartella di file JSON, uno script Lua facoltativo e asset generati; il motore decide l'esito, il client lo mostra, un simulatore misura RTP e volatilità. Documentazione in italiano.
+
+Leggi prima AGENTS.md: regole, comandi e mappa del codice.
+
+## Documentazione
+
+- [AGENTS.md](AGENTS.md): guida per assistenti AI, regole e comandi
+- [docs/ricette.md](docs/ricette.md): prompt pronti e procedure complete
+- [docs/modulo.md](docs/modulo.md): formato di un modulo, campo per campo
+- [docs/matematica.md](docs/matematica.md): RTP, volatilità e taratura
+- [docs/script-lua.md](docs/script-lua.md): script Lua, hook e sequenze di spin
+- [docs/asset.md](docs/asset.md): immagini, animazioni, suoni e generatori esterni
+- [docs/client-e-strumenti.md](docs/client-e-strumenti.md): client, comandi, uso da codice
+- [docs/errori.md](docs/errori.md): messaggi d'errore e rimedi
+
+## Esempi
+
+- [templates/slot-base/](templates/slot-base/): modello minimo da copiare
+- [slots/tempio-del-sole/](slots/tempio-del-sole/): slot completa ad alta volatilità
+- [slots/pixel-quest/](slots/pixel-quest/): slot 5x4 con pixel art

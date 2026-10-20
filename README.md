@@ -6,6 +6,16 @@ Stato attuale: **fasi 1-6**. Il nucleo matematico gestisce linee, wild, scatter,
 
 ![Il client con il Tempio del Sole: tre scatter attivano i free spin](docs/client.png)
 
+## Creare slot con un assistente AI
+
+Il progetto è pensato per essere usato anche solo a prompt: chiedi a un assistente AI (Claude Code, Cursor, Copilot o altri) la slot che vuoi, e lui la costruisce, la tara e la verifica.
+
+- [AGENTS.md](AGENTS.md): guida d'ingresso per gli assistenti, con regole, comandi e mappa del codice (Claude Code la legge da `CLAUDE.md`).
+- [docs/](docs/README.md): documentazione completa, dal formato dei moduli alla taratura della matematica, agli script Lua, agli asset e agli errori.
+- [docs/ricette.md](docs/ricette.md): prompt pronti da copiare e le procedure che l'assistente segue.
+- [templates/slot-base/](templates/slot-base/): slot minima e valida da cui partire.
+- `.claude/skills/`: skill per Claude Code (slot nuova, matematica, grafica e suoni, immagini da generatore esterno), attive in automatico aprendo il repo.
+
 ## Requisiti
 
 - Node.js 20 o superiore
