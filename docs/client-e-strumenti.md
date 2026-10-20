@@ -21,9 +21,38 @@ Il client include nel bundle tutti i moduli in `slots/` e li mostra nel menu in 
 | Audio | compare solo se la slot ha suoni; la scelta resta salvata |
 | Paytable | generata dalla matematica del modulo, con icone, regole delle funzioni e descrizioni delle modalità della scena |
 | Statistiche | per slot, sessione (dura quanto la scheda) e totale: round, puntato, vinto, bilancio, vincita massima, bonus, ritorno osservato |
+| Lingua | italiano o inglese, dal menu in alto a destra o con `?lang=it` / `?lang=en`; la scelta resta salvata |
+| Modifica, Nuova slot | aprono l'editor visuale sulla slot del menu o su una slot nuova dal modello (vedi [Editor visuale](#editor-visuale)) |
 | Importa mod | carica una slot da uno zip senza ricompilare il sito: viene controllata (script compreso), salvata nel browser (IndexedDB) e compare con "(mod)". **Rimuovi mod** la toglie. Un mod non può usare l'id di una slot inclusa |
 
 Durante il gioco lo stato mostra il numero del free spin, il moltiplicatore raggiunto e l'upgrade attivo, poi le sequenze degli script ("1 × Boss Spin, con moltiplicatore ×12!"). Il motore decide l'intero round prima che parta l'animazione.
+
+## Editor visuale
+
+L'editor è nel client: a sinistra le schede, a destra l'anteprima giocabile. Lavora sugli stessi file di un modulo (vedi [modulo.md](modulo.md)), quindi tutto quello che si fa con l'editor si può fare anche a prompt, e una slot si può passare dall'uno all'altro.
+
+| Parte | Cosa fa |
+| --- | --- |
+| Generale | `manifest.json` (id, nome, versione, autore, descrizione), griglia, colore di sfondo della scena |
+| Simboli | simboli della paytable con tipo, etichetta e colore della scena, ordine; aggiunta e rimozione; rinominare un id aggiorna paytable, strisce, funzioni, scena e `art/art.json` (non lo script Lua: l'editor avvisa se lo script cita il vecchio id) |
+| Paytable | pagamenti su linea (per puntata di linea) e scatter (per puntata totale); vuoto vuol dire nessun pagamento |
+| Problemi | gli errori del motore, come `npm run mod -- check` (script compreso), con il campo sbagliato evidenziato |
+| Numeri | RTP esatto dello spin base a ogni modifica; **Simula** con 100.000, 1 milione o 5 milioni di round in un worker |
+| Anteprima | si gioca la bozza, con saldo e statistiche separati da quelli veri; **Trova un seed** cerca un primo round con free spin o con le sequenze dello script |
+| Salvataggio | bozza automatica in IndexedDB, una per slot di partenza; annulla e ripeti; **Ricomincia dall'originale** |
+| Esportazione | **Scarica zip** (come `npm run mod -- pack`) e **Aggiungi al menu come mod** |
+
+Cambiare la griglia adatta linee, strisce e pagamenti perché il modulo resti valido, ma linee e strisce vanno riviste: le schede per linee, rulli e funzioni arrivano con la prossima parte dell'editor. Fino ad allora si modificano nei file come descritto in [modulo.md](modulo.md).
+
+`?edit=<id>` apre l'editor su una slot del menu, `?edit=new` su una slot nuova. Una slot inclusa nel sito si modifica come copia: lo zip si scarica con qualsiasi id, ma per aggiungerla al menu come mod l'id va cambiato.
+
+Elementi utili per i test nel browser: `#edit-open`, `#edit-new`, `#ed-undo`, `#ed-redo`, `#ed-close`, `#ed-problems`, `#ed-base-rtp`, `#ed-simulate`, `#ed-sim`, `#ed-seed`, `#ed-seed-free`, `#ed-download`, `#ed-install`; i campi hanno `data-path="<file>#<percorso>"`, per esempio `math/paytable.json#linePays.A.5`.
+
+Da codice le stesse operazioni sono in `src/edit/draft.ts`: `draftFromFiles`, `checkDraft`, `renameSymbol`, `addSymbol`, `removeSymbol`, `setLinePay`, `resizeGrid`, `draftZip` e le altre.
+
+## Lingue dell'interfaccia
+
+I testi del client e dell'editor stanno in `app/src/i18n/`: `it.ts` è la lingua di riferimento, `en.ts` ha le stesse chiavi. Per aggiungere una lingua si crea un file con tutte le chiavi di `it.ts` e lo si registra in `LANGUAGES` in `app/src/i18n/index.ts`; il controllo dei tipi segnala le chiavi mancanti e un test controlla che i segnaposto `{nome}` siano gli stessi. Restano nella lingua originale i testi scritti nei moduli e i messaggi d'errore del motore.
 
 ### Trovare un seed con un bonus
 
@@ -47,7 +76,7 @@ Seed già noti: Tempio del Sole `?seed=m233` (free spin fino a ×6 e un Gold Spi
 
 ### Provare il client in automatico
 
-I test automatici (`npm test`) coprono motore, moduli, script e asset. Per il client si usa Playwright con Chromium: `npm run build:app`, `npx vite preview --port 4173`, poi uno script che apre `http://localhost:4173/?slot=<id>&seed=<s>`, clicca `#spin`, aspetta che il pulsante torni attivo e fa screenshot. Elementi utili: `#spin`, `#turbo`, `#status`, `#win`, `#balance`, `#paytable-open`, `#stats-open`, `#mute`, `#mod-file` (input per importare uno zip). Nell'ambiente cloud di Claude Code Chromium è in `/opt/pw-browsers/chromium` e va lanciato con `--use-gl=swiftshader --enable-unsafe-swiftshader`.
+I test automatici (`npm test`) coprono motore, moduli, script, asset, operazioni dell'editor e traduzioni. Per il client si usa Playwright con Chromium: `npm run build:app`, `npx vite preview --port 4173`, poi uno script che apre `http://localhost:4173/?slot=<id>&seed=<s>`, clicca `#spin`, aspetta che il pulsante torni attivo e fa screenshot. Elementi utili: `#spin`, `#turbo`, `#status`, `#win`, `#balance`, `#paytable-open`, `#stats-open`, `#mute`, `#mod-file` (input per importare uno zip). Nell'ambiente cloud di Claude Code Chromium è in `/opt/pw-browsers/chromium` e va lanciato con `--use-gl=swiftshader --enable-unsafe-swiftshader`.
 
 ## Comandi
 

@@ -1,4 +1,5 @@
 import { money, signedMoney, trend } from "./format.js";
+import { locale, t } from "./i18n/index.js";
 
 /** Statistiche di gioco per slot, divise tra sessione corrente e totale. */
 export interface SlotStats {
@@ -51,8 +52,20 @@ function write(storage: () => Storage, key: string, table: Table): void {
 }
 
 export class StatsStore {
-  private total = read(() => localStorage, TOTAL_KEY);
-  private session = read(() => sessionStorage, SESSION_KEY);
+  private total: Table;
+  private session: Table;
+
+  /** Con `persist` a false le statistiche restano in memoria: serve all'anteprima dell'editor. */
+  constructor(private readonly persist = true) {
+    this.total = persist ? read(() => localStorage, TOTAL_KEY) : {};
+    this.session = persist ? read(() => sessionStorage, SESSION_KEY) : {};
+  }
+
+  private save(): void {
+    if (!this.persist) return;
+    write(() => sessionStorage, SESSION_KEY, this.session);
+    write(() => localStorage, TOTAL_KEY, this.total);
+  }
 
   get(slot: string): { session: SlotStats; total: SlotStats } {
     return { session: this.session[slot] ?? empty(), total: this.total[slot] ?? empty() };
@@ -75,15 +88,13 @@ export class StatsStore {
         s.biggestMultiplier = cents(won / bet);
       }
     }
-    write(() => sessionStorage, SESSION_KEY, this.session);
-    write(() => localStorage, TOTAL_KEY, this.total);
+    this.save();
   }
 
   reset(): void {
     this.session = {};
     this.total = {};
-    write(() => sessionStorage, SESSION_KEY, this.session);
-    write(() => localStorage, TOTAL_KEY, this.total);
+    this.save();
   }
 }
 
@@ -95,46 +106,46 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 /** Tabella delle statistiche: la slot corrente in dettaglio, poi il riepilogo di tutte. */
 export function statsHtml(store: StatsStore, current: { id: string; name: string }, names: ReadonlyMap<string, string>): string {
   const { session, total } = store.get(current.id);
-  const rtp = (s: SlotStats) => (s.wagered > 0 ? `${((s.won / s.wagered) * 100).toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "–");
+  const rtp = (s: SlotStats) => (s.wagered > 0 ? `${((s.won / s.wagered) * 100).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : "–");
   const biggest = (s: SlotStats) =>
-    s.biggestWin > 0 ? `${money(s.biggestWin)} <small>(${s.biggestMultiplier.toLocaleString("it-IT")}×)</small>` : "–";
+    s.biggestWin > 0 ? `${money(s.biggestWin)} <small>(${s.biggestMultiplier.toLocaleString(locale)}×)</small>` : "–";
   const balance = (s: SlotStats) => `<td class="${trend(net(s))}">${signedMoney(net(s))}</td>`;
   const row = (label: string, f: (s: SlotStats) => string) => `<tr><td>${label}</td><td>${f(session)}</td><td>${f(total)}</td></tr>`;
 
   const parts = [
     `<h3>${esc(current.name)}</h3>`,
-    `<table><thead><tr><th></th><th>Sessione</th><th>Totale</th></tr></thead><tbody>`,
-    row("Round giocati", (s) => s.rounds.toLocaleString("it-IT")),
-    row("Puntato", (s) => money(s.wagered)),
-    row("Vinto", (s) => money(s.won)),
-    `<tr><td>Bilancio</td>${balance(session)}${balance(total)}</tr>`,
-    row("Vincita massima", biggest),
-    row("Bonus attivati", (s) => s.bonuses.toLocaleString("it-IT")),
-    row("Ritorno osservato", rtp),
+    `<table><thead><tr><th></th><th>${t("stats.session")}</th><th>${t("stats.total")}</th></tr></thead><tbody>`,
+    row(t("stats.rounds"), (s) => s.rounds.toLocaleString(locale)),
+    row(t("stats.wagered"), (s) => money(s.wagered)),
+    row(t("stats.won"), (s) => money(s.won)),
+    `<tr><td>${t("stats.net")}</td>${balance(session)}${balance(total)}</tr>`,
+    row(t("stats.biggest"), biggest),
+    row(t("stats.bonuses"), (s) => s.bonuses.toLocaleString(locale)),
+    row(t("stats.observed"), rtp),
     `</tbody></table>`,
   ];
 
   const slots = store.slots();
   if (slots.length > 0) {
     parts.push(
-      `<h3>Tutte le slot</h3>`,
-      `<table><thead><tr><th>Slot</th><th>Round</th><th>Bilancio sessione</th><th>Bilancio totale</th><th>Vincita massima</th></tr></thead><tbody>`,
+      `<h3>${t("stats.allSlots")}</h3>`,
+      `<table><thead><tr><th>${t("stats.slot")}</th><th>${t("stats.roundsShort")}</th><th>${t("ui.netSession")}</th><th>${t("ui.netTotal")}</th><th>${t("stats.biggest")}</th></tr></thead><tbody>`,
       ...slots.map((id) => {
         const s = store.get(id);
-        return `<tr><td>${esc(names.get(id) ?? id)}</td><td>${s.total.rounds.toLocaleString("it-IT")}</td>${balance(s.session)}${balance(s.total)}<td>${biggest(s.total)}</td></tr>`;
+        return `<tr><td>${esc(names.get(id) ?? id)}</td><td>${s.total.rounds.toLocaleString(locale)}</td>${balance(s.session)}${balance(s.total)}<td>${biggest(s.total)}</td></tr>`;
       }),
       (() => {
         const sum = (pick: "session" | "total") =>
           slots.map((id) => store.get(id)[pick]).reduce((a, b) => ({ ...a, wagered: a.wagered + b.wagered, won: a.won + b.won }), empty());
         const rounds = slots.reduce((n, id) => n + store.get(id).total.rounds, 0);
-        return `<tr><th>Totale</th><th>${rounds.toLocaleString("it-IT")}</th>${balance(sum("session"))}${balance(sum("total"))}<th></th></tr>`;
+        return `<tr><th>${t("stats.total")}</th><th>${rounds.toLocaleString(locale)}</th>${balance(sum("session"))}${balance(sum("total"))}<th></th></tr>`;
       })(),
       `</tbody></table>`,
     );
   }
   parts.push(
-    `<ul><li>Il bilancio è vinto meno puntato. La sessione dura finché resti in questa scheda del browser.</li>`,
-    `<li>Le statistiche e il saldo sono salvati solo in questo browser.</li></ul>`,
+    `<ul><li>${t("stats.noteNet")}</li>`,
+    `<li>${t("stats.noteStorage")}</li></ul>`,
   );
   return parts.join("");
 }
