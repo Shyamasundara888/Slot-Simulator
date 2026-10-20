@@ -7,9 +7,9 @@ import { simulate, WIN_BUCKETS } from "../sim/simulate.js";
 
 const USAGE = `Uso: npm run sim -- <cartella-modulo> [--spins N] [--seed S] [--exact] [--json]
 
-  --spins N   numero di spin da simulare (predefinito 1000000)
+  --spins N   numero di round da simulare (predefinito 1000000)
   --seed S    seed dell'RNG, numero o testo (predefinito 1)
-  --exact     calcola solo l'RTP esatto, senza simulare
+  --exact     calcola solo l'RTP esatto dello spin base, senza simulare
   --json      stampa il risultato in JSON`;
 
 const pct = (x: number, digits = 2) => `${(x * 100).toFixed(digits)}%`;
@@ -40,10 +40,11 @@ async function main(): Promise<void> {
 
   if (values.exact) {
     if (values.json) return console.log(JSON.stringify(exact, null, 2));
-    console.log(`${manifest.name} ${manifest.version}: RTP esatto della modalità base`);
-    console.log(`  RTP totale   ${pct(exact.rtp, 4)}`);
-    console.log(`  da linee     ${pct(exact.lineRtp, 4)}`);
-    console.log(`  da scatter   ${pct(exact.scatterRtp, 4)}`);
+    console.log(`${manifest.name} ${manifest.version}: RTP esatto dello spin base (free spin esclusi)`);
+    console.log(`  RTP base       ${pct(exact.baseRtp, 4)}`);
+    console.log(`  da linee       ${pct(exact.lineRtp, 4)}`);
+    console.log(`  da scatter     ${pct(exact.scatterRtp, 4)}`);
+    if (math.freeSpins) console.log(`  free spin      1 spin su ${(1 / exact.freeSpinsProbability).toFixed(1)}`);
     return;
   }
 
@@ -55,25 +56,30 @@ async function main(): Promise<void> {
 
   if (values.json) return console.log(JSON.stringify({ exact, simulation: result }, null, 2));
 
-  console.log(`${manifest.name} ${manifest.version}: ${spins.toLocaleString("it-IT")} spin, seed ${seed}, ${seconds.toFixed(1)} s`);
+  console.log(`${manifest.name} ${manifest.version}: ${spins.toLocaleString("it-IT")} round, seed ${seed}, ${seconds.toFixed(1)} s`);
   console.log(`  RTP simulato        ${pct(result.rtp)} ± ${pct(result.rtpConfidence95)} (95%)`);
-  console.log(`  RTP esatto          ${pct(exact.rtp)}`);
-  console.log(`    da linee          ${pct(result.lineRtp)}  (esatto ${pct(exact.lineRtp)})`);
-  console.log(`    da scatter        ${pct(result.scatterRtp)}  (esatto ${pct(exact.scatterRtp)})`);
-  console.log(`  Frequenza vincite   ${pct(result.hitFrequency)} (1 spin su ${(1 / result.hitFrequency).toFixed(1)})`);
+  console.log(`    spin base         ${pct(result.baseRtp)}  (esatto ${pct(exact.baseRtp)})`);
+  if (result.freeSpins) console.log(`    free spin         ${pct(result.freeSpinsRtp)}`);
+  console.log(`  Frequenza vincite   ${pct(result.hitFrequency)} (1 round su ${(1 / result.hitFrequency).toFixed(1)})`);
   console.log(`  Deviazione std      ${result.stdDev.toFixed(2)}x`);
-  console.log(`  Vincita massima     ${result.maxWin.toFixed(2)}x (spin n. ${result.maxWinSpin + 1})`);
+  console.log(`  Vincita massima     ${result.maxWin.toFixed(2)}x (round n. ${result.maxWinSpin + 1})`);
+  if (Number.isFinite(math.maxWin)) {
+    console.log(`  Tetto di vincita    ${math.maxWin}x, raggiunto ${result.cappedRounds} volte`);
+  }
+  if (result.freeSpins) {
+    const f = result.freeSpins;
+    const every = f.triggers ? `1 round su ${Math.round(spins / f.triggers)}` : "mai";
+    console.log("  Free spin:");
+    console.log(`    attivazione       ${every} (esatto 1 su ${(1 / exact.freeSpinsProbability).toFixed(1)})`);
+    console.log(`    spin per bonus    ${f.averageSpins.toFixed(1)} in media`);
+    console.log(`    vincita media     ${f.averageWin.toFixed(2)}x`);
+    if (math.freeSpins?.upgradeOnExpandedWild) console.log(`    upgrade medio     livello ${f.averageUpgradeLevel.toFixed(2)}`);
+  }
   console.log("  Vincite per fascia (multipli della puntata totale):");
   WIN_BUCKETS.forEach((b, i) => {
     const n = result.winBuckets[i]!;
-    console.log(`    ${bucketLabel(b).padEnd(16)} ${pct(n / spins, 3).padStart(8)}`);
+    console.log(`    ${bucketLabel(b).padEnd(18)} ${pct(n / spins, 4).padStart(9)}`);
   });
-  if (math.scatter) {
-    console.log(`  Scatter (${math.scatter.symbol}) per spin:`);
-    result.scatterCounts.forEach((n, count) => {
-      if (count >= 3 && n > 0) console.log(`    ${count} scatter          1 spin su ${Math.round(spins / n)}`);
-    });
-  }
 }
 
 main().catch((err: unknown) => {

@@ -1,0 +1,10 @@
+{
+  "expandingWild": { "reels": [2, 3, 4] },
+  "freeSpins": {
+    "trigger": { "minScatters": 3, "spins": { "3": 12 } },
+    "retrigger": true,
+    "perExpandedWild": { "extraSpins": 1, "upgrade": true },
+    "upgradeLadder": ["GATTO", "SCARABEO", "ANKH", "FARAONE"]
+  },
+  "maxWin": 5000
+}
