@@ -36,13 +36,16 @@ L'editor è nel client: a sinistra le schede, a destra l'anteprima giocabile. La
 | Generale | `manifest.json` (id, nome, versione, autore, descrizione), griglia, colore di sfondo della scena |
 | Simboli | simboli della paytable con tipo, etichetta e colore della scena, ordine; aggiunta e rimozione; rinominare un id aggiorna paytable, strisce, funzioni, scena e `art/art.json` (non lo script Lua: l'editor avvisa se lo script cita il vecchio id) |
 | Paytable | pagamenti su linea (per puntata di linea) e scatter (per puntata totale); vuoto vuol dire nessun pagamento |
+| Linee | una mini griglia per linea: si clicca la casella da cui passa la linea su ogni rullo; aggiunta e rimozione, avviso sulle linee doppie |
+| Rulli | una modalità alla volta (spin base, free spin, modalità degli script); per ogni rullo quante volte compare ogni simbolo, con la lunghezza del rullo; cambiare un conteggio ridistribuisce i simboli del rullo senza ammassarli. Da qui si aggiungono e tolgono modalità. **Modifica le strisce simbolo per simbolo** mostra le strisce come testo, per chi vuole l'ordine esatto |
+| Funzioni | `features.json`: wild espandenti e su quali rulli, free spin (scatter minimi, spin per numero di scatter, riattivazione, extra per wild espanso, scala degli upgrade), vincita massima |
 | Problemi | gli errori del motore, come `npm run mod -- check` (script compreso), con il campo sbagliato evidenziato |
 | Numeri | RTP esatto dello spin base a ogni modifica; **Simula** con 100.000, 1 milione o 5 milioni di round in un worker |
 | Anteprima | si gioca la bozza, con saldo e statistiche separati da quelli veri; **Trova un seed** cerca un primo round con free spin o con le sequenze dello script |
 | Salvataggio | bozza automatica in IndexedDB, una per slot di partenza; annulla e ripeti; **Ricomincia dall'originale** |
 | Esportazione | **Scarica zip** (come `npm run mod -- pack`) e **Aggiungi al menu come mod** |
 
-Cambiare la griglia adatta linee, strisce e pagamenti perché il modulo resti valido, ma linee e strisce vanno riviste: le schede per linee, rulli e funzioni arrivano con la prossima parte dell'editor. Fino ad allora si modificano nei file come descritto in [modulo.md](modulo.md).
+Cambiare la griglia adatta linee, strisce e pagamenti perché il modulo resti valido, ma poi linee e strisce vanno riviste nelle schede Linee e Rulli. Lo script Lua, la grafica e i suoni per ora si modificano nei file come descritto in [script-lua.md](script-lua.md) e [asset.md](asset.md).
 
 `?edit=<id>` apre l'editor su una slot del menu, `?edit=new` su una slot nuova. Una slot inclusa nel sito si modifica come copia: lo zip si scarica con qualsiasi id, ma per aggiungerla al menu come mod l'id va cambiato.
 

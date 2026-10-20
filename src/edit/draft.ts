@@ -225,3 +225,173 @@ export function resizeGrid(draft: ModuleDraft, reels: number, rows: number): voi
     if (wild.reels.length === 0) delete draft.features.expandingWild;
   }
 }
+
+// --- linee ---
+
+/** Aggiunge una linea; senza posizioni è la riga centrale dritta. */
+export function addLine(draft: ModuleDraft, line?: readonly number[]): void {
+  const middle = Math.floor((draft.reels.rows - 1) / 2);
+  draft.lines.lines.push(line ? [...line] : new Array<number>(reelCount(draft)).fill(middle));
+}
+
+export function removeLine(draft: ModuleDraft, index: number): void {
+  if (draft.lines.lines.length > 1) draft.lines.lines.splice(index, 1);
+}
+
+/** Sposta la posizione di una linea su un rullo (da 0) alla riga indicata (da 0). */
+export function setLineRow(draft: ModuleDraft, index: number, reel: number, row: number): void {
+  const line = draft.lines.lines[index];
+  if (line && reel < line.length && row >= 0 && row < draft.reels.rows) line[reel] = row;
+}
+
+/** Per ogni linea uguale a una precedente, l'indice (da 0) della prima uguale. */
+export function duplicateLines(draft: ModuleDraft): Map<number, number> {
+  const first = new Map<string, number>();
+  const duplicates = new Map<number, number>();
+  draft.lines.lines.forEach((line, i) => {
+    const key = line.join(",");
+    const seen = first.get(key);
+    if (seen === undefined) first.set(key, i);
+    else duplicates.set(i, seen);
+  });
+  return duplicates;
+}
+
+// --- rulli ---
+
+/** Modalità dei rulli nell'ordine dei file: base, free, poi quelle degli script. */
+export const reelModes = (draft: ModuleDraft) => Object.keys(draft.reels.modes);
+
+/** Quante volte compare ogni simbolo su una striscia. */
+export function stripCounts(strip: readonly string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const s of strip) counts.set(s, (counts.get(s) ?? 0) + 1);
+  return counts;
+}
+
+/**
+ * Crea una striscia dai conteggi, con ogni simbolo distribuito in modo
+ * uniforme (round robin pesato): le copie di uno stesso simbolo stanno il più
+ * lontano possibile tra loro e, quando si può, mai una accanto all'altra.
+ * Lo stesso conteggio dà sempre la stessa striscia.
+ */
+export function spreadStrip(counts: ReadonlyMap<string, number>): string[] {
+  const entries = [...counts].filter(([, n]) => n > 0).map(([symbol, n]) => ({ symbol, weight: n, left: n, current: 0 }));
+  const length = entries.reduce((sum, e) => sum + e.weight, 0);
+  const strip: string[] = [];
+  for (let i = 0; i < length; i++) {
+    for (const e of entries) if (e.left > 0) e.current += e.weight;
+    const candidates = entries.filter((e) => e.left > 0).sort((a, b) => b.current - a.current);
+    // Evita di ripetere il simbolo appena messo, e all'ultimo posto quello del primo: la striscia gira in tondo.
+    const avoid = new Set([strip.at(-1), i === length - 1 ? strip[0] : undefined]);
+    // Un simbolo che occupa metà dei posti rimasti va messo subito, o resterebbe per forza accanto a se stesso.
+    // A parità conta il simbolo del primo posto, che non deve finire anche all'ultimo.
+    const first = (e: { symbol: string }) => (e.symbol === strip[0] ? 1 : 0);
+    const urgent = candidates
+      .filter((e) => e.left * 2 >= length - i && !avoid.has(e.symbol))
+      .sort((a, b) => b.left - a.left || first(b) - first(a))[0];
+    const pick = urgent ?? candidates.find((e) => !avoid.has(e.symbol)) ?? candidates[0]!;
+    pick.current -= length;
+    pick.left--;
+    strip.push(pick.symbol);
+  }
+  return strip;
+}
+
+/** Cambia quante volte un simbolo compare su un rullo (da 0); la striscia viene ridistribuita. */
+export function setSymbolCount(draft: ModuleDraft, mode: string, reel: number, symbol: string, count: number): void {
+  const strip = draft.reels.modes[mode]?.[reel];
+  if (!strip) return;
+  const counts = stripCounts(strip);
+  // Un simbolo nuovo va in fondo, nell'ordine della paytable.
+  counts.set(symbol, Math.max(0, Math.floor(count)));
+  const order = draft.paytable.symbols.map((s) => s.id).filter((id) => counts.has(id));
+  for (const id of counts.keys()) if (!order.includes(id)) order.push(id);
+  draft.reels.modes[mode]![reel] = spreadStrip(new Map(order.map((id) => [id, counts.get(id)!])));
+}
+
+/** Sostituisce la striscia di un rullo (da 0), per chi vuole decidere l'ordine dei simboli. */
+export function setStrip(draft: ModuleDraft, mode: string, reel: number, strip: readonly string[]): void {
+  const strips = draft.reels.modes[mode];
+  if (strips && reel < strips.length) strips[reel] = [...strip];
+}
+
+/** Aggiunge una modalità copiando le strisce di un'altra; per le modalità degli script serve anche un nome nella scena. */
+export function addMode(draft: ModuleDraft, mode: string, from = "base", label?: string): void {
+  const source = draft.reels.modes[from] ?? draft.reels.modes.base;
+  draft.reels.modes[mode] = source.map((strip) => [...strip]);
+  if (mode !== "free" && label) {
+    draft.scene.modes ??= {};
+    draft.scene.modes[mode] = { label };
+  }
+}
+
+/** Toglie una modalità (mai base) e il suo nome nella scena. */
+export function removeMode(draft: ModuleDraft, mode: string): void {
+  if (mode === "base") return;
+  delete draft.reels.modes[mode];
+  if (draft.scene.modes) delete draft.scene.modes[mode];
+}
+
+// --- funzioni ---
+
+type FreeSpins = NonNullable<ModuleDraft["features"]["freeSpins"]>;
+
+/** Attiva o toglie i wild espandenti; attivi partono dai rulli centrali. */
+export function setExpandingWild(draft: ModuleDraft, enabled: boolean): void {
+  if (!enabled) return void delete draft.features.expandingWild;
+  const reels = reelCount(draft);
+  const middle = Array.from({ length: Math.max(1, reels - 2) }, (_, i) => i + 2).filter((r) => r <= reels);
+  draft.features.expandingWild = { reels: middle };
+}
+
+/** Aggiunge o toglie un rullo (da 1) tra quelli su cui il wild si espande. */
+export function toggleExpandingReel(draft: ModuleDraft, reel: number, on: boolean): void {
+  const wild = draft.features.expandingWild;
+  if (!wild) return;
+  const reels = new Set(wild.reels);
+  if (on) reels.add(reel);
+  else reels.delete(reel);
+  if (reels.size === 0) delete draft.features.expandingWild;
+  else wild.reels = [...reels].sort((a, b) => a - b);
+}
+
+/**
+ * Attiva o toglie i free spin. Attivi partono con 3 scatter per 10 free spin;
+ * tolti, se ne vanno anche le strisce della modalità free, che senza free
+ * spin non sono ammesse.
+ */
+export function setFreeSpins(draft: ModuleDraft, enabled: boolean): void {
+  if (enabled) {
+    draft.features.freeSpins ??= { trigger: { minScatters: 3, spins: { "3": 10 } }, retrigger: false };
+    return;
+  }
+  delete draft.features.freeSpins;
+  delete draft.reels.modes.free;
+}
+
+/** Modifica i free spin già attivi. */
+export function updateFreeSpins(draft: ModuleDraft, change: (fs: FreeSpins) => void): void {
+  const fs = draft.features.freeSpins;
+  if (!fs) return;
+  change(fs);
+  const per = fs.perExpandedWild;
+  if (per && !per.extraSpins && !per.upgrade && !per.multiplier) delete fs.perExpandedWild;
+  if (fs.upgradeLadder && fs.upgradeLadder.length === 0) delete fs.upgradeLadder;
+}
+
+/** Free spin assegnati da un numero di scatter; null o 0 lo tolgono. */
+export function setFreeSpinsAward(draft: ModuleDraft, scatters: number, spins: number | null): void {
+  updateFreeSpins(draft, (fs) => {
+    const table = { ...fs.trigger.spins };
+    if (spins === null || spins === 0) delete table[String(scatters)];
+    else table[String(scatters)] = spins;
+    fs.trigger.spins = Object.fromEntries(Object.entries(table).sort(([a], [b]) => Number(a) - Number(b)));
+  });
+}
+
+/** Tetto di vincita in multipli della puntata totale; null lo toglie. */
+export function setMaxWin(draft: ModuleDraft, maxWin: number | null): void {
+  if (maxWin === null || maxWin <= 0) delete draft.features.maxWin;
+  else draft.features.maxWin = maxWin;
+}

@@ -11,7 +11,11 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Attrs = 
     if (typeof value === "function") el.addEventListener(name.slice(2), value);
     else if (value === true) el.setAttribute(name, "");
     else if (value !== false && value !== null && value !== undefined) {
-      if (name === "value") (el as HTMLInputElement).value = String(value);
+      if (name === "value") {
+        (el as HTMLInputElement).value = String(value);
+        // Il valore già salvato nella bozza: serve a capire se il campo ha modifiche in sospeso.
+        el.dataset.saved = String(value);
+      }
       else el.setAttribute(name, String(value));
     }
   }
