@@ -124,7 +124,7 @@ async function main(): Promise<void> {
       const swallowed = ["only", "variants", "seed", "url"].filter((name) => process.env[`npm_config_${name}`] !== undefined);
       if (swallowed.length > 0) {
         throw new ComfyError(
-          `npm ha preso le opzioni ${swallowed.map((n) => `--${n}`).join(", ")} invece di passarle al comando (succede in PowerShell, che toglie il "--").\n` +
+          `npm si è tenuto le opzioni del comando invece di passargliele (ha visto almeno ${swallowed.map((n) => `--${n}`).join(", ")}; succede in PowerShell, che toglie il "--").\n` +
             "In PowerShell usa npm.cmd: npm.cmd run assets -- generate <cartella> ...",
         );
       }
