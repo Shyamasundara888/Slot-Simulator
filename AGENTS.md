@@ -42,6 +42,7 @@ npm run sim -- slots/<id> --exact             # RTP esatto dello spin base, in m
 npm run sim -- slots/<id> --spins 2000000     # RTP totale, volatilità, vincita massima, frequenze dei bonus
 npm run assets -- build slots/<id>            # genera immagini, animazioni, sfondo e suoni da art/art.json
 npm run assets -- prompts slots/<id>          # prompt per un generatore di immagini esterno
+npm run assets -- generate slots/<id>         # immagini dei simboli e dello sfondo con ComfyUI in locale, in art/raw/
 npm test                                      # test automatici (devono passare tutti)
 npm run typecheck                             # controllo dei tipi
 npm run dev                                   # client su http://localhost:5173/?slot=<id>

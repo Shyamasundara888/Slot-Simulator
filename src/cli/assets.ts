@@ -3,7 +3,8 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { buildAssets, promptsMarkdown } from "../assets/build.js";
-import { artSchema, type ArtSpec } from "../assets/spec.js";
+import { ComfyClient, ComfyError } from "../assets/comfyui.js";
+import { ART_FILE, generate, readSpec } from "../assets/generate.js";
 import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 
@@ -11,25 +12,18 @@ const USAGE = `Uso: npm run assets -- <comando> <cartella-modulo>
 
   build     legge art/art.json, crea immagini, fotogrammi di vincita, sfondo e suoni in assets/
             e aggiorna scenes/main.json (le cartelle assets/symbols e assets/sounds vengono rifatte)
-  prompts   scrive art/prompts.md con un prompt per simbolo, da usare con un generatore di immagini esterno`;
+  prompts   scrive art/prompts.md con un prompt per simbolo, da usare con un generatore di immagini esterno
+  generate  genera con ComfyUI in locale le immagini dei simboli e dello sfondo in art/raw/
+            (salta quelle già presenti; registra prompt, seed e modello in art/raw/generated.json)
 
-export const ART_FILE = "art/art.json";
+Opzioni di generate:
+  --only <ID>       solo questo simbolo (ripetibile); "background" per lo sfondo
+  --force           rigenera anche le immagini già presenti
+  --variants <n>    n varianti per immagine, con seed consecutivi, in art/raw/varianti/
+  --seed <n>        seed di partenza al posto di quello di art.json
+  --url <indirizzo> API di ComfyUI (predefinito: COMFYUI_URL oppure http://127.0.0.1:8188)`;
 
-async function readSpec(dir: string): Promise<ArtSpec> {
-  const path = join(dir, ART_FILE);
-  if (!existsSync(path)) throw new ModuleError([`manca ${ART_FILE}`]);
-  let raw: unknown;
-  try {
-    raw = JSON.parse(await readFile(path, "utf8"));
-  } catch (err) {
-    throw new ModuleError([`${ART_FILE}: JSON non valido (${(err as Error).message})`]);
-  }
-  const parsed = artSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new ModuleError(parsed.error.issues.map((i) => `${ART_FILE}: ${i.path.join(".") || "(radice)"}: ${i.message}`));
-  }
-  return parsed.data;
-}
+
 
 /** Simboli della paytable, per controllare che art.json li copra tutti e non ne inventi. */
 async function paytableSymbols(dir: string): Promise<string[]> {
@@ -103,18 +97,38 @@ async function prompts(dir: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: { help: { type: "boolean", short: "h", default: false } } });
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: {
+      help: { type: "boolean", short: "h", default: false },
+      only: { type: "string", multiple: true, default: [] },
+      force: { type: "boolean", default: false },
+      variants: { type: "string", default: "1" },
+      seed: { type: "string" },
+      url: { type: "string", default: process.env.COMFYUI_URL ?? "http://127.0.0.1:8188" },
+    },
+  });
   const [command, target] = positionals;
-  if (values.help || target === undefined || (command !== "build" && command !== "prompts")) {
+  if (values.help || target === undefined || !["build", "prompts", "generate"].includes(command ?? "")) {
     console.log(USAGE);
     process.exitCode = values.help ? 0 : 1;
     return;
   }
   const dir = resolve(target);
   try {
-    await (command === "build" ? build(dir) : prompts(dir));
+    if (command === "build") await build(dir);
+    else if (command === "prompts") await prompts(dir);
+    else {
+      const variants = Number(values.variants);
+      const seed = values.seed === undefined ? undefined : Number(values.seed);
+      if (!Number.isInteger(variants) || variants < 1 || variants > 16) throw new ModuleError(["--variants: serve un numero intero da 1 a 16"]);
+      if (seed !== undefined && (!Number.isSafeInteger(seed) || seed < 0)) throw new ModuleError(["--seed: serve un numero intero positivo"]);
+      const client = new ComfyClient({ url: values.url });
+      const files = await generate(dir, { only: values.only, force: values.force, variants, ...(seed !== undefined && { seed }), client });
+      console.log(`${files.length} immagini generate`);
+    }
   } catch (err) {
-    if (!(err instanceof ModuleError)) throw err;
+    if (!(err instanceof ModuleError) && !(err instanceof ComfyError)) throw err;
     console.error(err.message);
     process.exitCode = 1;
   }

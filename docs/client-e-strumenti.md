@@ -91,6 +91,7 @@ I test automatici (`npm test`) coprono motore, moduli, script, asset, operazioni
 | `npm run mod -- install <zip> [--slots DIR] [--force]` | controlla ed estrae in `slots/<id>/` |
 | `npm run assets -- build <modulo>` | genera gli asset da `art/art.json` e aggiorna la scena |
 | `npm run assets -- prompts <modulo>` | scrive `art/prompts.md` per un generatore esterno |
+| `npm run assets -- generate <modulo>` | genera con ComfyUI in locale le immagini dei simboli e dello sfondo in `art/raw/` ([asset.md](asset.md#comfyui-in-locale)) |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi |
 

@@ -233,9 +233,26 @@ export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
   return { files, scene };
 }
 
+const styleOf = (spec: ArtSpec) => (spec.prompt ? `${spec.prompt.trim().replace(/\.$/, "")}. ` : "");
+
+/**
+ * Prompt completo per il simbolo `id`: stile comune, soggetto e vincoli.
+ * `backdrop` dice che fondo chiedere: un modello come SDXL non sa fare la trasparenza
+ * e disegnerebbe una scacchiera, quindi npm run assets -- generate chiede una tinta unita e poi scontorna.
+ */
+export function symbolPrompt(spec: ArtSpec, id: string, labels: ReadonlyMap<string, string>, backdrop = "transparent or plain flat background"): string {
+  const text = spec.symbols[id]?.prompt ?? labels.get(id) ?? id;
+  const subject = text.charAt(0).toUpperCase() + text.slice(1);
+  return `${styleOf(spec)}${subject}. Single game icon, centered, fills most of a square 1:1 frame, ${backdrop}, no text, no border, no frame.`;
+}
+
+/** Prompt completo per lo sfondo. */
+export function backgroundPrompt(spec: ArtSpec): string {
+  return `${styleOf(spec)}${spec.background?.prompt ?? "Background scene for a slot machine"}. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.`;
+}
+
 /** Prompt per un generatore di immagini esterno, uno per simbolo e uno per lo sfondo, in Markdown. */
 export function promptsMarkdown(spec: ArtSpec, labels: ReadonlyMap<string, string>, slotName: string): string {
-  const style = spec.prompt ? `${spec.prompt.trim().replace(/\.$/, "")}. ` : "";
   const lines = [
     `# Prompt per gli asset di ${slotName}`,
     "",
@@ -245,24 +262,15 @@ export function promptsMarkdown(spec: ArtSpec, labels: ReadonlyMap<string, strin
     "## Simboli",
     "",
   ];
-  for (const [id, art] of Object.entries(spec.symbols)) {
-    const text = art.prompt ?? labels.get(id) ?? id;
-    const subject = text.charAt(0).toUpperCase() + text.slice(1);
-    lines.push(
-      `### ${labels.get(id) ?? id} → \`art/raw/${id.toLowerCase()}.png\``,
-      "",
-      "```",
-      `${style}${subject}. Single game icon, centered, fills most of a square 1:1 frame, transparent or plain flat background, no text, no border, no frame.`,
-      "```",
-      "",
-    );
+  for (const id of Object.keys(spec.symbols)) {
+    lines.push(`### ${labels.get(id) ?? id} → \`art/raw/${id.toLowerCase()}.png\``, "", "```", symbolPrompt(spec, id, labels), "```", "");
   }
   if (spec.background) {
     lines.push(
       "## Sfondo → `art/raw/background.png`",
       "",
       "```",
-      `${style}${spec.background.prompt ?? "Background scene for a slot machine"}. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.`,
+      backgroundPrompt(spec),
       "```",
       "",
       "Poi in `art/art.json` usa `\"background\": { \"image\": \"art/raw/background.png\" }`.",

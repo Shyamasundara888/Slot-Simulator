@@ -84,6 +84,34 @@ npm run assets -- prompts slots/<id>     # scrive art/prompts.md
 
 Usa lo stesso modello, le stesse impostazioni e lo stesso seed per tutta la serie. Nei prompt niente nomi di giochi, marchi o artisti viventi. Prima di usare un servizio esterno verifica che le sue condizioni permettano l'uso che vuoi fare delle immagini.
 
+## ComfyUI in locale
+
+Con [ComfyUI](https://github.com/comfyanonymous/ComfyUI) avviato sullo stesso computer, un comando genera tutte le immagini:
+
+```bash
+npm run assets -- generate slots/<id>                        # tutti i simboli e lo sfondo che mancano in art/raw/
+npm run assets -- generate slots/<id> --only FARAONE --force # rifà un solo simbolo
+npm run assets -- generate slots/<id> --only ANKH --variants 4  # 4 varianti con seed consecutivi
+```
+
+Per ogni simbolo il comando prende lo stesso prompt di `art/prompts.md` (con "plain light grey background" al posto della trasparenza, che SDXL non sa fare), lo mette nel workflow, lo manda all'API di ComfyUI e salva il risultato in `art/raw/<id>.png`; lo sfondo va in `art/raw/background.png`. Il workflow dei simboli scontorna l'immagine, quindi il PNG è già trasparente. Le immagini che ci sono già si saltano; `--force` le rifà. Ogni file generato viene registrato in `art/raw/generated.json` con prompt, seed, workflow, modello e data: serve a rifare la stessa immagine e a sapere da dove viene.
+
+Il comando non cambia `art/art.json`: alla fine stampa le righe `"image": ...` da aggiungere ai simboli. Poi `npm run assets -- build slots/<id>` come sempre.
+
+Le varianti vanno in `art/raw/varianti/<id>-<seed>.png`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
+
+| Campo di `art.json` | Significato |
+| --- | --- |
+| `generate.seed` (`777`) | seed di tutta la serie |
+| `generate.size` (`512`) | lato in pixel dei simboli salvati (ComfyUI li rimpicciolisce prima di salvarli) |
+| `generate.backgroundSize` | `[larghezza, altezza]` dello sfondo; se manca resta quella del workflow (1344x768) |
+| `generate.workflow`, `generate.backgroundWorkflow` | workflow propri in `art/` (formato API); predefiniti quelli di [tools/comfyui/workflows](../tools/comfyui/workflows/) |
+| `symbols.<ID>.seed`, `background.seed` | seed di un'immagine, al posto di `generate.seed` |
+
+L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` e un solo `SaveImage`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).
+
+Il comando gira solo dove ComfyUI è raggiungibile, di solito il PC su cui è installato: un assistente in un ambiente cloud non lo raggiunge e deve chiedere alla persona di lanciarlo.
+
 ## Controllare il risultato
 
 1. `npm run assets -- build slots/<id>` e `npm run mod -- check slots/<id>`.
