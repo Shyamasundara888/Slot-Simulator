@@ -1,0 +1,273 @@
+import type { SoundEvent } from "../module/parse.js";
+import type { ArtSpec, SoundArt, SymbolArt } from "./spec.js";
+
+/** Lato di una tessera in unità SVG; il disegno occupa il riquadro interno. */
+const TILE = 100;
+/** Margine tra il bordo della tessera e il disegno. */
+const INSET = 10;
+/** Lato in pixel delle immagini prodotte. */
+const OUTPUT_SIZE = 320;
+const SAMPLE_RATE = 22050;
+
+const SOUND_FILES: Record<SoundEvent, string> = {
+  spin: "spin.wav",
+  stop: "stop.wav",
+  win: "win.wav",
+  bigWin: "big-win.wav",
+  feature: "feature.wav",
+};
+
+const MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+
+/** Legge un file della cartella del modulo (percorso relativo, per esempio art/raw/drago.png). */
+export type ReadFile = (path: string) => Uint8Array;
+
+export interface BuiltAssets {
+  /** File da scrivere nel modulo, per percorso relativo (tutti dentro assets/). */
+  files: Map<string, Uint8Array>;
+  /** Campi da unire in scenes/main.json. */
+  scene: {
+    backgroundImage?: string;
+    symbols: Record<string, { color: string; image: string; winFrames: string[]; fps: number }>;
+    sounds: Partial<Record<SoundEvent, string>>;
+  };
+}
+
+export function lighten(hex: string, amount: number): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const channel = (shift: number) => {
+    const c = (n >> shift) & 255;
+    return Math.round(c + (255 - c) * amount);
+  };
+  return `#${[16, 8, 0].map((s) => channel(s).toString(16).padStart(2, "0")).join("")}`;
+}
+
+const base64 = (bytes: Uint8Array) => {
+  let s = "";
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+};
+
+/** Contenuto e viewBox di un file SVG, per annidarlo in un'altra immagine. */
+export function parseSvg(text: string, path: string): { viewBox: string; body: string } {
+  const open = /<svg\b[^>]*>/i.exec(text);
+  const close = text.lastIndexOf("</svg>");
+  if (!open || close < 0) throw new Error(`${path}: non è un file SVG`);
+  const tag = open[0];
+  let viewBox = /viewBox="([^"]+)"/i.exec(tag)?.[1];
+  if (!viewBox) {
+    const w = /\swidth="([\d.]+)/i.exec(tag)?.[1];
+    const h = /\sheight="([\d.]+)/i.exec(tag)?.[1];
+    if (!w || !h) throw new Error(`${path}: serve viewBox oppure width e height`);
+    viewBox = `0 0 ${w} ${h}`;
+  }
+  return { viewBox, body: text.slice(open.index + tag.length, close) };
+}
+
+/** Il disegno di un simbolo, già posizionato nel riquadro interno della tessera. */
+function artwork(id: string, art: SymbolArt, read: ReadFile): string {
+  const inner = TILE - 2 * INSET;
+  if (art.image) {
+    const ext = art.image.split(".").pop()!.toLowerCase();
+    const href = `data:${MIME[ext]};base64,${base64(read(art.image))}`;
+    return `<image x="${INSET}" y="${INSET}" width="${inner}" height="${inner}" preserveAspectRatio="xMidYMid meet" href="${href}"/>`;
+  }
+  if (art.svg) {
+    const { viewBox, body } = parseSvg(new TextDecoder().decode(read(art.svg)), art.svg);
+    return `<svg x="${INSET}" y="${INSET}" width="${inner}" height="${inner}" viewBox="${viewBox}" preserveAspectRatio="xMidYMid meet">${body}</svg>`;
+  }
+  const { palette, rows } = art.pixels!;
+  const cols = rows[0]!.length;
+  const rects: string[] = [];
+  rows.forEach((row, y) => {
+    // Pixel uguali e consecutivi diventano un solo rettangolo: file più piccoli.
+    for (let x = 0; x < cols; ) {
+      const c = row[x]!;
+      let run = 1;
+      while (x + run < cols && row[x + run] === c) run++;
+      if (c !== ".") rects.push(`<rect x="${x}" y="${y}" width="${run}" height="1" fill="${palette[c]}"/>`);
+      x += run;
+    }
+  });
+  if (rects.length === 0) throw new Error(`${id}: la pixel art è vuota`);
+  return `<svg x="${INSET}" y="${INSET}" width="${inner}" height="${inner}" viewBox="0 0 ${cols} ${rows.length}" shape-rendering="crispEdges">${rects.join("")}</svg>`;
+}
+
+/** Scintille dei fotogrammi di vincita: cambiano posizione da un fotogramma all'altro. */
+const SPARKLES = [
+  [8, 8], [90, 12], [12, 86], [86, 90], [50, 3], [3, 50], [97, 52], [48, 97],
+] as const;
+
+/**
+ * Immagine di un simbolo: la tessera, il disegno e, per `glow` > 0, il
+ * bagliore di un fotogramma di vincita (da 0 a 1).
+ */
+export function symbolSvg(id: string, art: SymbolArt, look: ArtSpec["look"], read: ReadFile, glow = 0, frame = 0): string {
+  const pixel = look === "pixel";
+  const radius = pixel ? 0 : 14;
+  const glowColor = art.glow ?? lighten(art.tile, 0.6);
+  const parts: string[] = [];
+  const fill = glow > 0 ? lighten(art.tile, (pixel ? 0.15 : 0.08) + (pixel ? 0.3 : 0.17) * glow) : art.tile;
+  if (pixel) {
+    parts.push(`<rect width="${TILE}" height="${TILE}" fill="${fill}"/>`);
+  } else {
+    parts.push(
+      `<defs><radialGradient id="t" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="${lighten(fill, 0.25)}"/><stop offset="1" stop-color="${fill}"/></radialGradient></defs>`,
+      `<rect width="${TILE}" height="${TILE}" rx="${radius}" fill="url(#t)"/>`,
+    );
+  }
+  const border = glow > 0 ? glowColor : lighten(art.tile, 0.3);
+  parts.push(
+    `<rect x="2.5" y="2.5" width="${TILE - 5}" height="${TILE - 5}" rx="${Math.max(0, radius - 2)}" fill="none" stroke="${border}" stroke-width="${glow > 0 ? 5 : 3}"/>`,
+  );
+  if (glow > 0 && !pixel) {
+    parts.push(`<circle cx="50" cy="50" r="${30 + 12 * glow}" fill="${glowColor}" opacity="${0.18 + 0.2 * glow}"/>`);
+  }
+  parts.push(artwork(id, art, read));
+  if (glow > 0) {
+    const size = pixel ? 5 : 4;
+    SPARKLES.forEach(([x, y], i) => {
+      if ((i + frame) % 2 !== 0) return;
+      parts.push(
+        pixel
+          ? `<rect x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}" fill="#ffffff"/>`
+          : `<path d="M${x} ${y - 2 * size}L${x + size / 2} ${y - size / 2}L${x + 2 * size} ${y}L${x + size / 2} ${y + size / 2}L${x} ${y + 2 * size}L${x - size / 2} ${y + size / 2}L${x - 2 * size} ${y}L${x - size / 2} ${y - size / 2}Z" fill="#ffffff"/>`,
+      );
+    });
+  }
+  const rendering = pixel ? ` shape-rendering="crispEdges"` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${OUTPUT_SIZE}" height="${OUTPUT_SIZE}" viewBox="0 0 ${TILE} ${TILE}"${rendering}>${parts.join("")}</svg>\n`;
+}
+
+/** Sfondo: un SVG di art/ copiato così com'è, oppure un'immagine raster avvolta in un SVG. */
+function backgroundSvg(bg: NonNullable<ArtSpec["background"]>, read: ReadFile): string {
+  if (bg.image) {
+    const ext = bg.image.split(".").pop()!.toLowerCase();
+    const href = `data:${MIME[ext]};base64,${base64(read(bg.image))}`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520"><image width="900" height="520" preserveAspectRatio="xMidYMid slice" href="${href}"/></svg>\n`;
+  }
+  const text = new TextDecoder().decode(read(bg.svg!));
+  parseSvg(text, bg.svg!);
+  return text.endsWith("\n") ? text : `${text}\n`;
+}
+
+/** Sintetizza un suono a 8 bit, mono, come file WAV. */
+export function synthWav({ wave, notes, volume }: SoundArt): Uint8Array {
+  const samples: number[] = [];
+  let noise = 0x1234;
+  for (const [freq, duration] of notes) {
+    const [f0, f1] = Array.isArray(freq) ? freq : [freq, freq];
+    const n = Math.round(duration * SAMPLE_RATE);
+    let phase = 0;
+    for (let i = 0; i < n; i++) {
+      phase += (f0 + (f1 - f0) * (i / n)) / SAMPLE_RATE;
+      const p = phase % 1;
+      let v: number;
+      if (wave === "square") v = p < 0.5 ? 1 : -1;
+      else if (wave === "triangle") v = 4 * Math.abs(p - 0.5) - 1;
+      else if (wave === "sine") v = Math.sin(2 * Math.PI * p);
+      else {
+        noise ^= noise << 7;
+        noise ^= noise >> 9;
+        noise &= 0xffff;
+        v = (noise / 0x8000) - 1;
+      }
+      // Attacco e rilascio di 10-20 ms per evitare i click.
+      const env = Math.min(1, i / (SAMPLE_RATE * 0.01), (n - i) / (SAMPLE_RATE * 0.02));
+      samples.push(v * env * volume);
+    }
+  }
+  const out = new Uint8Array(44 + samples.length);
+  const view = new DataView(out.buffer);
+  const text = (offset: number, s: string) => [...s].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  text(0, "RIFF");
+  view.setUint32(4, 36 + samples.length, true);
+  text(8, "WAVE");
+  text(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  text(36, "data");
+  view.setUint32(40, samples.length, true);
+  samples.forEach((v, i) => out[44 + i] = Math.max(0, Math.min(255, Math.round(128 + v * 127))));
+  return out;
+}
+
+/** Ricava dalla sorgente tutti gli asset del modulo e i campi della scena che li usano. */
+export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
+  const encode = (s: string) => new TextEncoder().encode(s);
+  const files = new Map<string, Uint8Array>();
+  const scene: BuiltAssets["scene"] = { symbols: {}, sounds: {} };
+  const { frames, fps } = spec.win;
+
+  for (const [id, art] of Object.entries(spec.symbols)) {
+    const name = id.toLowerCase();
+    const image = `assets/symbols/${name}.svg`;
+    files.set(image, encode(symbolSvg(id, art, spec.look, read)));
+    const winFrames: string[] = [];
+    for (let k = 0; k < frames; k++) {
+      // Il bagliore cresce fotogramma dopo fotogramma, poi si torna al simbolo normale.
+      const glow = (k + 1) / frames;
+      const path = `assets/symbols/${name}-win-${k + 1}.svg`;
+      files.set(path, encode(symbolSvg(id, art, spec.look, read, glow, k)));
+      winFrames.push(path);
+    }
+    winFrames.push(image);
+    scene.symbols[id] = { color: art.tile, image, winFrames, fps };
+  }
+
+  if (spec.background) {
+    files.set("assets/background.svg", encode(backgroundSvg(spec.background, read)));
+    scene.backgroundImage = "assets/background.svg";
+  }
+
+  for (const [event, sound] of Object.entries(spec.sounds) as [SoundEvent, SoundArt][]) {
+    const path = `assets/sounds/${SOUND_FILES[event]}`;
+    files.set(path, synthWav(sound));
+    scene.sounds[event] = path;
+  }
+  return { files, scene };
+}
+
+/** Prompt per un generatore di immagini esterno, uno per simbolo e uno per lo sfondo, in Markdown. */
+export function promptsMarkdown(spec: ArtSpec, labels: ReadonlyMap<string, string>, slotName: string): string {
+  const style = spec.prompt ? `${spec.prompt.trim().replace(/\.$/, "")}. ` : "";
+  const lines = [
+    `# Prompt per gli asset di ${slotName}`,
+    "",
+    "Genera ogni immagine con lo stesso modello e le stesse impostazioni, così lo stile resta coerente.",
+    "Salva i file con il nome indicato, poi in `art/art.json` aggiungi `\"image\": \"art/raw/<nome>\"` al simbolo e lancia `npm run assets -- build <cartella>`.",
+    "",
+    "## Simboli",
+    "",
+  ];
+  for (const [id, art] of Object.entries(spec.symbols)) {
+    const text = art.prompt ?? labels.get(id) ?? id;
+    const subject = text.charAt(0).toUpperCase() + text.slice(1);
+    lines.push(
+      `### ${labels.get(id) ?? id} → \`art/raw/${id.toLowerCase()}.png\``,
+      "",
+      "```",
+      `${style}${subject}. Single game icon, centered, fills most of a square 1:1 frame, transparent or plain flat background, no text, no border, no frame.`,
+      "```",
+      "",
+    );
+  }
+  if (spec.background) {
+    lines.push(
+      "## Sfondo → `art/raw/background.png`",
+      "",
+      "```",
+      `${style}${spec.background.prompt ?? "Background scene for a slot machine"}. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.`,
+      "```",
+      "",
+      "Poi in `art/art.json` usa `\"background\": { \"image\": \"art/raw/background.png\" }`.",
+      "",
+    );
+  }
+  return lines.join("\n");
+}

@@ -1,0 +1,96 @@
+# Asset: immagini, animazioni e suoni
+
+Gli asset di una slot (immagini dei simboli, fotogrammi delle vincite, sfondo, suoni) non si scrivono a mano in `assets/`: si descrivono in `art/art.json` e si generano con `npm run assets -- build slots/<id>`. Il comando:
+- rifà da zero `assets/symbols/` e `assets/sounds/` e scrive `assets/background.svg`;
+- aggiorna in `scenes/main.json` colori, immagini, fotogrammi e suoni dei simboli, lasciando com'erano etichette, nomi delle modalità e gli altri campi;
+- valida il modulo risultante.
+
+La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test controlla che gli asset salvati delle slot di esempio corrispondano al loro `art/art.json`: dopo ogni modifica va rifatta la build.
+
+## art/art.json
+
+```json
+{
+  "prompt": "16-bit fantasy RPG pixel art, bold black outlines, limited palette",
+  "look": "pixel",
+  "symbols": {
+    "SPADA": {
+      "tile": "#3b4252",
+      "prompt": "a glowing steel sword with a golden hilt, the wild symbol",
+      "pixels": { "palette": { "K": "#111111", "W": "#f8f9fa" }, "rows": ["..KK", ".KWK", "KWK.", "KK.."] }
+    },
+    "DRAGO": { "tile": "#5c1a1a", "svg": "art/symbols/drago.svg" },
+    "MAGO": { "tile": "#2e1f5e", "svg": "art/symbols/mago.svg", "image": "art/raw/mago.png" }
+  },
+  "win": { "frames": 2, "fps": 6 },
+  "background": { "svg": "art/background.svg", "prompt": "night sky over purple mountains" },
+  "sounds": {
+    "spin": { "wave": "square", "notes": [[[220, 660], 0.18]], "volume": 0.35 },
+    "win": { "wave": "square", "notes": [[523.25, 0.07], [659.25, 0.07], [783.99, 0.14]], "volume": 0.45 }
+  }
+}
+```
+
+| Campo | Significato |
+| --- | --- |
+| `prompt` | stile comune, ripreso in testa a ogni prompt per il generatore esterno |
+| `look` (`pixel`) | `pixel`: tessere quadrate e pixel netti; `smooth`: tessere arrotondate con sfumatura e bagliore morbido |
+| `symbols.<ID>.tile` | colore della tessera e colore del simbolo nella scena; scuro, diverso per ogni simbolo |
+| `symbols.<ID>.pixels` | pixel art: `rows` una stringa per riga (tutte lunghe uguali), `.` trasparente, ogni altro carattere preso da `palette` |
+| `symbols.<ID>.svg` | file vettoriale in `art/`, con `viewBox` (oppure `width` e `height`) |
+| `symbols.<ID>.image` | PNG, JPG o WebP in `art/`, incorporato nell'immagine del simbolo |
+| `symbols.<ID>.prompt` | soggetto per il generatore esterno (in inglese) |
+| `symbols.<ID>.glow` | colore del bagliore nelle vincite (predefinito: la tessera schiarita) |
+| `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
+| `win.fps` (`6`) | velocità dell'animazione |
+| `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
+| `sounds.<evento>` | `spin`, `stop`, `win`, `bigWin`, `feature` |
+| `sounds.<evento>.wave` (`square`) | `square` (8 bit), `triangle` (morbido), `sine` (puro), `noise` (rumore, per colpi e scatti) |
+| `sounds.<evento>.notes` | note in sequenza: `[frequenza in Hz, durata in s]` oppure `[[da, a], durata]` per una glissata |
+| `sounds.<evento>.volume` (`0.5`) | da 0 a 1 |
+
+Ogni simbolo deve avere almeno uno tra `pixels`, `svg` e `image`; se ne ha più di uno vince `image`, poi `svg`, poi `pixels`. Così si parte da un disegno di Claude e lo si sostituisce più avanti con un'immagine esterna, senza perdere la riserva. I simboli che `art.json` non descrive restano tessere colorate. Gli id devono esistere in `math/paytable.json`.
+
+File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. I suoni vanno in `assets/sounds/<evento>.wav` (`bigWin` diventa `big-win.wav`).
+
+## Linee guida per disegnare
+
+**Leggibilità e gerarchia**
+- Wild e scatter si riconoscono a colpo d'occhio: forma unica, colori più saturi, scritta WILD o SCATTER nel disegno se non è ovvio.
+- I simboli alti sono figure dettagliate; i bassi (A, K, Q, J, 10 o equivalenti a tema) sono semplici e coerenti tra loro.
+- Ogni simbolo ha una sagoma diversa, riconoscibile anche piccola e in scala di grigi.
+- Colore della tessera scuro e diverso dal colore principale del disegno.
+
+**Pixel art** (`look: pixel`): griglia 16x16, contorno scuro di 1 pixel, 3-5 colori più un riflesso, un pixel di margine. Rileggi la griglia riga per riga: un carattere sbagliato rompe la sagoma.
+
+**Vettoriale** (`look: smooth`): `viewBox="0 0 100 100"`, disegno tra 6 e 94, contorno scuro di 2-3 unità, un gradiente per il volume, un riflesso chiaro. Gli `id` di gradienti e filtri devono essere unici per file (es. `sole-disc`), perché i file vengono annidati. Testo solo con font di sistema (Arial, Georgia) e `paint-order="stroke"`.
+
+**Sfondo**: SVG 900x520 con `preserveAspectRatio="xMidYMid slice"`, scuro e calmo al centro dove stanno i rulli, dettagli ai bordi.
+
+**Suoni**: `spin` glissata breve in salita (0,2 s); `stop` colpo corto (0,04-0,06 s, anche `noise`); `win` tre note in salita; `bigWin` 6-8 note che finiscono lunghe; `feature` un arpeggio. Una scala coerente col tema (pentatonica per il fantasy, frigia dominante per l'Egitto). Volume 0,3-0,55.
+
+## Generatore di immagini esterno
+
+```bash
+npm run assets -- prompts slots/<id>     # scrive art/prompts.md
+```
+
+`art/prompts.md` contiene un prompt completo per ogni simbolo e per lo sfondo (stile comune + soggetto + vincoli: icona centrata, formato 1:1, niente testo né bordi) e il nome del file da salvare in `art/raw/`. Con le immagini pronte:
+
+1. salvale in `art/raw/<id>.png` (sfondo in `art/raw/background.png`);
+2. controlla che siano quadrate, centrate, senza testo, firme o watermark, coerenti tra loro e sotto i 300 KB;
+3. aggiungi `"image": "art/raw/<id>.png"` ai simboli e `"background": { "image": "art/raw/background.png" }`;
+4. `npm run assets -- build slots/<id>`, poi i controlli.
+
+Usa lo stesso modello, le stesse impostazioni e lo stesso seed per tutta la serie. Nei prompt niente nomi di giochi, marchi o artisti viventi. Prima di usare un servizio esterno verifica che le sue condizioni permettano l'uso che vuoi fare delle immagini.
+
+## Controllare il risultato
+
+1. `npm run assets -- build slots/<id>` e `npm run mod -- check slots/<id>`.
+2. Guarda tutti gli SVG di `assets/symbols/` insieme (una pagina HTML con le immagini in griglia, o uno screenshot con Playwright) e confrontali.
+3. `npm run dev` e apri `http://localhost:5173/?slot=<id>&seed=1`: gira fino a una vincita e controlla griglia, sfondo, fotogrammi e suoni.
+4. `npm test`.
+
+## Usare asset propri senza art.json
+
+Si possono anche mettere immagini e suoni direttamente in `assets/` e scrivere a mano i campi della scena (vedi [modulo.md](modulo.md#scenesmainjson)). In quel caso non lanciare `npm run assets -- build`, che rifarebbe `assets/symbols/` e `assets/sounds/`.

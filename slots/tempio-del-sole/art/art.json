@@ -1,0 +1,26 @@
+{
+  "prompt": "Ancient Egyptian temple theme, polished casino slot game icon, rich gold and lapis lazuli colors, soft lighting, clean vector illustration",
+  "look": "smooth",
+  "symbols": {
+    "SOLE": { "tile": "#8a5a00", "svg": "art/symbols/sole.svg", "prompt": "a radiant golden sun disc with rays and a calm face, the wild symbol" },
+    "PORTALE": { "tile": "#5c1a3a", "svg": "art/symbols/portale.svg", "prompt": "a sandstone temple doorway glowing with magenta light, the scatter symbol" },
+    "FARAONE": { "tile": "#7a1f1f", "svg": "art/symbols/faraone.svg", "prompt": "a golden pharaoh mask with a blue striped nemes headdress" },
+    "ANKH": { "tile": "#7a3300", "svg": "art/symbols/ankh.svg", "prompt": "a polished golden ankh" },
+    "SCARABEO": { "tile": "#1f5c32", "svg": "art/symbols/scarabeo.svg", "prompt": "a turquoise scarab beetle with a red sun gem" },
+    "GATTO": { "tile": "#1c4f8a", "svg": "art/symbols/gatto.svg", "prompt": "a black Egyptian cat statue with a gold collar" },
+    "A": { "tile": "#3b2a7a", "svg": "art/symbols/a.svg", "prompt": "the letter A carved in purple stone with gold trim" },
+    "K": { "tile": "#4f1f5c", "svg": "art/symbols/k.svg", "prompt": "the letter K carved in violet stone with gold trim" },
+    "Q": { "tile": "#0b4f5c", "svg": "art/symbols/q.svg", "prompt": "the letter Q carved in turquoise stone with gold trim" },
+    "J": { "tile": "#3b5c1a", "svg": "art/symbols/j.svg", "prompt": "the letter J carved in green stone with gold trim" },
+    "10": { "tile": "#343a40", "svg": "art/symbols/10.svg", "prompt": "the number 10 carved in grey stone with gold trim" }
+  },
+  "win": { "frames": 3, "fps": 8 },
+  "background": { "svg": "art/background.svg", "prompt": "desert at dusk with three pyramids, dunes, a large pale moon and stars" },
+  "sounds": {
+    "spin": { "wave": "triangle", "notes": [[[330, 660], 0.2]], "volume": 0.4 },
+    "stop": { "wave": "noise", "notes": [[200, 0.04]], "volume": 0.3 },
+    "win": { "wave": "triangle", "notes": [[659.25, 0.08], [698.46, 0.08], [830.61, 0.18]], "volume": 0.55 },
+    "bigWin": { "wave": "triangle", "notes": [[659.25, 0.09], [698.46, 0.09], [830.61, 0.09], [880, 0.09], [987.77, 0.09], [1046.5, 0.09], [1174.66, 0.09], [1318.51, 0.35]], "volume": 0.55 },
+    "feature": { "wave": "square", "notes": [[329.63, 0.08], [415.3, 0.08], [493.88, 0.08], [659.25, 0.08], [493.88, 0.08], [659.25, 0.3]], "volume": 0.35 }
+  }
+}

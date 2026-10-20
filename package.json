@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p app",
     "test": "vitest run",
     "sim": "tsx src/cli/sim.ts",
-    "mod": "tsx src/cli/mod.ts"
+    "mod": "tsx src/cli/mod.ts",
+    "assets": "tsx src/cli/assets.ts"
   },
   "dependencies": {
     "fflate": "^0.8.2",
