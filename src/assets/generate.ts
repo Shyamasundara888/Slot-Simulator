@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import sharp from "sharp";
 import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 import { backgroundPrompt, symbolPrompt } from "./build.js";
@@ -30,6 +31,8 @@ export async function readSpec(dir: string): Promise<ArtSpec> {
 /** Workflow predefiniti, nel repo. */
 const DEFAULT_WORKFLOWS = fileURLToPath(new URL("../../tools/comfyui/workflows/", import.meta.url));
 const MAX_KB = 300;
+/** Qualità WebP: i PNG di ComfyUI pesano 400-550 KB a 512 px, in WebP restano poche decine di KB. */
+const WEBP_QUALITY = 88;
 
 export type GenerateOptions = {
   only: string[];
@@ -87,18 +90,19 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
 
     for (let v = 0; v < options.variants; v++) {
       const seed = firstSeed + v;
-      const file = options.variants > 1 ? `art/raw/varianti/${name}-${seed}.png` : `art/raw/${name}.png`;
+      const file = options.variants > 1 ? `art/raw/varianti/${name}-${seed}.webp` : `art/raw/${name}.webp`;
       if (!options.force && existsSync(join(dir, file))) {
         log(`  ${file}: c'è già (usa --force per rifarlo)`);
         continue;
       }
       const workflow = prepareWorkflow(flow.workflow, { prompt, seed, filenamePrefix: `slot/${slot}/${name}`, size });
       const started = Date.now();
-      const [image] = await options.client.run(workflow);
+      const [png] = await options.client.run(workflow);
+      const dims = pngSize(png!);
+      const image = await sharp(png!).webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 }).toBuffer();
       await mkdir(dirname(join(dir, file)), { recursive: true });
-      await writeFile(join(dir, file), image!);
-      const dims = pngSize(image!);
-      const kb = image!.length / 1024;
+      await writeFile(join(dir, file), image);
+      const kb = image.length / 1024;
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       log(`  ${file}: ${dims ? `${dims.width}x${dims.height}, ` : ""}${kb.toFixed(0)} KB, seed ${seed}, ${seconds} s${!isBackground && kb > MAX_KB ? ` (oltre ${MAX_KB} KB: riduci generate.size)` : ""}`);
       records[file] = { prompt, seed, workflow: flow.name, checkpoint: workflowCheckpoint(flow.workflow), generator: "ComfyUI", date: new Date().toISOString() };
@@ -109,13 +113,13 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   }
 
   const unlinked = chosen.filter((id) =>
-    id === "background" ? spec.background?.image !== "art/raw/background.png" : spec.symbols[id]?.image !== `art/raw/${id.toLowerCase()}.png`,
+    id === "background" ? spec.background?.image !== "art/raw/background.webp" : spec.symbols[id]?.image !== `art/raw/${id.toLowerCase()}.webp`,
   );
   if (options.variants > 1) {
     log("Varianti in art/raw/varianti/. Per sceglierne una metti il suo seed nel simbolo in art.json e rilancia con --only <ID> --force.");
   } else if (unlinked.length > 0) {
     log(`Per usarle aggiungi in ${ART_FILE}:`);
-    for (const id of unlinked) log(id === "background" ? `  background: "image": "art/raw/background.png"` : `  ${id}: "image": "art/raw/${id.toLowerCase()}.png"`);
+    for (const id of unlinked) log(id === "background" ? `  background: "image": "art/raw/background.webp"` : `  ${id}: "image": "art/raw/${id.toLowerCase()}.webp"`);
     log("poi npm run assets -- build.");
   }
   return written;

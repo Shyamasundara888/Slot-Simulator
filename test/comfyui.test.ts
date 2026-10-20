@@ -1,7 +1,8 @@
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import sharp from "sharp";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ComfyClient, ComfyError, pngSize, prepareWorkflow, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
 import { generate } from "../src/assets/generate.js";
 
@@ -17,6 +18,16 @@ function fakePng(width: number, height: number): Uint8Array<ArrayBuffer> {
   view.setUint32(20, height);
   return bytes;
 }
+
+/** PNG vero con trasparenza, come quelli che salva il workflow dei simboli. */
+let realPng: Uint8Array<ArrayBuffer>;
+beforeAll(async () => {
+  const buffer = await sharp({ create: { width: 512, height: 512, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: { create: { width: 256, height: 256, channels: 4, background: { r: 212, g: 160, b: 23, alpha: 1 } } }, gravity: "center" }])
+    .png()
+    .toBuffer();
+  realPng = new Uint8Array(buffer);
+});
 
 type Sent = { workflow: Workflow };
 
@@ -51,7 +62,7 @@ function fakeComfy(options: { fail?: string } = {}) {
         },
       });
     }
-    if (url.pathname === "/view") return new Response(fakePng(512, 512));
+    if (url.pathname === "/view") return new Response(realPng);
     return new Response("non trovato", { status: 404 });
   }) as typeof globalThis.fetch;
   return { sent, client: new ComfyClient({ url: "http://comfy.test:8188/", fetch, pollMs: 0 }) };
@@ -113,8 +124,10 @@ describe("npm run assets -- generate", () => {
     const { sent, client } = fakeComfy();
     const lines: string[] = [];
     const files = await generate(dir, { only: ["FARAONE", "background"], force: false, variants: 1, client, log: (l) => lines.push(l) });
-    expect(files).toEqual(["art/raw/faraone.png", "art/raw/background.png"]);
-    expect(pngSize(readFileSync(join(dir, "art/raw/faraone.png")))).toEqual({ width: 512, height: 512 });
+    expect(files).toEqual(["art/raw/faraone.webp", "art/raw/background.webp"]);
+    // Salvato in WebP, con la trasparenza dello scontorno.
+    const meta = await sharp(readFileSync(join(dir, "art/raw/faraone.webp"))).metadata();
+    expect(meta).toMatchObject({ format: "webp", width: 512, height: 512, hasAlpha: true });
 
     const [symbol, background] = sent.map((s) => s.workflow);
     expect(symbol!["2"]!.inputs.text).toMatch(/^Ancient Egyptian temple theme.*A golden pharaoh mask.*plain light grey background/);
@@ -125,8 +138,8 @@ describe("npm run assets -- generate", () => {
     expect(background!["2"]!.inputs.text).toContain("desert at dusk");
 
     const records = JSON.parse(readFileSync(join(dir, "art/raw/generated.json"), "utf8"));
-    expect(records["art/raw/faraone.png"]).toMatchObject({ seed: 777, workflow: "tools/comfyui/workflows/simbolo.json", checkpoint: "sd_xl_base_1.0.safetensors", generator: "ComfyUI" });
-    expect(lines.join("\n")).toContain('FARAONE: "image": "art/raw/faraone.png"');
+    expect(records["art/raw/faraone.webp"]).toMatchObject({ seed: 777, workflow: "tools/comfyui/workflows/simbolo.json", checkpoint: "sd_xl_base_1.0.safetensors", generator: "ComfyUI" });
+    expect(lines.join("\n")).toContain('FARAONE: "image": "art/raw/faraone.webp"');
 
     // Una seconda volta non rifà ciò che c'è già.
     expect(await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} })).toEqual([]);
@@ -142,10 +155,10 @@ describe("npm run assets -- generate", () => {
     writeFileSync(artPath, JSON.stringify(art));
     const { sent, client } = fakeComfy();
     const files = await generate(dir, { only: ["ANKH"], force: false, variants: 3, client, log: () => {} });
-    expect(files).toEqual(["art/raw/varianti/ankh-100.png", "art/raw/varianti/ankh-101.png", "art/raw/varianti/ankh-102.png"]);
+    expect(files).toEqual(["art/raw/varianti/ankh-100.webp", "art/raw/varianti/ankh-101.webp", "art/raw/varianti/ankh-102.webp"]);
     expect(sent.map((s) => s.workflow["5"]!.inputs.seed)).toEqual([100, 101, 102]);
     expect(Object.values(sent[0]!.workflow).find((n) => n.class_type === "ImageScale")!.inputs.width).toBe(256);
-    expect(existsSync(join(dir, "art/raw/ankh.png"))).toBe(false);
+    expect(existsSync(join(dir, "art/raw/ankh.webp"))).toBe(false);
   });
 
   it("rifiuta simboli sconosciuti", async () => {

@@ -94,11 +94,13 @@ npm run assets -- generate slots/<id> --only FARAONE --force # rifà un solo sim
 npm run assets -- generate slots/<id> --only ANKH --variants 4  # 4 varianti con seed consecutivi
 ```
 
-Per ogni simbolo il comando prende lo stesso prompt di `art/prompts.md` (con "plain light grey background" al posto della trasparenza, che SDXL non sa fare), lo mette nel workflow, lo manda all'API di ComfyUI e salva il risultato in `art/raw/<id>.png`; lo sfondo va in `art/raw/background.png`. Il workflow dei simboli scontorna l'immagine, quindi il PNG è già trasparente. Le immagini che ci sono già si saltano; `--force` le rifà. Ogni file generato viene registrato in `art/raw/generated.json` con prompt, seed, workflow, modello e data: serve a rifare la stessa immagine e a sapere da dove viene.
+In PowerShell `npm run` perde il `--` e si prende le opzioni: lì usa `npm.cmd run assets -- generate ...` (da cmd, bash o dal terminale di VS Code con bash va bene `npm`). Se succede, il comando se ne accorge e si ferma senza generare nulla.
+
+Per ogni simbolo il comando prende lo stesso prompt di `art/prompts.md` (con "plain light grey background" al posto della trasparenza, che SDXL non sa fare), lo mette nel workflow, lo manda all'API di ComfyUI e salva il risultato in `art/raw/<id>.webp`; lo sfondo va in `art/raw/background.webp`. Il workflow dei simboli scontorna l'immagine, quindi il file è già trasparente. ComfyUI restituisce PNG da 400-550 KB a 512 px; il comando li converte in WebP (qualità 88, trasparenza intatta), che pesa una frazione e resta sotto i 300 KB. Le immagini che ci sono già si saltano; `--force` le rifà. Ogni file generato viene registrato in `art/raw/generated.json` con prompt, seed, workflow, modello e data: serve a rifare la stessa immagine e a sapere da dove viene.
 
 Il comando non cambia `art/art.json`: alla fine stampa le righe `"image": ...` da aggiungere ai simboli. Poi `npm run assets -- build slots/<id>` come sempre.
 
-Le varianti vanno in `art/raw/varianti/<id>-<seed>.png`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
+Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
 
 | Campo di `art.json` | Significato |
 | --- | --- |

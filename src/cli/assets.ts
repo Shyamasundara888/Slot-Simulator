@@ -119,6 +119,15 @@ async function main(): Promise<void> {
     if (command === "build") await build(dir);
     else if (command === "prompts") await prompts(dir);
     else {
+      // In PowerShell "npm run assets -- ..." perde il "--": npm si tiene le opzioni e le passa solo come
+      // variabili npm_config_*. Meglio fermarsi che generare tutto con le impostazioni predefinite.
+      const swallowed = ["only", "variants", "seed", "url"].filter((name) => process.env[`npm_config_${name}`] !== undefined);
+      if (swallowed.length > 0) {
+        throw new ComfyError(
+          `npm ha preso le opzioni ${swallowed.map((n) => `--${n}`).join(", ")} invece di passarle al comando (succede in PowerShell, che toglie il "--").\n` +
+            "In PowerShell usa npm.cmd: npm.cmd run assets -- generate <cartella> ...",
+        );
+      }
       const variants = Number(values.variants);
       const seed = values.seed === undefined ? undefined : Number(values.seed);
       if (!Number.isInteger(variants) || variants < 1 || variants > 16) throw new ModuleError(["--variants: serve un numero intero da 1 a 16"]);
