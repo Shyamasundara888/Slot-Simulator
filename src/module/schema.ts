@@ -75,10 +75,55 @@ export const featuresSchema = z
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "usa un colore esadecimale come #ffcc00");
 
 /** Presentazione provvisoria: colori ed etichette dei simboli, finché non ci sono asset grafici. */
+/** Percorso di un file dentro la cartella assets/ del modulo. */
+export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "svg"] as const;
+export const SOUND_EXTENSIONS = ["mp3", "ogg", "wav"] as const;
+const assetPath = (extensions: readonly string[], what: string) =>
+  z
+    .string()
+    .regex(
+      new RegExp(`^assets/([A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]+\\.(${extensions.join("|")})$`, "i"),
+      `serve un ${what} dentro assets/ (${extensions.join(", ")})`,
+    );
+const image = assetPath(IMAGE_EXTENSIONS, "immagine");
+const sound = assetPath(SOUND_EXTENSIONS, "suono");
+
+/** Eventi del client che possono avere un suono: partenza dei rulli, arresto di un rullo, vincita, vincita grande, bonus. */
+export const SOUND_EVENTS = ["spin", "stop", "win", "bigWin", "feature"] as const;
+
 export const sceneSchema = z
   .object({
     background: color.optional(),
-    symbols: z.record(symbolId, z.object({ label: z.string().min(1).optional(), color }).strict()).default({}),
+    /** Immagine di sfondo, adattata a tutta l'area di gioco. */
+    backgroundImage: image.optional(),
+    symbols: z
+      .record(
+        symbolId,
+        z
+          .object({
+            label: z.string().min(1).optional(),
+            color,
+            /** Immagine del simbolo; senza, il simbolo è una tessera colorata con l'etichetta. */
+            image: image.optional(),
+            /** Fotogrammi dell'animazione mostrata quando il simbolo è in una vincita. */
+            winFrames: z.array(image).min(1).optional(),
+            /** Fotogrammi al secondo dell'animazione. */
+            fps: z.number().positive().max(60).default(8),
+          })
+          .strict(),
+      )
+      .default({}),
+    /** Suoni facoltativi per gli eventi del client. */
+    sounds: z
+      .object({
+        spin: sound.optional(),
+        stop: sound.optional(),
+        win: sound.optional(),
+        bigWin: sound.optional(),
+        feature: sound.optional(),
+      })
+      .strict()
+      .default({}),
     /** Nome mostrato per le modalità aggiunte dal modulo e, facoltativa, la regola per la paytable. */
     modes: z
       .record(modeId, z.object({ label: z.string().min(1), description: z.string().min(1).optional() }).strict())

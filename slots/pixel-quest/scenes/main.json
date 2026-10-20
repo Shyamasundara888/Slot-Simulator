@@ -1,16 +1,24 @@
 {
   "background": "#0f1a2b",
+  "backgroundImage": "assets/background.svg",
   "symbols": {
-    "SPADA": { "label": "Spada", "color": "#868e96" },
-    "FORZIERE": { "label": "Forziere", "color": "#b8860b" },
-    "DRAGO": { "label": "Drago", "color": "#c92a2a" },
-    "CAVALIERE": { "label": "Cavaliere", "color": "#1864ab" },
-    "MAGO": { "label": "Mago", "color": "#7048e8" },
-    "ARCIERE": { "label": "Arciere", "color": "#2b8a3e" },
-    "POZIONE": { "label": "Pozione", "color": "#d6336c" },
-    "SCUDO": { "label": "Scudo", "color": "#5c7cfa" },
-    "MONETA": { "label": "Moneta", "color": "#f59f00" },
-    "CHIAVE": { "label": "Chiave", "color": "#495057" }
+    "SPADA": {"label": "Spada", "color": "#3b4252", "image": "assets/symbols/spada.svg", "winFrames": ["assets/symbols/spada-glow.svg", "assets/symbols/spada.svg"], "fps": 6},
+    "FORZIERE": {"label": "Forziere", "color": "#5c3d1e", "image": "assets/symbols/forziere.svg", "winFrames": ["assets/symbols/forziere-glow.svg", "assets/symbols/forziere.svg"], "fps": 6},
+    "DRAGO": {"label": "Drago", "color": "#5c1a1a", "image": "assets/symbols/drago.svg", "winFrames": ["assets/symbols/drago-glow.svg", "assets/symbols/drago.svg"], "fps": 6},
+    "CAVALIERE": {"label": "Cavaliere", "color": "#1c3a5e", "image": "assets/symbols/cavaliere.svg", "winFrames": ["assets/symbols/cavaliere-glow.svg", "assets/symbols/cavaliere.svg"], "fps": 6},
+    "MAGO": {"label": "Mago", "color": "#2e1f5e", "image": "assets/symbols/mago.svg", "winFrames": ["assets/symbols/mago-glow.svg", "assets/symbols/mago.svg"], "fps": 6},
+    "ARCIERE": {"label": "Arciere", "color": "#1e4620", "image": "assets/symbols/arciere.svg", "winFrames": ["assets/symbols/arciere-glow.svg", "assets/symbols/arciere.svg"], "fps": 6},
+    "POZIONE": {"label": "Pozione", "color": "#4a1430", "image": "assets/symbols/pozione.svg", "winFrames": ["assets/symbols/pozione-glow.svg", "assets/symbols/pozione.svg"], "fps": 6},
+    "SCUDO": {"label": "Scudo", "color": "#1a2a4f", "image": "assets/symbols/scudo.svg", "winFrames": ["assets/symbols/scudo-glow.svg", "assets/symbols/scudo.svg"], "fps": 6},
+    "MONETA": {"label": "Moneta", "color": "#4d3800", "image": "assets/symbols/moneta.svg", "winFrames": ["assets/symbols/moneta-glow.svg", "assets/symbols/moneta.svg"], "fps": 6},
+    "CHIAVE": {"label": "Chiave", "color": "#343a40", "image": "assets/symbols/chiave.svg", "winFrames": ["assets/symbols/chiave-glow.svg", "assets/symbols/chiave.svg"], "fps": 6}
+  },
+  "sounds": {
+    "spin": "assets/sounds/spin.wav",
+    "stop": "assets/sounds/stop.wav",
+    "win": "assets/sounds/win.wav",
+    "bigWin": "assets/sounds/big-win.wav",
+    "feature": "assets/sounds/feature.wav"
   },
   "modes": {
     "boss": {

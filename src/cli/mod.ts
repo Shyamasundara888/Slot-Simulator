@@ -4,7 +4,7 @@ import { parseArgs } from "node:util";
 import { ModuleError } from "../module/build.js";
 import { readModuleDir } from "../module/load.js";
 import { parseSlotModule, type SlotModule } from "../module/parse.js";
-import { decodeModuleFiles, unpackModuleZip, writeModuleZip } from "../module/zip.js";
+import { assetPaths, decodeModuleFiles, unpackModuleZip, writeModuleZip } from "../module/zip.js";
 import { ScriptError, ScriptRuntime } from "../script/runtime.js";
 
 const USAGE = `Uso: npm run mod -- <comando> ...
@@ -24,7 +24,7 @@ const exists = (path: string) =>
 
 /** Controlla un modulo come farebbe il motore, script compreso. */
 async function validate(raw: Record<string, Uint8Array>): Promise<SlotModule> {
-  const module = parseSlotModule(decodeModuleFiles(raw));
+  const module = parseSlotModule(decodeModuleFiles(raw), assetPaths(raw));
   if (module.script !== null) await ScriptRuntime.create(module.math, module.script);
   return module;
 }
@@ -32,6 +32,13 @@ async function validate(raw: Record<string, Uint8Array>): Promise<SlotModule> {
 const describe = ({ manifest, math, script }: SlotModule) =>
   `${manifest.name} ${manifest.version} (${manifest.id}): ${math.reelCount}x${math.rows}, ${math.lines.length} linee` +
   (script === null ? "" : ", con script");
+
+const assetSummary = (raw: Record<string, Uint8Array>) => {
+  const paths = assetPaths(raw);
+  if (paths.length === 0) return "";
+  const kb = paths.reduce((n, p) => n + raw[p]!.length, 0) / 1024;
+  return `, ${paths.length} asset (${kb.toFixed(0)} KB)`;
+};
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -54,8 +61,9 @@ async function main(): Promise<void> {
 
   switch (command) {
     case "check": {
-      const module = await validate(await readRaw(resolve(target)));
-      console.log(`OK: ${describe(module)}`);
+      const raw = await readRaw(resolve(target));
+      const module = await validate(raw);
+      console.log(`OK: ${describe(module)}${assetSummary(raw)}`);
       return;
     }
     case "install": {
@@ -70,7 +78,7 @@ async function main(): Promise<void> {
         await mkdir(dirname(join(dir, file)), { recursive: true });
         await writeFile(join(dir, file), bytes);
       }
-      console.log(`Installato in ${dir}: ${describe(module)}`);
+      console.log(`Installato in ${dir}: ${describe(module)}${assetSummary(raw)}`);
       return;
     }
     case "pack": {
@@ -80,7 +88,7 @@ async function main(): Promise<void> {
       await mkdir(out, { recursive: true });
       const file = join(out, `${module.manifest.id}-${module.manifest.version}.zip`);
       await writeFile(file, writeModuleZip(raw));
-      console.log(`Creato ${file}: ${describe(module)}`);
+      console.log(`Creato ${file}: ${describe(module)}${assetSummary(raw)}`);
       return;
     }
     default:

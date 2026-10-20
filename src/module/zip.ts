@@ -1,11 +1,17 @@
 import { strFromU8, unzipSync, zipSync } from "fflate";
 import { ModuleError } from "./build.js";
-import { MODULE_FILES } from "./parse.js";
+import { MODULE_FILES, parseSlotModule, type SlotModule } from "./parse.js";
 
 /** Limiti di un pacchetto mod, per non leggere archivi enormi o malformati. */
 export const ZIP_LIMITS = { entries: 500, bytes: 50 * 1024 * 1024 } as const;
 
 const KNOWN: ReadonlySet<string> = new Set(Object.values(MODULE_FILES));
+
+/** Cartella degli asset di un modulo: immagini e suoni usati dalla scena. */
+export const ASSETS_DIR = "assets/";
+
+/** Percorsi degli asset tra i file grezzi di un modulo. */
+export const assetPaths = (raw: Readonly<Record<string, Uint8Array>>) => Object.keys(raw).filter((p) => p.startsWith(ASSETS_DIR));
 
 /** Un percorso dentro lo zip è accettato solo se resta nella cartella del modulo. */
 function safePath(name: string): boolean {
@@ -20,11 +26,11 @@ function isJunk(name: string): boolean {
 
 /**
  * Estrae da uno zip i file di un modulo, indicizzati per percorso relativo
- * alla cartella del modulo (vedi MODULE_FILES).
+ * alla cartella del modulo: quelli di MODULE_FILES e quelli in assets/.
  *
  * Lo zip può contenere i file direttamente oppure dentro una sola cartella
  * (com'è comune quando si comprime una cartella). Gli altri file vengono
- * ignorati: li userà il caricamento degli asset.
+ * ignorati.
  */
 export function unpackModuleZip(data: Uint8Array): Record<string, Uint8Array> {
   let entries = 0;
@@ -58,16 +64,17 @@ export function unpackModuleZip(data: Uint8Array): Record<string, Uint8Array> {
   const files: Record<string, Uint8Array> = {};
   for (const name of names) {
     const file = name.slice(prefix.length);
-    if (KNOWN.has(file)) files[file] = raw[name]!;
+    if (KNOWN.has(file) || file.startsWith(ASSETS_DIR)) files[file] = raw[name]!;
   }
   return files;
 }
 
-/** Interpreta i file di un modulo: i JSON come oggetti, lo script come testo. */
+/** Interpreta i file di un modulo: i JSON come oggetti, lo script come testo. Gli asset restano fuori. */
 export function decodeModuleFiles(raw: Readonly<Record<string, Uint8Array>>): Record<string, unknown> {
   const problems: string[] = [];
   const files: Record<string, unknown> = {};
   for (const [file, bytes] of Object.entries(raw)) {
+    if (!KNOWN.has(file)) continue;
     const text = strFromU8(bytes);
     if (!file.endsWith(".json")) {
       files[file] = text;
@@ -81,6 +88,12 @@ export function decodeModuleFiles(raw: Readonly<Record<string, Uint8Array>>): Re
   }
   if (problems.length > 0) throw new ModuleError(problems);
   return files;
+}
+
+/** Legge uno zip di un modulo e lo valida, controllando anche gli asset usati dalla scena. */
+export function parseModuleZip(data: Uint8Array): { module: SlotModule; raw: Record<string, Uint8Array> } {
+  const raw = unpackModuleZip(data);
+  return { module: parseSlotModule(decodeModuleFiles(raw), assetPaths(raw)), raw };
 }
 
 /** Legge uno zip di un modulo e restituisce i file pronti per parseSlotModule. */

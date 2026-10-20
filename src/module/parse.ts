@@ -9,6 +9,7 @@ import {
   paytableSchema,
   reelsSchema,
   sceneSchema,
+  SOUND_EVENTS,
 } from "./schema.js";
 
 /** File di un modulo, con il percorso relativo alla sua cartella. */
@@ -28,6 +29,10 @@ const OPTIONAL_FILES: ReadonlySet<string> = new Set([MODULE_FILES.features, MODU
 export interface SymbolStyle {
   label: string;
   color: string;
+  /** Percorsi relativi alla cartella del modulo, come assets/drago.svg. */
+  image?: string | undefined;
+  winFrames?: readonly string[] | undefined;
+  fps: number;
 }
 
 export interface ModeStyle {
@@ -35,8 +40,12 @@ export interface ModeStyle {
   description?: string | undefined;
 }
 
+export type SoundEvent = (typeof SOUND_EVENTS)[number];
+
 export interface Scene {
   background: string;
+  backgroundImage?: string | undefined;
+  sounds: Partial<Record<SoundEvent, string>>;
   symbols: ReadonlyMap<SymbolId, SymbolStyle>;
   /** Solo le modalità che la scena descrive. */
   modes: ReadonlyMap<Mode, ModeStyle>;
@@ -65,12 +74,25 @@ function validate<S extends z.ZodTypeAny>(file: string, schema: S, raw: unknown)
   return parsed.data;
 }
 
+/** Tutti gli asset a cui fa riferimento una scena. */
+export function sceneAssets(scene: Scene): string[] {
+  const paths = new Set<string>();
+  if (scene.backgroundImage) paths.add(scene.backgroundImage);
+  for (const style of scene.symbols.values()) {
+    if (style.image) paths.add(style.image);
+    for (const frame of style.winFrames ?? []) paths.add(frame);
+  }
+  for (const path of Object.values(scene.sounds)) if (path) paths.add(path);
+  return [...paths];
+}
+
 /**
  * Valida e unisce i file di un modulo, indicizzati per percorso relativo (vedi
  * MODULE_FILES): i JSON già letti come oggetti, lo script come testo.
- * Funziona sia in Node sia nel browser.
+ * Con `assets` (i percorsi dei file in assets/) controlla anche che la scena
+ * usi solo asset presenti. Funziona sia in Node sia nel browser.
  */
-export function parseSlotModule(files: Readonly<Record<string, unknown>>): SlotModule {
+export function parseSlotModule(files: Readonly<Record<string, unknown>>, assets?: Iterable<string>): SlotModule {
   const missing = Object.values(MODULE_FILES).filter((f) => files[f] === undefined && !OPTIONAL_FILES.has(f));
   if (missing.length > 0) throw new ModuleError(missing.map((f) => `${f}: file mancante`));
 
@@ -106,13 +128,23 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>): SlotM
     symbols.set(id, {
       label: style?.label ?? id,
       color: style?.color ?? palette[used[kind]++ % palette.length]!,
+      image: style?.image,
+      winFrames: style?.winFrames,
+      fps: style?.fps ?? 8,
     });
   }
 
-  return {
-    manifest,
-    math,
-    scene: { background: sceneFile.background ?? "#1b1430", symbols, modes: new Map(Object.entries(sceneFile.modes)) },
-    script,
+  const scene: Scene = {
+    background: sceneFile.background ?? "#1b1430",
+    backgroundImage: sceneFile.backgroundImage,
+    symbols,
+    modes: new Map(Object.entries(sceneFile.modes)),
+    sounds: Object.fromEntries(Object.entries(sceneFile.sounds).filter(([, path]) => path !== undefined)),
   };
+  if (assets) {
+    const present = new Set(assets);
+    const missing = sceneAssets(scene).filter((path) => !present.has(path));
+    if (missing.length > 0) throw new ModuleError(missing.map((path) => `${MODULE_FILES.scene}: asset mancante ${path}`));
+  }
+  return { manifest, math, scene, script };
 }

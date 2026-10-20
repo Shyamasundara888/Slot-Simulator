@@ -44,3 +44,4 @@ dialog ul { padding-left: 20px; color: var(--muted); }
 dialog h3 { margin: 16px 0 8px; font-size: 16px; }
 dialog td.up { color: var(--win); }
 dialog td.down { color: #ff8787; }
+dialog img.icon { width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; image-rendering: pixelated; border-radius: 3px; }
