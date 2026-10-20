@@ -28,6 +28,8 @@ npm install
 | `npm run mod -- install mio-mod.zip` | controlla il mod (script compreso) e lo estrae in `slots/<id>/`; con `--force` sostituisce un modulo esistente |
 | `npm run mod -- pack slots/pixel-quest` | controlla il modulo e crea `mods/pixel-quest-0.3.0.zip`, pronto da condividere |
 | `npm run mod -- check mio-mod.zip` | controlla un mod (zip o cartella) senza installarlo |
+| `npm run assets -- build slots/pixel-quest` | genera immagini, animazioni di vincita, sfondo e suoni da `art/art.json` e aggiorna la scena |
+| `npm run assets -- prompts slots/pixel-quest` | scrive `art/prompts.md`, i prompt per un generatore di immagini esterno |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi TypeScript |
 
@@ -158,7 +160,34 @@ La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. 
 - `winFrames` sono i fotogrammi mostrati in ciclo quando il simbolo fa parte di una vincita, a `fps` fotogrammi al secondo (8 se manca, al massimo 60). Senza fotogrammi il simbolo vincente pulsa.
 - `sounds` collega un suono a un evento: `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20 volte la puntata) e `feature` (free spin e sequenze degli script).
 - Formati: PNG, JPG, WebP, GIF e SVG per le immagini; MP3, OGG e WAV per i suoni. I percorsi partono da `assets/` e usano solo lettere, cifre, `-`, `_` e `.`.
-- Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella. Gli asset di Pixel Quest sono originali e generati da `node tools/pixel-quest-assets.mjs` (pixel art in SVG, suoni a 8 bit in WAV).
+- Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella.
+
+### Creare gli asset (`art/`, `npm run assets`)
+
+Gli asset delle slot di esempio non si disegnano a mano in `assets/`: si descrivono in `art/art.json` e si generano. La cartella `art/` resta fuori dagli zip dei mod.
+
+```json
+{
+  "prompt": "16-bit fantasy RPG pixel art, bold black outlines",
+  "look": "pixel",
+  "symbols": {
+    "SPADA": { "tile": "#3b4252", "pixels": { "palette": { "K": "#111111", "W": "#f8f9fa" }, "rows": ["..KK", ".KWK", "KWK.", "KK.."] } },
+    "DRAGO": { "tile": "#5c1a1a", "svg": "art/symbols/drago.svg", "prompt": "a green dragon head" },
+    "MAGO": { "tile": "#2e1f5e", "image": "art/raw/mago.png" }
+  },
+  "win": { "frames": 2, "fps": 6 },
+  "background": { "svg": "art/background.svg" },
+  "sounds": { "win": { "wave": "square", "notes": [[523.25, 0.07], [783.99, 0.14]], "volume": 0.45 } }
+}
+```
+
+- Ogni simbolo ha il colore della tessera (`tile`) e un disegno: `pixels` (pixel art: una stringa per riga, `.` trasparente), `svg` (un file vettoriale in `art/`) oppure `image` (PNG, JPG o WebP, per esempio da un generatore di immagini esterno). Se ce n'è più di uno vince `image`, poi `svg`, poi `pixels`: si può partire dalla pixel art e sostituirla più avanti.
+- `look`: `pixel` per pixel netti e tessere quadrate, `smooth` per tessere arrotondate con sfumature.
+- `win.frames`: quanti fotogrammi illuminati, con scintille, prima di tornare al simbolo normale.
+- `sounds`: onde `square`, `triangle`, `sine` o `noise`; ogni nota è `[frequenza, durata]` oppure `[[da, a], durata]` per una glissata.
+- `npm run assets -- build slots/<id>` rifà `assets/symbols/`, `assets/sounds/` e lo sfondo, e aggiorna in `scenes/main.json` colori, immagini, fotogrammi e suoni; etichette e nomi delle modalità restano.
+- `npm run assets -- prompts slots/<id>` scrive `art/prompts.md`: un prompt per simbolo e per lo sfondo, con lo stile comune di `prompt`, da usare con un generatore di immagini esterno. Le immagini vanno salvate in `art/raw/` e collegate con `image`.
+- Tempio del Sole usa disegni vettoriali (`look: smooth`), Pixel Quest la pixel art. Un test controlla che gli asset salvati corrispondano ad `art/art.json`.
 
 Il caricatore controlla la coerenza tra i file (simboli non definiti, linee fuori griglia, pagamenti impossibili) e riporta tutti i problemi in un solo messaggio.
 

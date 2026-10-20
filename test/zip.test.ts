@@ -112,6 +112,6 @@ describe("asset dei moduli", () => {
     expect(used.every((path) => path in raw)).toBe(true);
     expect(module.scene.backgroundImage).toBe("assets/background.svg");
     expect(Object.keys(module.scene.sounds).sort()).toEqual(["bigWin", "feature", "spin", "stop", "win"]);
-    for (const [, style] of module.scene.symbols) expect(style.winFrames).toHaveLength(2);
+    for (const [, style] of module.scene.symbols) expect(style.winFrames).toHaveLength(3);
   });
 });

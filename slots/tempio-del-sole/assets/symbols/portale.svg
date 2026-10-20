@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 100 100"><defs><radialGradient id="t" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#85536b"/><stop offset="1" stop-color="#5c1a3a"/></radialGradient></defs><rect width="100" height="100" rx="14" fill="url(#t)"/><rect x="2.5" y="2.5" width="95" height="95" rx="12" fill="none" stroke="#8d5f75" stroke-width="3"/><svg x="10" y="10" width="80" height="80" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <radialGradient id="portale-light" cx="50%" cy="55%" r="55%"><stop offset="0" stop-color="#fff0f6"/><stop offset="0.45" stop-color="#f783ac"/><stop offset="1" stop-color="#862e9c"/></radialGradient>
+    <linearGradient id="portale-stone" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#e9c46a"/><stop offset="1" stop-color="#a0752d"/></linearGradient>
+  </defs>
+  <path d="M14 92 V40 Q14 8 50 8 Q86 8 86 40 V92 Z" fill="url(#portale-stone)" stroke="#5c3d1e" stroke-width="2.5"/>
+  <path d="M27 92 V44 Q27 21 50 21 Q73 21 73 44 V92 Z" fill="url(#portale-light)" stroke="#5c3d1e" stroke-width="2"/>
+  <g fill="#5c3d1e"><rect x="17" y="50" width="7" height="3"/><rect x="17" y="64" width="7" height="3"/><rect x="76" y="50" width="7" height="3"/><rect x="76" y="64" width="7" height="3"/></g>
+  <circle cx="50" cy="13" r="3.5" fill="#d6336c" stroke="#5c3d1e" stroke-width="1.5"/>
+  <g fill="#ffffff" opacity="0.85"><circle cx="42" cy="52" r="1.6"/><circle cx="58" cy="44" r="1.2"/><circle cx="54" cy="66" r="1.8"/><circle cx="45" cy="76" r="1.1"/></g>
+  <text x="50" y="98" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="13" fill="#ffffff" stroke="#5c1a3a" stroke-width="3" paint-order="stroke">SCATTER</text>
+</svg></svg>

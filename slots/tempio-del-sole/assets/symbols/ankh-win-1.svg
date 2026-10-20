@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 100 100"><defs><radialGradient id="t" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#a97b5a"/><stop offset="1" stop-color="#8c4f23"/></radialGradient></defs><rect width="100" height="100" rx="14" fill="url(#t)"/><rect x="2.5" y="2.5" width="95" height="95" rx="12" fill="none" stroke="#caad99" stroke-width="5"/><circle cx="50" cy="50" r="34" fill="#caad99" opacity="0.24666666666666665"/><svg x="10" y="10" width="80" height="80" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="ankh-gold" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff3bf"/><stop offset="0.5" stop-color="#fcc419"/><stop offset="1" stop-color="#d9480f"/></linearGradient>
+  </defs>
+  <path fill="url(#ankh-gold)" stroke="#6b2a00" stroke-width="2.5" stroke-linejoin="round" fill-rule="evenodd"
+    d="M50 4 C34 4 27 17 27 28 C27 37 33 44 39 48 L14 48 L14 60 L43 60 L41 96 L59 96 L57 60 L86 60 L86 48 L61 48 C67 44 73 37 73 28 C73 17 66 4 50 4 Z M50 15 C58 15 62 21 62 28 C62 36 56 43 50 46 C44 43 38 36 38 28 C38 21 42 15 50 15 Z"/>
+  <path d="M33 28 Q34 12 50 10" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.6" stroke-linecap="round"/>
+</svg><path d="M8 0L10 6L16 8L10 10L8 16L6 10L0 8L6 6Z" fill="#ffffff"/><path d="M12 78L14 84L20 86L14 88L12 94L10 88L4 86L10 84Z" fill="#ffffff"/><path d="M50 -5L52 1L58 3L52 5L50 11L48 5L42 3L48 1Z" fill="#ffffff"/><path d="M97 44L99 50L105 52L99 54L97 60L95 54L89 52L95 50Z" fill="#ffffff"/></svg>
