@@ -19,7 +19,7 @@ type Dist = { symbol: SymbolId; p: number }[];
 /**
  * Distribuzione del simbolo valutato su un rullo, a una data riga.
  * Senza wild espandenti coincide con le frequenze della striscia; con
- * l'espansione, ogni finestra che contiene un wild diventa tutta wild.
+ * l'espansione, ogni finestra che contiene un wild diventa wild, scatter esclusi.
  */
 function cellDistribution(math: SlotMath, reel: number, row: number): Dist {
   const strip = math.reels.base[reel]!;
@@ -27,7 +27,7 @@ function cellDistribution(math: SlotMath, reel: number, row: number): Dist {
   const counts = new Map<SymbolId, number>();
   for (let stop = 0; stop < strip.length; stop++) {
     let symbol = strip[(stop + row) % strip.length]!;
-    if (expands) {
+    if (expands && symbol !== math.scatter?.symbol) {
       for (let r = 0; r < math.rows; r++) if (strip[(stop + r) % strip.length] === math.wild) symbol = math.wild!;
     }
     counts.set(symbol, (counts.get(symbol) ?? 0) + 1);

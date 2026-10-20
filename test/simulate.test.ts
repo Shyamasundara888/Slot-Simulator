@@ -74,7 +74,7 @@ describe("RTP", () => {
 
   it("il modulo di esempio resta intorno al 95% di RTP", async () => {
     const { math: demo } = await loadSlotModule("slots/tempio-del-sole");
-    expect(exactRtp(demo).baseRtp).toBeCloseTo(0.7406, 3);
+    expect(exactRtp(demo).baseRtp).toBeCloseTo(0.7352, 3);
     const result = simulate(demo, { spins: 300_000, seed: 5 });
     expect(result.rtp).toBeGreaterThan(0.93);
     expect(result.rtp).toBeLessThan(0.99);

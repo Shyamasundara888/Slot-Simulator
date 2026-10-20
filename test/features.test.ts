@@ -15,17 +15,19 @@ describe("wild espandenti", () => {
   it("coprono tutta la colonna solo sui rulli abilitati", () => {
     const { grid, expandedReels } = expandWilds(math, [["W", "A"], ["B", "W"], ["A", "B"]]);
     expect(grid).toEqual([["W", "A"], ["W", "W"], ["A", "B"]]);
+    expect(expandWilds(math, [["A"], ["W", "S"], ["B"]]).grid[1]).toEqual(["W", "S"]);
     expect(expandedReels).toEqual([1]);
   });
 
-  it("lo scatter coperto dall'espansione paga lo stesso", () => {
-    // Stop [1, 0, 1]: S,B | W,S | S,B → il W si espande sopra lo S del rullo 2.
+  it("non coprono lo scatter, che resta visibile e paga", () => {
+    // Stop [1, 0, 1]: S,B | W,S | S,B → il W si espande ma lo S del rullo 2 resta.
     const result = evaluateSpin(math, "base", [1, 0, 1]);
-    expect(result.grid[1]).toEqual(["W", "W"]);
+    expect(result.grid[1]).toEqual(["W", "S"]);
+    expect(result.expandedReels).toEqual([1]);
     expect(result.scatterCount).toBe(3);
     expect(result.scatterWin?.pay).toBe(4);
-    // Riga 2: B W B paga B x3.
-    expect(result.lineWins).toEqual([{ line: 1, symbol: "B", count: 3, pay: 5 }]);
+    // Riga 2: B S B non paga: lo scatter interrompe la linea.
+    expect(result.lineWins).toEqual([]);
   });
 });
 
@@ -59,6 +61,8 @@ describe("free spin", () => {
     const round = playRound(math, rng);
     expect(round.base.scatterCount).toBe(3);
     expect(round.freeSpins!.awarded).toBe(4);
+    expect(round.freeSpins!.initial).toBe(2);
+    expect(round.freeSpins!.awardedAfter).toEqual([2, 4, 4, 4]);
     expect(round.freeSpins!.spins.map((s) => s.mode)).toEqual(["free", "free", "free", "free"]);
     expect(round.freeSpins!.spins[0]!.lineWins[0]).toMatchObject({ symbol: "B", count: 3 });
   });
@@ -75,6 +79,7 @@ describe("free spin", () => {
     expect(second!.grid).toEqual([["A"], ["A"], ["A"]]);
     expect(second!.lineWins[0]).toMatchObject({ symbol: "A", count: 3, pay: 10 });
     expect(round.freeSpins!.upgradeLevel).toBe(1);
+    expect(round.freeSpins!.spins.map((s) => s.upgradeLevel)).toEqual([0, 1, 1]);
   });
 
   it("il tetto di vincita ferma il round", () => {
