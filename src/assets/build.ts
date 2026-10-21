@@ -1,4 +1,5 @@
 import type { SoundEvent } from "../module/parse.js";
+import type { Motion } from "../module/schema.js";
 import { framePaths, type ArtSpec, type SoundArt, type SymbolArt, type SynthSound } from "./spec.js";
 
 /** Lato di una tessera in unità SVG; il disegno occupa il riquadro interno. */
@@ -31,7 +32,7 @@ export interface BuiltAssets {
   /** Campi da unire in scenes/main.json. */
   scene: {
     backgroundImage?: string;
-    symbols: Record<string, { color: string; image: string; winFrames: string[]; fps: number }>;
+    symbols: Record<string, { color: string; image: string; winFrames: string[]; fps: number; art?: string; tile?: string; motion?: Motion }>;
     sounds: Partial<Record<SoundEvent, string>>;
   };
 }
@@ -139,7 +140,16 @@ const SPARKLES = [
  * Immagine di un simbolo: la tessera, il disegno e, per `glow` > 0, il
  * bagliore di un fotogramma di vincita (da 0 a 1).
  */
-export function symbolSvg(id: string, art: SymbolArt, look: ArtSpec["look"], read: ReadFile, glow = 0, frame = 0, frameColor = "#c9a227"): string {
+export function symbolSvg(
+  id: string,
+  art: SymbolArt,
+  look: ArtSpec["look"],
+  read: ReadFile,
+  glow = 0,
+  frame = 0,
+  frameColor = "#c9a227",
+  withArt = true,
+): string {
   const pixel = look === "pixel";
   const glowColor = art.glow ?? lighten(art.tile, 0.6);
   const parts: string[] = [];
@@ -153,7 +163,7 @@ export function symbolSvg(id: string, art: SymbolArt, look: ArtSpec["look"], rea
     if (glow > 0) parts.push(`<rect x="1.5" y="1.5" width="${TILE - 3}" height="${TILE - 3}" rx="13" fill="none" stroke="${glowColor}" stroke-width="${2 + 2 * glow}" opacity="${0.5 + 0.4 * glow}"/>`);
     if (glow > 0) parts.push(`<circle cx="50" cy="50" r="${30 + 12 * glow}" fill="${glowColor}" opacity="${0.18 + 0.2 * glow}"/>`);
   }
-  parts.push(artwork(id, art, read));
+  if (withArt) parts.push(artwork(id, art, read));
   if (glow > 0) {
     const size = pixel ? 5 : 4;
     SPARKLES.forEach(([x, y], i) => {
@@ -167,6 +177,12 @@ export function symbolSvg(id: string, art: SymbolArt, look: ArtSpec["look"], rea
   }
   const rendering = pixel ? ` shape-rendering="crispEdges"` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${OUTPUT_SIZE}" height="${OUTPUT_SIZE}" viewBox="0 0 ${TILE} ${TILE}"${rendering}>${parts.join("")}</svg>\n`;
+}
+
+/** Solo il disegno del simbolo su fondo trasparente, nella stessa posizione che ha nella tessera. */
+export function artSvg(id: string, art: SymbolArt, look: ArtSpec["look"], read: ReadFile): string {
+  const rendering = look === "pixel" ? ` shape-rendering="crispEdges"` : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${OUTPUT_SIZE}" height="${OUTPUT_SIZE}" viewBox="0 0 ${TILE} ${TILE}"${rendering}>${artwork(id, art, read)}</svg>\n`;
 }
 
 /** Sfondo: un SVG di art/ copiato così com'è, oppure un'immagine raster avvolta in un SVG. */
@@ -250,16 +266,27 @@ export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
       scene.symbols[id] = { color: art.tile, image, winFrames, fps: speed };
       continue;
     }
+    // Con motion il disegno si muove da solo nel client: i fotogrammi di vincita sono tessere vuote.
+    const motion = art.motion;
     const winFrames: string[] = [];
     for (let k = 0; k < frames; k++) {
       // Il bagliore cresce fotogramma dopo fotogramma, poi si torna al simbolo normale.
       const glow = (k + 1) / frames;
       const path = `assets/symbols/${name}-win-${k + 1}.svg`;
-      files.set(path, encode(symbolSvg(id, art, spec.look, read, glow, k, spec.frame)));
+      files.set(path, encode(symbolSvg(id, art, spec.look, read, glow, k, spec.frame, !motion)));
       winFrames.push(path);
     }
-    winFrames.push(image);
-    scene.symbols[id] = { color: art.tile, image, winFrames, fps };
+    if (!motion) {
+      winFrames.push(image);
+      scene.symbols[id] = { color: art.tile, image, winFrames, fps };
+      continue;
+    }
+    const tile = `assets/symbols/${name}-tessera.svg`;
+    const drawing = `assets/symbols/${name}-disegno.svg`;
+    files.set(tile, encode(symbolSvg(id, art, spec.look, read, 0, 0, spec.frame, false)));
+    files.set(drawing, encode(artSvg(id, art, spec.look, read)));
+    winFrames.push(tile);
+    scene.symbols[id] = { color: art.tile, image, winFrames, fps, art: drawing, tile, motion };
   }
 
   if (spec.background) {

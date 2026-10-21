@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SOUND_EVENTS } from "../module/schema.js";
+import { motionSchema, SOUND_EVENTS } from "../module/schema.js";
 
 /**
  * Sorgente degli asset di un modulo: `art/art.json`. Descrive come disegnare
@@ -93,9 +93,15 @@ const symbolArt = z
       })
       .strict()
       .optional(),
+    /**
+     * Movimento del disegno nel client, sopra la tessera: nelle vincite (e con land quando il rullo
+     * si ferma) il soggetto si anima da solo, senza fotogrammi. Vedi MOTIONS in src/module/schema.ts.
+     */
+    motion: motionSchema.optional(),
   })
   .strict()
-  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image");
+  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image")
+  .refine((s) => !(s.motion && s.animation), "motion e animation sono alternativi: tieni uno dei due");
 
 const note = z.tuple([z.union([z.number().positive(), z.tuple([z.number().positive(), z.number().positive()])]), z.number().positive().max(5)]);
 

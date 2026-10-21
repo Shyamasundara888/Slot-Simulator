@@ -73,6 +73,35 @@ describe("pipeline degli asset", () => {
     expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a.webp", count: 3 } } } })).toThrow(/#/);
   });
 
+  it("con motion separa disegno e tessera e i fotogrammi di vincita restano senza disegno", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      look: "smooth",
+      symbols: { A: { tile: "#336699", image: "art/a.png", motion: { win: "pop", land: true } } },
+      win: { frames: 2, fps: 5 },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.symbols.A).toEqual({
+      color: "#336699",
+      image: "assets/symbols/a.svg",
+      art: "assets/symbols/a-disegno.svg",
+      tile: "assets/symbols/a-tessera.svg",
+      winFrames: ["assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg", "assets/symbols/a-tessera.svg"],
+      fps: 5,
+      motion: { win: "pop", shine: true, land: true, strength: 1 },
+    });
+    const text = (path: string) => new TextDecoder().decode(files.get(path));
+    const drawing = `data:image/png;base64,${btoa("art/a.png")}`;
+    expect(text("assets/symbols/a.svg")).toContain(drawing);
+    expect(text("assets/symbols/a-disegno.svg")).toContain(drawing);
+    expect(text("assets/symbols/a-disegno.svg")).not.toContain("cornice");
+    for (const path of ["assets/symbols/a-tessera.svg", "assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg"]) {
+      expect(text(path)).not.toContain(drawing);
+      expect(text(path)).toContain("cornice");
+    }
+    expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", motion: {}, animation: { frames: "art/a-#.png", count: 2 } } } })).toThrow(/alternativi/);
+  });
+
   it("con look smooth disegna la tessera con la cornice del colore scelto", () => {
     const art = spec({ look: "smooth", frame: "#b0b0b0", symbols: { A: { tile: "#336699", pixels: { palette: { X: "#ffffff" }, rows: ["X"] } } } });
     const svg = new TextDecoder().decode(buildAssets(art, noFiles).files.get("assets/symbols/a.svg"));

@@ -43,6 +43,7 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | `symbols.<ID>.prompt` | soggetto per il generatore esterno (in inglese) |
 | `symbols.<ID>.glow` | colore del bagliore nelle vincite (predefinito: la tessera schiarita) |
 | `symbols.<ID>.animation` | animazione di vincita fatta di immagini (vedi [Animazioni generate](#animazioni-generate)): `frames` percorso con `#` al posto del numero, `count`, `fps` (`12`), `loop` (`pingpong` o `loop`); prende il posto di `win.frames` per quel simbolo |
+| `symbols.<ID>.motion` | il disegno si muove da solo nel client sopra la tessera, senza fotogrammi (vedi [Disegni che si muovono](#disegni-che-si-muovono)): `win` (`pop`), `shine` (`true`), `land` (`false`), `strength` (`1`); alternativo a `animation` |
 | `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
 | `win.fps` (`6`) | velocità dell'animazione |
 | `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
@@ -54,7 +55,26 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 
 Ogni simbolo deve avere almeno uno tra `pixels`, `svg` e `image`; se ne ha più di uno vince `image`, poi `svg`, poi `pixels`. Così si parte da un disegno di Claude e lo si sostituisce più avanti con un'immagine esterna, senza perdere la riserva. I simboli che `art.json` non descrive restano tessere colorate. Gli id devono esistere in `math/paytable.json`.
 
-File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. I suoni vanno in `assets/sounds/<evento>.wav`, o con l'estensione del `file` (`bigWin` diventa `big-win`, `bonusMusic` diventa `bonus-music`).
+File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. Con `motion` ci sono anche `drago-disegno.svg` (solo il disegno, su fondo trasparente) e `drago-tessera.svg` (la tessera senza disegno), e i fotogrammi `drago-win-*` sono tessere illuminate senza disegno. I suoni vanno in `assets/sounds/<evento>.wav`, o con l'estensione del `file` (`bigWin` diventa `big-win`, `bonusMusic` diventa `bonus-music`).
+
+### Disegni che si muovono
+
+Con `motion` il client separa il disegno dalla tessera e lo anima con PixiJS nelle vincite: la tessera si illumina coi fotogrammi di `win.frames` e il disegno ci si muove sopra, anche oltre il bordo della cella. Funziona con qualsiasi disegno (immagine generata, SVG o pixel art) e non serve rigenerare nulla.
+
+| `motion.win` | Movimento | Adatto a |
+| --- | --- | --- |
+| `pop` | esce dalla tessera con un rimbalzo e poi respira, un po' più grande | wild, simboli alti |
+| `pulse` | respira | lettere e simboli bassi, scatter |
+| `swing` | oscilla a destra e sinistra | statue, amuleti, oggetti appesi |
+| `spin` | gira come una ruota | monete, dischi, gemme rotonde |
+| `wobble` | ondeggia come una gelatina, ferma alla base | creature morbide, fiamme, pozioni |
+| `flutter` | si stringe e si allarga in fretta, come ali che battono | insetti, uccelli, pipistrelli |
+
+`shine` fa passare un riflesso di luce che segue la sagoma del disegno (al posto del riflesso sulla cella intera). `land: true` fa fare al disegno un breve salto quando il rullo si ferma su di lui, di solito per wild e scatter. `strength` scala l'ampiezza: 0,6 per un movimento più contenuto, 1,5 per uno più vistoso. Con l'impostazione di sistema "riduci movimento" il client torna alla pulsazione semplice e non fa i salti.
+
+```json
+"SOLE": { "tile": "#8a5a00", "image": "art/raw/sole.webp", "motion": { "win": "pop", "land": true } }
+```
 
 ## Linee guida per disegnare
 

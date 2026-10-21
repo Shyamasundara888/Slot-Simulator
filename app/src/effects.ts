@@ -15,6 +15,8 @@ export interface WinCell {
   h: number;
   /** Colore del bagliore, per esempio quello del simbolo schiarito. */
   color: number;
+  /** false se il riflesso lo fa già il disegno che si muove (motion). */
+  shine?: boolean;
 }
 
 interface Particle {
@@ -27,7 +29,7 @@ interface Particle {
   gravity: number;
 }
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+export const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 
 /** Schiarisce un colore verso il bianco di `amount` (0-1). */
 export function lighten(color: number, amount: number): number {
@@ -95,7 +97,7 @@ export class WinEffects {
       this.under.addChild(glow);
       return glow;
     });
-    const shines = cells.map((cell) => {
+    const shines = cells.filter((cell) => cell.shine !== false).map((cell) => {
       const holder = new Container();
       const mask = new Graphics().roundRect(cell.x, cell.y, cell.w, cell.h, 12).fill(0xffffff);
       const band = new Sprite(this.shine);
