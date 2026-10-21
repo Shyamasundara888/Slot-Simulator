@@ -42,5 +42,209 @@
     "checkpoint": "sd_xl_base_1.0.safetensors",
     "generator": "ComfyUI",
     "date": "2026-10-21T09:27:25.357Z"
+  },
+  "art/raw/varianti/10-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The number 10 carved from polished grey granite with a thin gold rim, two thin gold bars below the number. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/10.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:32:27.061Z"
+  },
+  "art/raw/varianti/10-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The number 10 carved from polished grey granite with a thin gold rim, two thin gold bars below the number. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/10.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:32:54.480Z"
+  },
+  "art/raw/varianti/10-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The number 10 carved from polished grey granite with a thin gold rim, two thin gold bars below the number. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/10.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:33:13.831Z"
+  },
+  "art/raw/varianti/sole-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp alternating rays, engraved concentric rings, a red sun gem in the center, a small golden plaque with the word WILD below, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/forme/sole.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:33:36.176Z"
+  },
+  "art/raw/varianti/sole-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp alternating rays, engraved concentric rings, a red sun gem in the center, a small golden plaque with the word WILD below, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/forme/sole.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:33:55.225Z"
+  },
+  "art/raw/varianti/sole-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp alternating rays, engraved concentric rings, a red sun gem in the center, a small golden plaque with the word WILD below, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/forme/sole.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:34:15.396Z"
+  },
+  "art/raw/varianti/ankh-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/ankh.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:34:37.006Z"
+  },
+  "art/raw/varianti/ankh-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/ankh.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:34:56.711Z"
+  },
+  "art/raw/varianti/ankh-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/ankh.svg",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:35:16.196Z"
+  },
+  "art/raw/varianti/a-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter A carved from polished purple amethyst with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/a.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:35:36.850Z"
+  },
+  "art/raw/varianti/a-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter A carved from polished purple amethyst with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/a.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:35:56.322Z"
+  },
+  "art/raw/varianti/a-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter A carved from polished purple amethyst with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/a.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:36:15.592Z"
+  },
+  "art/raw/varianti/k-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter K carved from polished violet stone with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/k.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:36:37.375Z"
+  },
+  "art/raw/varianti/k-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter K carved from polished violet stone with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/k.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:36:57.062Z"
+  },
+  "art/raw/varianti/k-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter K carved from polished violet stone with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/k.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:37:15.750Z"
+  },
+  "art/raw/varianti/q-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter Q carved from polished turquoise with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/q.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:37:37.485Z"
+  },
+  "art/raw/varianti/q-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter Q carved from polished turquoise with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/q.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:37:56.295Z"
+  },
+  "art/raw/varianti/q-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter Q carved from polished turquoise with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/q.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:38:15.709Z"
+  },
+  "art/raw/varianti/j-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter J carved from polished green malachite with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/j.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:38:35.089Z"
+  },
+  "art/raw/varianti/j-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter J carved from polished green malachite with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/j.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:38:53.696Z"
+  },
+  "art/raw/varianti/j-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. The capital letter J carved from polished green malachite with a thin gold rim, two thin gold bars below the letter. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-forma.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "shape": "art/symbols/j.svg",
+    "shapeStrength": 0.95,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T17:39:14.083Z"
   }
 }
