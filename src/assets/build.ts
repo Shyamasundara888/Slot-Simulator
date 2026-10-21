@@ -1,5 +1,5 @@
 import type { SoundEvent } from "../module/parse.js";
-import type { Motion } from "../module/schema.js";
+import { rigSourceSchema, type Motion, type Rig } from "../module/schema.js";
 import { framePaths, type ArtSpec, type SoundArt, type SymbolArt, type SynthSound } from "./spec.js";
 
 /** Lato di una tessera in unità SVG; il disegno occupa il riquadro interno. */
@@ -32,7 +32,7 @@ export interface BuiltAssets {
   /** Campi da unire in scenes/main.json. */
   scene: {
     backgroundImage?: string;
-    symbols: Record<string, { color: string; image: string; winFrames: string[]; fps: number; art?: string; tile?: string; motion?: Motion }>;
+    symbols: Record<string, { color: string; image: string; winFrames: string[]; fps: number; art?: string; tile?: string; motion?: Motion; rig?: Rig | undefined }>;
     sounds: Partial<Record<SoundEvent, string>>;
   };
 }
@@ -95,6 +95,43 @@ function artwork(id: string, art: SymbolArt, read: ReadFile): string {
   });
   if (rects.length === 0) throw new Error(`${id}: la pixel art è vuota`);
   return `<svg x="${INSET}" y="${INSET}" width="${inner}" height="${inner}" viewBox="0 0 ${cols} ${rows.length}" shape-rendering="crispEdges">${rects.join("")}</svg>`;
+}
+
+/**
+ * Rig di art/ portato nelle coordinate del disegno (da 0 a 1): l'immagine grande `size` sta nel
+ * riquadro interno della tessera, centrata e intera, come in artwork().
+ */
+export function sceneRig(path: string, read: ReadFile): Rig {
+  let json: unknown;
+  try {
+    json = JSON.parse(new TextDecoder().decode(read(path)));
+  } catch (e) {
+    throw new Error(`${path}: JSON non valido (${(e as Error).message})`);
+  }
+  const parsed = rigSourceSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues.map((i) => `${path}: ${i.path.join(".") || "rig"}: ${i.message}`).join("\n"));
+  }
+  const { size, loop, parts } = parsed.data;
+  const inner = TILE - 2 * INSET;
+  const k = inner / Math.max(size[0], size[1]);
+  const left = INSET + (inner - size[0] * k) / 2;
+  const top = INSET + (inner - size[1] * k) / 2;
+  const round = (v: number) => Math.round(v * 10000) / 10000;
+  const at = ([x, y]: [number, number]): [number, number] => [round((left + x * k) / TILE), round((top + y * k) / TILE)];
+  return {
+    loop,
+    parts: parts.map((part) => ({
+      ...part,
+      shape: part.shape.map(at),
+      pivot: at(part.pivot),
+      moves: part.moves.map((m) => ({
+        ...m,
+        ...(m.x !== undefined ? { x: round((m.x * k) / TILE) } : {}),
+        ...(m.y !== undefined ? { y: round((m.y * k) / TILE) } : {}),
+      })),
+    })),
+  };
 }
 
 /** Scurisce un colore verso il nero di `amount` (0-1). */
@@ -286,7 +323,9 @@ export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
     files.set(tile, encode(symbolSvg(id, art, spec.look, read, 0, 0, spec.frame, false)));
     files.set(drawing, encode(artSvg(id, art, spec.look, read)));
     winFrames.push(tile);
-    scene.symbols[id] = { color: art.tile, image, winFrames, fps, art: drawing, tile, motion };
+    // rig sempre presente come chiave, così il build toglie dalla scena un rig tolto da art.json.
+    const rig = art.rig ? sceneRig(art.rig, read) : undefined;
+    scene.symbols[id] = { color: art.tile, image, winFrames, fps, art: drawing, tile, motion, rig };
   }
 
   if (spec.background) {

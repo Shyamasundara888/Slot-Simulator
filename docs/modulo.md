@@ -181,6 +181,7 @@ La scena cambia solo l'aspetto: non tocca mai l'esito. Ogni campo è facoltativo
 | `symbols.<ID>.winFrames` | fotogrammi mostrati in ciclo quando il simbolo vince; senza, il simbolo pulsa |
 | `symbols.<ID>.fps` (`8`) | fotogrammi al secondo, al massimo 60 |
 | `symbols.<ID>.art`, `symbols.<ID>.tile`, `symbols.<ID>.motion` | disegno su fondo trasparente, tessera senza disegno e movimento del disegno (vedi [Disegni che si muovono](asset.md#disegni-che-si-muovono)); con `motion` servono `art` e `tile`, e `winFrames` sono tessere senza disegno |
+| `symbols.<ID>.rig` | parti del disegno che si muovono nelle vincite: `loop` in secondi e `parts` con `shape`, `pivot`, `front` e `moves`, coordinate in frazioni del disegno (da 0 a 1). Lo scrive `npm run assets -- build` da `art/` (vedi [Simboli a parti](asset.md#simboli-a-parti-rig)); richiede `motion` |
 | `sounds` | `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20× la puntata), `feature` (free spin e sequenze degli script); musiche in loop `music` (gioco base, parte al primo giro) e `bonusMusic` (durante free spin e sequenze) |
 | `modes.<modo>.label` | nome di una modalità aggiunta, per esempio "Gold Spin" |
 | `modes.<modo>.description` | regola della modalità, mostrata nella paytable |

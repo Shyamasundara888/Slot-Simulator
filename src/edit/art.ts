@@ -121,5 +121,9 @@ export function setMotion(draft: ModuleDraft, id: string, motion: Motion | undef
     }
   }
   if (motion) style.motion = motion;
-  else delete style.motion;
+  else {
+    // Il rig muove le parti del disegno di motion: senza movimento non ha senso.
+    delete style.motion;
+    delete style.rig;
+  }
 }

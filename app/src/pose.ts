@@ -1,4 +1,4 @@
-import type { MotionKind } from "../../src/module/schema.js";
+import type { MotionKind, RigMove } from "../../src/module/schema.js";
 
 /** Pose del disegno che si muove (motion): solo numeri, senza PixiJS, così si provano nei test. */
 
@@ -69,3 +69,42 @@ export function landPose(t: number, strength = 1): Pose {
   return { scale: 1 + 0.22 * strength * Math.sin(Math.PI * u), sx: 1, sy: 1, rotation: 0, dy: -0.05 * strength * Math.sin(Math.PI * u), wave: 0 };
 }
 
+
+/** Trasformazioni di una parte del rig in un istante, attorno al suo perno. */
+export interface PartPose {
+  /** Rotazione in radianti. */
+  rotation: number;
+  sx: number;
+  sy: number;
+  /** Spostamento, in frazioni del disegno. */
+  dx: number;
+  dy: number;
+  /** Quanto cresce in altezza il lato lontano dal perno, per ogni larghezza del disegno di distanza. */
+  perspective: number;
+  /** Quanto scurire la parte, da 0 a 0.9. */
+  shade: number;
+}
+
+/** In quanti secondi i movimenti del rig arrivano all'ampiezza piena: all'inizio la parte è ferma. */
+export const RIG_EASE_IN = 0.25;
+
+/** Posa di una parte del rig `t` secondi dopo l'inizio della vincita, con un loop lungo `loop` secondi. */
+export function rigPose(moves: readonly RigMove[], t: number, loop: number, strength = 1): PartPose {
+  const pose: PartPose = { rotation: 0, sx: 1, sy: 1, dx: 0, dy: 0, perspective: 0, shade: 0 };
+  const ease = Math.min(1, t / RIG_EASE_IN) * strength;
+  for (const m of moves) {
+    const u = TAU * ((m.cycles * t) / loop + m.phase);
+    const w = ease * (m.wave === "pulse" ? (1 - Math.cos(u)) / 2 : Math.sin(u));
+    pose.rotation += ((m.rotate ?? 0) * Math.PI * w) / 180;
+    pose.sx += (m.scaleX ?? 0) * w;
+    pose.sy += (m.scaleY ?? 0) * w;
+    pose.dx += (m.x ?? 0) * w;
+    pose.dy += (m.y ?? 0) * w;
+    pose.perspective += (m.perspective ?? 0) * w;
+    pose.shade += (m.shade ?? 0) * Math.abs(w);
+  }
+  pose.sx = Math.max(0.05, pose.sx);
+  pose.sy = Math.max(0.05, pose.sy);
+  pose.shade = Math.min(0.9, pose.shade);
+  return pose;
+}

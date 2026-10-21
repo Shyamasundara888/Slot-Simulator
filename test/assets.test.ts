@@ -102,6 +102,25 @@ describe("pipeline degli asset", () => {
     expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", motion: {}, animation: { frames: "art/a-#.png", count: 2 } } } })).toThrow(/alternativi/);
   });
 
+  it("il rig passa dai pixel dell'immagine alle coordinate del disegno", () => {
+    const rig = {
+      size: [200, 100],
+      parts: [{ id: "ala", shape: [[0, 0], [100, 0], [100, 100]], pivot: [100, 50], front: true, moves: [{ rotate: 10, x: 20, cycles: 2 }] }],
+    };
+    const read = (path: string) => new TextEncoder().encode(path === "art/rig/a.json" ? JSON.stringify(rig) : path);
+    const art = spec({ symbols: { A: { tile: "#336699", image: "art/a.png", motion: {}, rig: "art/rig/a.json" } } });
+    const { scene } = buildAssets(art, read);
+    // L'immagine 200x100 sta intera nel riquadro interno (da 0.1 a 0.9), centrata in verticale.
+    expect(scene.symbols.A!.rig).toEqual({
+      loop: 1.2,
+      parts: [{ id: "ala", shape: [[0.1, 0.3], [0.5, 0.3], [0.5, 0.7]], pivot: [0.5, 0.5], front: true, moves: [{ rotate: 10, x: 0.08, cycles: 2, phase: 0, wave: "sine" }] }],
+    });
+    expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", rig: "art/rig/a.json" } } })).toThrow(/rig richiede motion/);
+    const bad = (value: unknown) => () => buildAssets(art, () => new TextEncoder().encode(JSON.stringify(value)));
+    expect(bad({ ...rig, parts: [{ ...rig.parts[0], moves: [{ cycles: 1 }] }] })).toThrow(/art\/rig\/a.json: parts.0.moves.0: serve almeno uno/);
+    expect(bad({ ...rig, parts: [rig.parts[0], rig.parts[0]] })).toThrow(/id diverso/);
+  });
+
   it("con look smooth disegna la tessera con la cornice del colore scelto", () => {
     const art = spec({ look: "smooth", frame: "#b0b0b0", symbols: { A: { tile: "#336699", pixels: { palette: { X: "#ffffff" }, rows: ["X"] } } } });
     const svg = new TextDecoder().decode(buildAssets(art, noFiles).files.get("assets/symbols/a.svg"));

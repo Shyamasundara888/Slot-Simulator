@@ -1,7 +1,7 @@
 {
   "id": "tempio-del-sole",
   "name": "Tempio del Sole",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "author": "Slot Simulator",
   "description": "Slot di esempio 5x3 a 10 linee a tema egizio, ispirata alle meccaniche classiche. Wild espandenti sui rulli 2-4, free spin con riattivazione e upgrade dei simboli alti, Gold Spins scritti in Lua.",
   "engineApi": 1

@@ -58,10 +58,13 @@ describe("grafica e suoni nella bozza", () => {
     expect(problems).toEqual([]);
     expect(module!.scene.symbols.get("H1")).toMatchObject({ art: built.moving.art, tile: built.moving.tile, motion: { win: "swing", land: true } });
 
-    // Spento il movimento tornano i fotogrammi con il disegno.
+    // Spento il movimento tornano i fotogrammi con il disegno, e se ne va anche il rig.
+    symbolStyle(draft, "H1").rig = { loop: 1.2, parts: [{ id: "ala", shape: [[0, 0], [1, 0], [1, 1]], pivot: [0.5, 0.5], front: false, moves: [{ rotate: 5, cycles: 1, phase: 0, wave: "sine" }] }] };
+    expect(checkDraft(draft, all).problems).toEqual([]);
     setMotion(draft, "H1", undefined, all);
     expect(symbolStyle(draft, "H1").winFrames).toEqual(built.still.winFrames);
     expect(symbolStyle(draft, "H1").motion).toBeUndefined();
+    expect(symbolStyle(draft, "H1").rig).toBeUndefined();
 
     // I fotogrammi scelti a mano restano dove sono.
     setSymbolArt(draft, "H1", { winFrames: ["assets/images/a.png"] });

@@ -1,6 +1,6 @@
-import { Container, FillGradient, Graphics, MeshPlane, Sprite, type Renderer, type Texture } from "pixi.js";
-import type { Motion } from "../../src/module/schema.js";
-import { LAND_SECONDS, landPose, motionPose } from "./pose.js";
+import { CanvasSource, Container, FillGradient, Graphics, MeshPlane, Sprite, Texture, type Renderer } from "pixi.js";
+import type { Motion, Rig, RigPart } from "../../src/module/schema.js";
+import { LAND_SECONDS, landPose, motionPose, rigPose, type PartPose } from "./pose.js";
 
 const TAU = Math.PI * 2;
 
@@ -28,6 +28,48 @@ function shineBand(renderer: Renderer): Texture {
 
 const GRID = 12;
 
+/** Disegno con rig già ritagliato: il resto del disegno e una texture per parte, tutte grandi come il disegno. */
+export interface RigArt {
+  rig: Rig;
+  rest: Texture;
+  parts: Texture[];
+}
+
+/**
+ * Ritaglia le parti del rig dal disegno, una volta per simbolo: ogni pixel va alla prima parte
+ * il cui poligono lo contiene, quello che resta fuori da tutte forma il resto del disegno.
+ */
+export function cutRig(renderer: Renderer, art: Texture, rig: Rig): RigArt {
+  const source = renderer.extract.canvas(art) as HTMLCanvasElement;
+  const { width, height } = source;
+  const resolution = width / art.width;
+  const paths = rig.parts.map((part) => {
+    const path = new Path2D();
+    for (const [x, y] of part.shape) path.lineTo(x * width, y * height);
+    path.closePath();
+    return path;
+  });
+  const cut = (inside: Path2D | null, outside: Path2D[]): Texture => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d")!;
+    if (inside) ctx.clip(inside);
+    ctx.drawImage(source, 0, 0);
+    ctx.globalCompositeOperation = "destination-out";
+    for (const path of outside) ctx.fill(path);
+    return new Texture({ source: new CanvasSource({ resource: canvas, resolution }) });
+  };
+  return { rig, rest: cut(null, paths), parts: paths.map((path, i) => cut(path, paths.slice(0, i))) };
+}
+
+/** Una parte del rig in scena: la sua mesh e le posizioni ferme dei vertici. */
+interface PartView {
+  part: RigPart;
+  mesh: MeshPlane;
+  rest: Float32Array;
+}
+
 /** Il disegno di un simbolo che si muove, centrato in una cella di w x h. */
 export class SymbolMotion {
   readonly container = new Container();
@@ -37,6 +79,8 @@ export class SymbolMotion {
   private readonly rest: Float32Array;
   private readonly shine: Sprite | null = null;
   private readonly fit: number;
+  private readonly parts: PartView[] = [];
+  private readonly loop: number = 1;
   private elapsed = 0;
 
   constructor(
@@ -47,12 +91,23 @@ export class SymbolMotion {
     private readonly h: number,
     /** "land": solo il salto all'arresto del rullo. */
     private readonly mode: "win" | "land" = "win",
+    /** Parti che si muovono da sole, solo nelle vincite. */
+    rig?: RigArt | undefined,
   ) {
     this.fit = Math.min(w / art.width, h / art.height);
-    this.mesh = new MeshPlane({ texture: art, verticesX: GRID, verticesY: GRID });
-    this.mesh.pivot.set(art.width / 2, art.height / 2);
-    this.rest = Float32Array.from(this.mesh.geometry.getAttribute("aPosition").buffer.data as Float32Array);
-    this.body.addChild(this.mesh);
+    const moving = rig && mode === "win" ? rig : undefined;
+    const plane = (texture: Texture) => {
+      const mesh = new MeshPlane({ texture, verticesX: GRID, verticesY: GRID });
+      mesh.pivot.set(art.width / 2, art.height / 2);
+      return { mesh, rest: Float32Array.from(mesh.geometry.getAttribute("aPosition").buffer.data as Float32Array) };
+    };
+    ({ mesh: this.mesh, rest: this.rest } = plane(moving ? moving.rest : art));
+    if (moving) {
+      this.loop = moving.rig.loop;
+      moving.rig.parts.forEach((part, i) => this.parts.push({ part, ...plane(moving.parts[i]!) }));
+    }
+    // Le parti dietro stanno sotto il resto del disegno, quelle davanti (front) sopra.
+    this.body.addChild(...this.parts.filter((p) => !p.part.front).map((p) => p.mesh), this.mesh, ...this.parts.filter((p) => p.part.front).map((p) => p.mesh));
     if (motion.shine && mode === "win") {
       // Il riflesso si vede solo dentro la sagoma del disegno: la maschera è una copia del disegno.
       const mask = new Sprite(art);
@@ -80,6 +135,7 @@ export class SymbolMotion {
     this.body.rotation = pose.rotation;
     this.body.y = pose.dy * this.h;
     this.deform(pose.wave, t);
+    for (const view of this.parts) this.pose(view, rigPose(view.part.moves, t, this.loop, this.motion.strength));
     if (this.shine) {
       const phase = (t % SHINE_PERIOD) / SHINE_PERIOD;
       const width = this.mesh.texture.width;
@@ -102,6 +158,29 @@ export class SymbolMotion {
       data[i + 1] = this.rest[i + 1]!;
     }
     buffer.update();
+  }
+
+  /** Muove i vertici di una parte attorno al suo perno: prospettiva, allungamento, rotazione, spostamento. */
+  private pose(view: PartView, pose: PartPose): void {
+    const buffer = view.mesh.geometry.getAttribute("aPosition").buffer;
+    const data = buffer.data as Float32Array;
+    const { width, height } = view.mesh.texture;
+    const px = view.part.pivot[0] * width;
+    const py = view.part.pivot[1] * height;
+    const cos = Math.cos(pose.rotation);
+    const sin = Math.sin(pose.rotation);
+    for (let i = 0; i < data.length; i += 2) {
+      let x = view.rest[i]! - px;
+      let y = view.rest[i + 1]! - py;
+      y *= 1 + (pose.perspective * Math.abs(x)) / width;
+      x *= pose.sx;
+      y *= pose.sy;
+      data[i] = px + x * cos - y * sin + pose.dx * width;
+      data[i + 1] = py + x * sin + y * cos + pose.dy * height;
+    }
+    buffer.update();
+    const light = Math.round(255 * (1 - pose.shade));
+    view.mesh.tint = (light << 16) | (light << 8) | light;
   }
 
   destroy(): void {
