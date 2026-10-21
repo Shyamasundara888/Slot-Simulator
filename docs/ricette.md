@@ -17,7 +17,7 @@ Prima di tutto l'assistente legge [AGENTS.md](../AGENTS.md). Con Claude Code le 
 4. Scrivi `math/features.json` con le funzioni richieste, guardando le tabelle in [modulo.md](modulo.md#mathfeaturesjson).
 5. Crea strisce di partenza in `math/reels.json` e tara seguendo [matematica.md](matematica.md) fino al profilo richiesto.
 6. Se serve una regola che `features.json` non sa esprimere, scrivi `scripts/main.lua` ([script-lua.md](script-lua.md)) e aggiungi la modalità alla scena.
-7. Scrivi `scenes/main.json` con etichette e nomi delle modalità, poi `art/art.json` e i disegni ([asset.md](asset.md)); `npm run assets -- build slots/<id>`.
+7. Scrivi `scenes/main.json` con etichette e nomi delle modalità, poi `art/art.json` e i disegni ([asset.md](asset.md)); `npm run assets -- build slots/<id>`. Per i bonus aggiungi `scenes/ui.json` con contatori e indicatori ([modulo.md](modulo.md#scenesuijson)).
 8. Verifiche finali.
 
 ## 2. Ricostruire le meccaniche di una slot reale

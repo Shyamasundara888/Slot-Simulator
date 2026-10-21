@@ -10,7 +10,9 @@ import {
   reelsSchema,
   sceneSchema,
   SOUND_EVENTS,
+  uiSchema,
 } from "./schema.js";
+import { buildUi, uiAssets, type UiLayout } from "./ui.js";
 
 /** File di un modulo, con il percorso relativo alla sua cartella. */
 export const MODULE_FILES = {
@@ -20,11 +22,13 @@ export const MODULE_FILES = {
   paytable: "math/paytable.json",
   features: "math/features.json",
   scene: "scenes/main.json",
+  /** Layout dello stage ed elementi di interfaccia. */
+  ui: "scenes/ui.json",
   /** Script Lua con le regole aggiuntive, letto come testo. */
   script: "scripts/main.lua",
 } as const;
 
-const OPTIONAL_FILES: ReadonlySet<string> = new Set([MODULE_FILES.features, MODULE_FILES.scene, MODULE_FILES.script]);
+const OPTIONAL_FILES: ReadonlySet<string> = new Set([MODULE_FILES.features, MODULE_FILES.scene, MODULE_FILES.ui, MODULE_FILES.script]);
 
 export interface SymbolStyle {
   label: string;
@@ -55,6 +59,8 @@ export interface SlotModule {
   manifest: Manifest;
   math: SlotMath;
   scene: Scene;
+  /** Stage, riquadro dei rulli ed elementi di interfaccia (scenes/ui.json). */
+  ui: UiLayout;
   /** Sorgente di scripts/main.lua, se il modulo ne ha uno. */
   script: string | null;
 }
@@ -115,6 +121,10 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>, assets
   ];
   if (unknown.length > 0) throw new ModuleError(unknown.map((p) => `${MODULE_FILES.scene}: ${p}`));
 
+  const built = buildUi(validate(MODULE_FILES.ui, uiSchema, files[MODULE_FILES.ui] ?? {}), math);
+  if (built.problems.length > 0) throw new ModuleError(built.problems.map((p) => `${MODULE_FILES.ui}: ${p}`));
+  const { ui } = built;
+
   const script = files[MODULE_FILES.script] ?? null;
   if (script !== null && typeof script !== "string") {
     throw new ModuleError([`${MODULE_FILES.script}: lo script va passato come testo`]);
@@ -143,8 +153,15 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>, assets
   };
   if (assets) {
     const present = new Set(assets);
-    const missing = sceneAssets(scene).filter((path) => !present.has(path));
-    if (missing.length > 0) throw new ModuleError(missing.map((path) => `${MODULE_FILES.scene}: asset mancante ${path}`));
+    const missing = [
+      ...sceneAssets(scene)
+        .filter((path) => !present.has(path))
+        .map((path) => `${MODULE_FILES.scene}: asset mancante ${path}`),
+      ...uiAssets(ui)
+        .filter((path) => !present.has(path))
+        .map((path) => `${MODULE_FILES.ui}: asset mancante ${path}`),
+    ];
+    if (missing.length > 0) throw new ModuleError(missing);
   }
-  return { manifest, math, scene, script };
+  return { manifest, math, scene, ui, script };
 }

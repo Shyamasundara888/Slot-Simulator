@@ -10,6 +10,7 @@ slots/<id>/
   math/paytable.json   obbligatorio   simboli e pagamenti
   math/features.json   facoltativo    wild espandenti, free spin, moltiplicatori, upgrade, tetto di vincita
   scenes/main.json     facoltativo    aspetto: colori, etichette, immagini, suoni, nomi delle modalità
+  scenes/ui.json       facoltativo    stage, posto dei rulli ed elementi di interfaccia (contatori, barre, scale...)
   scripts/main.lua     facoltativo    regole aggiuntive in Lua (vedi script-lua.md)
   assets/              facoltativo    immagini e suoni usati dalla scena (generati, vedi asset.md)
   art/                 facoltativo    sorgenti degli asset; non entra negli zip dei mod
@@ -184,6 +185,76 @@ La scena cambia solo l'aspetto: non tocca mai l'esito. Ogni campo è facoltativo
 | `modes.<modo>.description` | regola della modalità, mostrata nella paytable |
 
 I simboli non descritti ricevono un colore predefinito. I percorsi degli asset partono da `assets/`, usano lettere, cifre, `-`, `_` e `.`, e finiscono con un formato ammesso: PNG, JPG, WebP, GIF o SVG per le immagini; MP3, OGG o WAV per i suoni. Ogni asset citato deve esistere. Di solito questi campi li scrive `npm run assets -- build`.
+
+## scenes/ui.json
+
+Gli elementi di interfaccia attorno ai rulli: contatore dei free spin, moltiplicatore, barre, scale di livelli, immagini e testi. Come la scena, cambiano solo l'aspetto: mostrano valori che il motore ha già deciso. Senza questo file lo stage è 900x520 con i rulli al centro, come nelle prime slot.
+
+```json
+{
+  "stage": { "width": 1060, "height": 568 },
+  "reels": { "x": 150, "y": 92, "width": 760, "height": 448 },
+  "elements": [
+    {
+      "id": "giri", "type": "counter",
+      "x": 12, "y": 92, "width": 120, "height": 110,
+      "label": "Free spin", "value": "free.remaining", "format": "{value} / {free.total}",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free"]
+    },
+    {
+      "id": "upgrade", "type": "ladder",
+      "x": 928, "y": 218, "width": 120, "height": 322, "direction": "column",
+      "label": "Livello simboli", "value": "level", "steps": ["GATTO", "SCARABEO", "ANKH", "FARAONE"],
+      "visibleIn": ["free"], "onChange": "pulse"
+    }
+  ]
+}
+```
+
+| Campo | Significato |
+| --- | --- |
+| `stage` (900x520) | misura logica dello stage, da 300x200 a 4000x4000; il canvas viene scalato per riempire la pagina |
+| `reels` (al centro) | riquadro dei rulli nello stage: le celle si adattano al riquadro. Rimpicciolisci i rulli per fare spazio agli elementi |
+| `elements` | elenco degli elementi, disegnati nell'ordine dato |
+
+Campi di tutti gli elementi:
+
+| Campo | Significato |
+| --- | --- |
+| `id` | nome unico, in minuscolo (`giri`, `vincita-bonus`) |
+| `type` | `counter`, `meter`, `ladder`, `image` o `text` |
+| `x`, `y`, `width`, `height` | riquadro in coordinate dello stage; deve stare dentro lo stage |
+| `layer` (`above`) | `above` sopra i rulli, `below` fra lo sfondo e i rulli |
+| `visibleIn` (sempre) | modalità in cui si vede, per esempio `["free", "gold"]`; cambiando modalità l'elemento compare o sparisce in dissolvenza |
+| `onChange` (`pop`) | animazione quando cambia ciò che mostra: `pop` (salto), `pulse` (lampo), `shake` (scossa), `count` (le cifre scorrono, per i `counter`), `none` |
+| `sound` | suono quando cambia ciò che mostra, dentro `assets/` |
+
+Aspetto del riquadro (`counter`, `meter`, `ladder`, `text`): `frame` (immagine stirata sul riquadro, per esempio una cornice) oppure `background` (colore, nero se manca) con `opacity` (0,55; per `text` 0, cioè nessun riquadro) e `border` (colore del bordo). Testo: `color` (`#ffffff`) e `fontSize` (senza, si adatta all'altezza).
+
+| Tipo | Cosa mostra | Campi propri |
+| --- | --- | --- |
+| `counter` | un numero con un'etichetta | `value`, `format` (`{value}`), `label`, `labelColor` |
+| `meter` | una barra che si riempie | `value`, `max`, `style` (`bar` continua o `segments`, uno per unità, al massimo 50), `direction` (`right` o `up`), `fillColor` (`#ffd43b`), `fill` (immagine della parte piena o di un segmento pieno), `label` |
+| `ladder` | una fila di gradini con quello attuale acceso | `value`, `steps` (da 2 a 20), `direction` (`row` o `column`, che sale dal basso), `highlight` (`#ffd43b`), `label` |
+| `image` | un'immagine fissa o animata | `image` oppure `frames` con `fps` (8) |
+| `text` | un testo, anche con valori | `text`, `align` (`center`) |
+
+Un gradino di `ladder` può essere un testo, un numero o l'id di un simbolo, che allora mostra l'immagine del simbolo. Se tutti i gradini sono numeri (anche con `×` davanti, come `×1 ×2 ×5 ×10`) si accende l'ultimo che non supera il valore; altrimenti si accende il gradino in posizione `value`, contando da 0. Per l'upgrade dei simboli usa la `upgradeLadder` di `features.json` con `value: "level"`: il gradino acceso è il simbolo più basso ancora in gioco.
+
+**Valori.** `value` e i segnaposto tra graffe in `format` e `text` usano questi valori del round (`{value}` è il valore dell'elemento e non vale in `text`):
+
+| Valore | Significato |
+| --- | --- |
+| `free.remaining`, `free.played`, `free.total` | free spin rimasti, giocati e assegnati (riattivazioni comprese) |
+| `sequence.remaining`, `sequence.played`, `sequence.total` | spin della sequenza di uno script in corso (per esempio i Gold Spin) |
+| `multiplier` | moltiplicatore in corso: quello dei free spin o della sequenza, 1 nello spin base |
+| `level` | livello di upgrade dello spin in corso |
+| `win.spin`, `win.feature`, `win.round` | vincita dell'ultimo spin, del bonus (free spin e sequenze) e del round, in crediti |
+| `bet` | puntata totale, in crediti |
+| `maxWin` | vincita massima in multipli della puntata (0 se il modulo non ha un tetto) |
+
+Gli asset degli elementi vanno in `assets/ui/` (per esempio `assets/ui/cornice.webp`) e `npm run mod -- check` controlla che esistano. `npm run assets -- build` non tocca né `scenes/ui.json` né `assets/ui/`.
 
 ## Mod in zip
 

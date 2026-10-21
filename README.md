@@ -173,6 +173,10 @@ La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. 
 - Formati: PNG, JPG, WebP, GIF e SVG per le immagini; MP3, OGG e WAV per i suoni. I percorsi partono da `assets/` e usano solo lettere, cifre, `-`, `_` e `.`.
 - Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella.
 
+### Elementi di interfaccia (`scenes/ui.json`)
+
+Un modulo può fissare la misura dello stage, il riquadro dei rulli e una serie di elementi attorno ai rulli: contatori (free spin rimasti, moltiplicatore, vincita del bonus), barre che si riempiono, scale di livelli (anche fatte di simboli), immagini e testi. Ogni elemento ha posizione, aspetto, modalità in cui si vede, animazione e suono quando cambia, e mostra i valori del round deciso dal motore (`free.remaining`, `multiplier`, `level`, `win.feature`...). Il Tempio del Sole li usa per free spin, Gold Spin, moltiplicatore, vincita del bonus e livello dei simboli. Formato completo in [docs/modulo.md](docs/modulo.md#scenesuijson).
+
 ### Creare gli asset (`art/`, `npm run assets`)
 
 Gli asset delle slot di esempio non si disegnano a mano in `assets/`: si descrivono in `art/art.json` e si generano. La cartella `art/` resta fuori dagli zip dei mod.
@@ -247,4 +251,5 @@ Le prossime parti aggiungono lo script Lua, poi grafica e suoni.
 ## Prossime fasi
 
 7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli e Funzioni; mancano script, grafica e suoni.
-8. API per integrare le slot in un gioco più grande.
+8. Elementi di interfaccia: fatti `scenes/ui.json` e i valori del motore; seguono l'API Lua (`ui.set`, `ui.show`...), pannelli e scelte del giocatore, valori che restano tra un round e l'altro e la scheda Interfaccia dell'editor.
+9. API per integrare le slot in un gioco più grande.
