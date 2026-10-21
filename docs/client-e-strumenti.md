@@ -86,7 +86,7 @@ I test automatici (`npm test`) coprono motore, moduli, script, asset, operazioni
 
 | Comando | Cosa fa |
 | --- | --- |
-| `npm run sim -- <modulo>` | simula 1.000.000 di round; opzioni `--spins N`, `--seed S`, `--exact`, `--json` |
+| `npm run sim -- <modulo>` | simula 1.000.000 di round; opzioni `--spins N`, `--seed S`, `--exact`, `--json`, `--choice random\|N\|each` (come rispondere alle scelte del giocatore: a caso, sempre l'opzione N, oppure una simulazione per opzione) |
 | `npm run mod -- check <modulo o zip>` | controlla un modulo come farebbe il motore, script compreso |
 | `npm run mod -- pack <modulo> [--out DIR]` | crea `mods/<id>-<versione>.zip` |
 | `npm run mod -- install <zip> [--slots DIR] [--force]` | controlla ed estrae in `slots/<id>/` |

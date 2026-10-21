@@ -385,6 +385,232 @@ class TextView extends ElementView<Of<"text">> {
   }
 }
 
+/** Un pulsante disegnato: riquadro con bordo nel colore d'accento, etichetta e testo facoltativo. */
+function button(w: number, h: number, accent: number, labelText: string, detail: string | undefined, color: number): Container {
+  const c = new Container();
+  c.addChild(new Graphics().roundRect(0, 0, w, h, 10).fill({ color: 0x000000, alpha: 0.45 }).stroke({ width: 3, color: accent }));
+  const title = label(labelText, Math.min(26, h * (detail ? 0.32 : 0.45)), accent, "800");
+  title.position.set(w / 2, detail ? h * 0.32 : h / 2);
+  fitWidth(title, w - 16);
+  c.addChild(title);
+  if (detail) {
+    const body = new Text({
+      text: detail,
+      style: { fill: color, fontSize: Math.min(16, h * 0.2), align: "center", wordWrap: true, wordWrapWidth: w - 16 },
+    });
+    body.label = "dettaglio";
+    body.anchor.set(0.5);
+    body.position.set(w / 2, h * 0.7);
+    if (body.height > h * 0.5) body.scale.set((h * 0.5) / body.height);
+    c.addChild(body);
+  }
+  c.eventMode = "none";
+  c.cursor = "pointer";
+  return c;
+}
+
+/** Abilita il tocco su un pulsante finché non viene toccato. */
+function tapOnce(target: Container): Promise<void> {
+  return new Promise((resolve) => {
+    target.eventMode = "static";
+    target.once("pointertap", () => {
+      target.eventMode = "none";
+      resolve();
+    });
+  });
+}
+
+/** Pannello che compare sopra i rulli: titolo, testo, immagine e opzioni o pulsante. */
+class PanelView extends ElementView<Of<"panel">> {
+  private readonly text: Text | null = null;
+  private readonly options: Container[] = [];
+  /** Testi sotto le opzioni, che possono avere segnaposto. */
+  private readonly details: (Text | null)[] = [];
+  private readonly close: Container | null = null;
+
+  constructor(element: Of<"panel">, images: ReadonlyMap<string, Texture>) {
+    super(element, images);
+    const { width: w, height: h } = element;
+    const accent = toHex(element.accent);
+    this.drawPanel();
+    let y = 14;
+    if (element.image) {
+      const ih = h * 0.28;
+      this.container.addChild(fitted(images.get(element.image)!, 12, y, w - 24, ih));
+      y += ih + 8;
+    }
+    if (element.title) {
+      const size = element.fontSize ? element.fontSize * 1.4 : Math.min(40, h * 0.1);
+      const title = label(element.title, size, accent, "800");
+      title.position.set(w / 2, y + size / 2);
+      fitWidth(title, w - 24);
+      this.container.addChild(title);
+      y += size + 12;
+    }
+    const n = element.options?.length ?? 0;
+    const buttonsH = n > 0 ? Math.min(90, (h - y) * 0.6 / n) * n + 10 * (n - 1) : element.button ? 56 : 0;
+    if (element.text !== undefined) {
+      const size = element.fontSize ?? Math.min(22, h * 0.06);
+      this.text = new Text({
+        text: "",
+        style: { fill: toHex(element.color), fontSize: size, align: "center", wordWrap: true, wordWrapWidth: w - 32 },
+      });
+      this.text.anchor.set(0.5, 0);
+      this.text.position.set(w / 2, y);
+      this.container.addChild(this.text);
+    }
+    const bottom = h - 16 - buttonsH;
+    if (n > 0) {
+      const bh = (buttonsH - 10 * (n - 1)) / n;
+      element.options!.forEach((option, i) => {
+        const b = button(w - 40, bh, accent, option.label, option.text, toHex(element.color));
+        b.position.set(20, bottom + i * (bh + 10));
+        this.container.addChild(b);
+        this.options.push(b);
+        this.details.push((b.children.find((c) => c.label === "dettaglio") as Text | undefined) ?? null);
+      });
+    } else if (element.button) {
+      const b = button(Math.min(240, w - 40), 52, accent, element.button, undefined, toHex(element.color));
+      b.position.set((w - b.width) / 2, bottom);
+      this.container.addChild(b);
+      this.close = b;
+    }
+    this.finish();
+  }
+
+  private texts(values: UiValues): string[] {
+    const format = (text: string | undefined) => (text === undefined ? "" : formatTemplate(text, values, null, showValue));
+    return [format(this.element.text), ...(this.element.options ?? []).map((o) => format(o.text))];
+  }
+
+  protected key(values: UiValues): string {
+    return this.texts(values).join("\n");
+  }
+
+  protected draw(values: UiValues): void {
+    const [text, ...details] = this.texts(values);
+    if (this.text) this.text.text = text!;
+    details.forEach((detail, i) => {
+      if (this.details[i]) this.details[i].text = detail;
+    });
+  }
+
+  get waits(): boolean {
+    return this.close !== null;
+  }
+
+  /** Aspetta che il giocatore tocchi un'opzione; restituisce il suo numero, da 1. */
+  ask(): Promise<number> {
+    return Promise.race(this.options.map((b, i) => tapOnce(b).then(() => i + 1))).then((choice) => {
+      for (const b of this.options) b.eventMode = "none";
+      return choice;
+    });
+  }
+
+  /** Aspetta il tocco sul pulsante di chiusura. */
+  waitClose(): Promise<void> {
+    return this.close ? tapOnce(this.close) : Promise.resolve();
+  }
+}
+
+/** Pick-em: oggetti coperti che il giocatore tocca per scoprire premi già decisi dallo script. */
+class PickerView extends ElementView<Of<"picker">> {
+  private readonly covers: Container[] = [];
+  private readonly cells: { x: number; y: number; w: number; h: number }[] = [];
+
+  constructor(element: Of<"picker">, images: ReadonlyMap<string, Texture>) {
+    super(element, images);
+    const { width: w, height: h } = element;
+    this.drawPanel();
+    let top = 12;
+    if (element.title) {
+      const size = element.fontSize ? element.fontSize * 1.4 : Math.min(34, h * 0.12);
+      const title = label(element.title, size, toHex(element.accent), "800");
+      title.position.set(w / 2, top + size / 2);
+      fitWidth(title, w - 24);
+      this.container.addChild(title);
+      top += size + 10;
+    }
+    const columns = element.columns ?? element.count;
+    const rows = Math.ceil(element.count / columns);
+    const gap = 10;
+    const cw = (w - 24 - gap * (columns - 1)) / columns;
+    const ch = (h - top - 12 - gap * (rows - 1)) / rows;
+    for (let i = 0; i < element.count; i++) {
+      const cell = { x: 12 + (i % columns) * (cw + gap), y: top + Math.floor(i / columns) * (ch + gap), w: cw, h: ch };
+      const cover = new Container();
+      if (element.cover) cover.addChild(fitted(images.get(element.cover)!, cell.x, cell.y, cell.w, cell.h));
+      else {
+        cover.addChild(
+          new Graphics()
+            .roundRect(cell.x, cell.y, cell.w, cell.h, 10)
+            .fill(toHex(element.coverColor))
+            .stroke({ width: 3, color: toHex(element.accent) }),
+        );
+        const q = label("?", Math.min(cell.h, cell.w) * 0.5, 0xffffff, "800");
+        q.position.set(cell.x + cell.w / 2, cell.y + cell.h / 2);
+        cover.addChild(q);
+      }
+      cover.cursor = "pointer";
+      this.container.addChild(cover);
+      this.covers.push(cover);
+      this.cells.push(cell);
+    }
+    this.finish();
+  }
+
+  protected key(): string {
+    return "";
+  }
+
+  protected draw(): void {}
+
+  /** Rimette gli oggetti coperti, per un nuovo pick-em. */
+  reset(): void {
+    for (const c of this.container.children.filter((c) => c.label === "premio")) c.destroy();
+    for (const cover of this.covers) {
+      cover.visible = true;
+      cover.eventMode = "none";
+    }
+  }
+
+  /**
+   * Il giocatore tocca un oggetto per ogni premio e li scopre nell'ordine
+   * dato: dove tocca non cambia niente, i premi sono già decisi. Con
+   * `auto` gli oggetti si scoprono da soli.
+   */
+  async pick(app: Application, prizes: readonly string[], auto: boolean): Promise<void> {
+    this.reset();
+    const accent = toHex(this.element.accent);
+    for (const prize of prizes) {
+      const free = this.covers.map((c, i) => [c, i] as const).filter(([c]) => c.visible);
+      let index: number;
+      if (auto) {
+        await new Promise((r) => setTimeout(r, 350));
+        index = free[0]![1];
+      } else {
+        index = await Promise.race(free.map(([c, i]) => tapOnce(c).then(() => i)));
+        for (const [c] of free) c.eventMode = "none";
+      }
+      const cover = this.covers[index]!;
+      const cell = this.cells[index]!;
+      await tween(app.ticker, 160, (t) => (cover.alpha = 1 - t));
+      cover.visible = false;
+      cover.alpha = 1;
+      const shown = new Container();
+      shown.label = "premio";
+      shown.addChild(new Graphics().roundRect(cell.x, cell.y, cell.w, cell.h, 10).fill({ color: 0x000000, alpha: 0.5 }).stroke({ width: 3, color: accent }));
+      const text = label(prize, Math.min(cell.h * 0.4, 34), accent, "800");
+      text.position.set(cell.x + cell.w / 2, cell.y + cell.h / 2);
+      fitWidth(text, cell.w - 8);
+      shown.addChild(text);
+      shown.alpha = 0;
+      this.container.addChildAt(shown, this.container.children.length - 1);
+      await tween(app.ticker, 260, (t) => (shown.alpha = t));
+    }
+  }
+}
+
 /** Tutti gli elementi di un modulo, divisi tra quelli sotto e quelli sopra i rulli. */
 export class Hud {
   readonly below = new Container();
@@ -418,7 +644,11 @@ export class Hud {
               ? new LadderView(element, images, symbols)
               : element.type === "image"
                 ? new ImageView(element, images, app)
-                : new TextView(element, images);
+                : element.type === "panel"
+                  ? new PanelView(element, images)
+                  : element.type === "picker"
+                    ? new PickerView(element, images)
+                    : new TextView(element, images);
       this.views.push(view);
       (element.layer === "below" ? this.below : this.above).addChild(view.container);
     }
@@ -430,7 +660,10 @@ export class Hud {
     this.values = { ...values };
     this.mode = mode;
     for (const view of this.views) {
-      const visible = this.forced.get(view.element.id) ?? (!view.element.visibleIn || view.element.visibleIn.includes(mode));
+      // Pannelli e pick-em senza visibleIn compaiono solo quando lo script li chiama.
+      const popup = view.element.type === "panel" || view.element.type === "picker";
+      const visible =
+        this.forced.get(view.element.id) ?? (view.element.visibleIn ? view.element.visibleIn.includes(mode) : !popup);
       const was = this.visible.get(view);
       this.visible.set(view, visible);
       if (was === undefined) {
@@ -459,6 +692,39 @@ export class Hud {
     for (const view of this.views) {
       if (view.element.id === id && this.visible.get(view)) void view.animate(this.app, effect, turbo);
     }
+  }
+
+  private view(id: string): ElementView | undefined {
+    return this.views.find((v) => v.element.id === id);
+  }
+
+  /** ui.show: mostra l'elemento; se è un pannello con pulsante aspetta il tocco (in turbo si chiude da solo) e lo nasconde. */
+  async show(id: string, turbo: boolean): Promise<void> {
+    this.force(id, true, turbo);
+    const view = this.view(id);
+    if (!(view instanceof PanelView) || !view.waits) return;
+    await (turbo ? new Promise((r) => setTimeout(r, 900)) : view.waitClose());
+    this.force(id, false, turbo);
+  }
+
+  /** choose: mostra il pannello delle opzioni, aspetta il tocco e lo nasconde. Restituisce l'opzione, da 1. */
+  async choose(id: string): Promise<number> {
+    const view = this.view(id);
+    if (!(view instanceof PanelView)) throw new Error(`pannello sconosciuto ${id}`);
+    this.force(id, true);
+    const choice = await view.ask();
+    this.force(id, false);
+    return choice;
+  }
+
+  /** ui.pick: mostra il pick-em, fa scoprire i premi e lo nasconde. */
+  async pick(id: string, prizes: readonly string[], turbo: boolean): Promise<void> {
+    const view = this.view(id);
+    if (!(view instanceof PickerView)) return;
+    this.force(id, true, turbo);
+    await view.pick(this.app, prizes, turbo);
+    await new Promise((r) => setTimeout(r, turbo ? 400 : 1200));
+    this.force(id, false, turbo);
   }
 
   /** Centri, in coordinate dello stage, degli elementi visibili che mostrano il valore dato. */

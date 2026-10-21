@@ -32,6 +32,8 @@ export function uiAssets(ui: UiLayout): string[] {
     if ("frame" in element && element.frame) paths.add(element.frame);
     if (element.type === "meter" && element.fill) paths.add(element.fill);
     if (element.type === "image") for (const path of [element.image, ...(element.frames ?? [])]) if (path) paths.add(path);
+    if (element.type === "panel" && element.image) paths.add(element.image);
+    if (element.type === "picker" && element.cover) paths.add(element.cover);
   }
   return [...paths];
 }
@@ -69,6 +71,13 @@ export function buildUi(file: z.output<typeof uiSchema>, math: SlotMath): { ui: 
       case "text":
         texts.push(["text", element.text]);
         break;
+      case "panel":
+        texts.push(["title", element.title], ["text", element.text]);
+        for (const [i, option] of (element.options ?? []).entries()) texts.push([`options.${i}.text`, option.text]);
+        if (element.options && element.button) problems.push(`${at}: un pannello ha options oppure button, non tutti e due`);
+        break;
+      case "picker":
+        break;
       case "meter":
         if (element.style === "segments" && element.max > MAX_SEGMENTS) {
           problems.push(`${at}: con style "segments" max può arrivare al più a ${MAX_SEGMENTS}`);
@@ -81,7 +90,7 @@ export function buildUi(file: z.output<typeof uiSchema>, math: SlotMath): { ui: 
         break;
     }
     for (const [field, text] of texts) {
-      for (const name of unknownPlaceholders(text ?? "", element.type !== "text")) {
+      for (const name of unknownPlaceholders(text ?? "", element.type === "counter")) {
         problems.push(`${at}: ${field} usa un segnaposto sconosciuto {${name}}`);
       }
     }

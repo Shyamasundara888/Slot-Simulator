@@ -21,7 +21,7 @@ export type WorkerResponse =
 async function prepare(files: Record<string, unknown>) {
   const module = parseSlotModule(files);
   const hooks: RoundHooks | undefined =
-    module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri, elements: module.ui.elements.map((e) => e.id), recordUi: false });
+    module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri, elements: module.ui.elements, recordUi: false, choice: "random" });
   return { math: module.math, hooks };
 }
 

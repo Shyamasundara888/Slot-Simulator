@@ -59,7 +59,7 @@ describe("mod in zip", () => {
 
 describe("Pixel Quest", async () => {
   const module = await loadSlotModule("slots/pixel-quest");
-  const hooks = await ScriptRuntime.create(module.math, module.script!);
+  const hooks = await ScriptRuntime.create(module.math, module.script!, { elements: module.ui.elements, choice: "random" });
 
   it("è una 5x4 a 20 linee con modalità boss", () => {
     expect(module.math.reelCount).toBe(5);

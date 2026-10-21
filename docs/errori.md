@@ -54,6 +54,7 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `scenes/ui.json: elemento X: format usa un segnaposto sconosciuto {Y}` | segnaposto scritto male; i valori ammessi sono in [modulo.md](modulo.md#scenesuijson). In `text` non c'è `{value}` |
 | `scenes/ui.json: ...value: valore sconosciuto` | `value` non è tra i valori del round |
 | `scenes/ui.json: elemento X: serve image oppure frames` | un elemento `image` vuole uno solo dei due campi |
+| `scenes/ui.json: elemento X: un pannello ha options oppure button, non tutti e due` | un `panel` è un menu di scelta (`options`) oppure un avviso da chiudere (`button`) |
 
 ## Script Lua
 
@@ -75,6 +76,11 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `ui.set: from deve essere una cella { reel = 1..R, row = 1..N }` | la cella conta da 1; usa quelle di `spin.wildCells` e simili |
 | `ui.set si può usare solo dentro gli hook` | vale per tutte le funzioni `ui` tranne `ui.get` |
 | `ui.fx: effetto sconosciuto X` / `ui.message: serve un testo da 1 a 120 caratteri` | effetti ammessi: `pop`, `pulse`, `shake` |
+| `choose: X non è un pannello con options in scenes/ui.json` | `choose` vuole l'id di un `panel` con `options` |
+| `choose: risposta N fuori da 1..M` | il simulatore o l'editor hanno dato una risposta che il pannello non ha |
+| `ui.pick: X non è un elemento picker di scenes/ui.json` / `ui.pick: servono da 1 a N premi` | `ui.pick` vuole l'id di un `picker` e un premio per ogni oggetto da scoprire, al massimo `count` |
+| `scelta del giocatore senza risposta: X` | un programma ha giocato il round con `playRound` senza dire come rispondere alle scelte: usa `attemptRound`, oppure l'opzione `choice` dello script (`--choice` nel simulatore) |
+| `--choice each`: `nessun pannello con options` | non ci sono scelte da confrontare: togli `--choice each` |
 
 Nel client un errore dello script annulla il round, restituisce la puntata e mostra il messaggio.
 

@@ -223,14 +223,14 @@ Campi di tutti gli elementi:
 | Campo | Significato |
 | --- | --- |
 | `id` | nome unico, in minuscolo (`giri`, `vincita-bonus`) |
-| `type` | `counter`, `meter`, `ladder`, `image` o `text` |
+| `type` | `counter`, `meter`, `ladder`, `image`, `text`, `panel` o `picker` |
 | `x`, `y`, `width`, `height` | riquadro in coordinate dello stage; deve stare dentro lo stage |
 | `layer` (`above`) | `above` sopra i rulli, `below` fra lo sfondo e i rulli |
 | `visibleIn` (sempre) | modalità in cui si vede, per esempio `["free", "gold"]`; cambiando modalità l'elemento compare o sparisce in dissolvenza |
 | `onChange` (`pop`) | animazione quando cambia ciò che mostra: `pop` (salto), `pulse` (lampo), `shake` (scossa), `count` (le cifre scorrono, per i `counter`), `none` |
 | `sound` | suono quando cambia ciò che mostra, dentro `assets/` |
 
-Aspetto del riquadro (`counter`, `meter`, `ladder`, `text`): `frame` (immagine stirata sul riquadro, per esempio una cornice) oppure `background` (colore, nero se manca) con `opacity` (0,55; per `text` 0, cioè nessun riquadro) e `border` (colore del bordo). Testo: `color` (`#ffffff`) e `fontSize` (senza, si adatta all'altezza).
+Aspetto del riquadro (tutti tranne `image`): `frame` (immagine stirata sul riquadro, per esempio una cornice) oppure `background` (colore, nero se manca) con `opacity` (0,55; per `text` 0, cioè nessun riquadro) e `border` (colore del bordo). Testo: `color` (`#ffffff`) e `fontSize` (senza, si adatta all'altezza).
 
 | Tipo | Cosa mostra | Campi propri |
 | --- | --- | --- |
@@ -239,10 +239,27 @@ Aspetto del riquadro (`counter`, `meter`, `ladder`, `text`): `frame` (immagine s
 | `ladder` | una fila di gradini con quello attuale acceso | `value`, `steps` (da 2 a 20), `direction` (`row` o `column`, che sale dal basso), `highlight` (`#ffd43b`), `label` |
 | `image` | un'immagine fissa o animata | `image` oppure `frames` con `fps` (8) |
 | `text` | un testo, anche con valori | `text`, `align` (`center`) |
+| `panel` | un riquadro che compare sopra i rulli: avviso, regole o menu di scelta | `title`, `text`, `image`, `options` (da 2 a 4 `{ "label", "text" }`, per `choose`) oppure `button` (testo del pulsante che lo chiude), `accent` (`#ffd43b`), `opacity` (0,9) |
+| `picker` | un pick-em: oggetti coperti da toccare per scoprire i premi | `title`, `count` (da 2 a 30), `columns` (tutti su una riga), `cover` (immagine dell'oggetto coperto) oppure `coverColor` (`#b8860b`), `accent`, `opacity` (0,9) |
+
+`panel` e `picker` senza `visibleIn` restano nascosti finché lo script non li chiama: un `panel` con `options` con `choose(id)`, uno senza con `ui.show(id)`, un `picker` con `ui.pick(id, premi)` ([script-lua.md](script-lua.md#scelte-del-giocatore)). Un pannello ha `options` oppure `button`, non tutti e due; i testi di `title`, `text` e delle opzioni accettano i segnaposto.
+
+```json
+{
+  "id": "scelta", "type": "panel",
+  "x": 280, "y": 124, "width": 500, "height": 320,
+  "title": "Boss in arrivo!",
+  "text": "Hai {script.boss} Boss Spin a ×{script.boss_x}. Come li vuoi giocare?",
+  "options": [
+    { "label": "Boss Spin", "text": "Gioca i {script.boss} Boss Spin" },
+    { "label": "Sfida", "text": "Un forziere su due li raddoppia, l'altro è vuoto" }
+  ]
+}
+```
 
 Un gradino di `ladder` può essere un testo, un numero o l'id di un simbolo, che allora mostra l'immagine del simbolo. Se tutti i gradini sono numeri (anche con `×` davanti, come `×1 ×2 ×5 ×10`) si accende l'ultimo che non supera il valore; altrimenti si accende il gradino in posizione `value`, contando da 0. Per l'upgrade dei simboli usa la `upgradeLadder` di `features.json` con `value: "level"`: il gradino acceso è il simbolo più basso ancora in gioco.
 
-**Valori.** `value` e i segnaposto tra graffe in `format` e `text` usano questi valori del round (`{value}` è il valore dell'elemento e non vale in `text`):
+**Valori.** `value` e i segnaposto tra graffe in `format` e `text` usano questi valori del round (`{value}` è il valore dell'elemento e vale solo in `format`):
 
 | Valore | Significato |
 | --- | --- |

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { playRound } from "../src/core/engine.js";
-import { createRng } from "../src/core/rng.js";
+import { attemptRound, playRound } from "../src/core/engine.js";
+import { createReplayableRng, createRng } from "../src/core/rng.js";
+import { ChoiceNeeded } from "../src/core/types.js";
+import { buildUi } from "../src/module/ui.js";
 import { loadSlotModule } from "../src/module/load.js";
+import { uiElementSchema, uiSchema } from "../src/module/schema.js";
 import { ScriptRuntime, spinCells } from "../src/script/runtime.js";
 import { simulate } from "../src/sim/simulate.js";
 import { scriptedRng, tinyMath } from "./helpers.js";
@@ -9,7 +12,15 @@ import { scriptedRng, tinyMath } from "./helpers.js";
 const strips = [["A", "B", "S"], ["A", "B", "S"], ["A", "B", "S"]];
 const gold = [["A"], ["A"], ["A"]];
 const math = tinyMath(strips, 1, [[0, 0, 0]], {}, undefined, { gold });
-const create = (source: string, recordUi = true) => ScriptRuntime.create(math, source, { elements: ["barra", "intro"], recordUi });
+const box = { x: 0, y: 0, width: 10, height: 10 };
+const elements = [
+  { id: "barra", type: "meter", ...box, value: "script.x", max: 5 },
+  { id: "intro", type: "panel", ...box, title: "Intro" },
+  { id: "strada", type: "panel", ...box, options: [{ label: "A" }, { label: "B" }, { label: "C" }] },
+  { id: "forzieri", type: "picker", ...box, count: 3 },
+].map((e) => uiElementSchema.parse(e));
+const create = (source: string, recordUi = true, choice?: "random" | number) =>
+  ScriptRuntime.create(math, source, { elements, recordUi, ...(choice === undefined ? {} : { choice }) });
 
 describe("API ui degli script", () => {
   it("annota le richieste sullo spin e sulla fine della sequenza", async () => {
@@ -102,9 +113,117 @@ describe("API ui degli script", () => {
   it("le slot di esempio usano solo elementi che esistono", async () => {
     for (const dir of ["slots/tempio-del-sole", "slots/pixel-quest"]) {
       const module = await loadSlotModule(dir);
-      const hooks = await ScriptRuntime.create(module.math, module.script!, { elements: module.ui.elements.map((e) => e.id) });
+      const hooks = await ScriptRuntime.create(module.math, module.script!, { elements: module.ui.elements, choice: "random" });
       const rng = createRng(7);
       for (let i = 0; i < 3_000; i++) playRound(module.math, rng, hooks);
     }
+  });
+});
+
+describe("scelte del giocatore e pick-em", () => {
+  // Lo spin base chiede la strada; la risposta decide quanti spin gold seguono.
+  const source = `
+    function onSpin(spin)
+      if spin.mode ~= "base" then return end
+      ui.add("prima", math.random(100))
+      local c = choose("strada")
+      ui.set("scelta", c)
+      return { mode = "gold", spins = c }
+    end`;
+
+  it("createReplayableRng ripete i valori dopo rewind e poi prosegue", () => {
+    const rng = createReplayableRng(createRng(5));
+    const first = [rng.int(1000), rng.int(1000), rng.float()];
+    rng.rewind();
+    expect([rng.int(1000), rng.int(1000), rng.float()]).toEqual(first);
+    const reference = createRng(5);
+    for (let i = 0; i < 3; i++) reference.nextUint32();
+    expect(rng.nextUint32()).toBe(reference.nextUint32());
+  });
+
+  it("senza risposta il round si ferma sulla scelta; con la risposta si rigioca uguale fino a lì", async () => {
+    const script = await create(source);
+    const rng = createReplayableRng(createRng(9));
+    const stopped = attemptRound(math, rng, script);
+    expect(stopped.choice).toEqual({ id: "strada", options: 3, at: "spin" });
+    expect(stopped.round.extra).toEqual([]);
+    expect(stopped.round.base).not.toHaveProperty("ui");
+
+    rng.rewind();
+    script.setAnswers([3]);
+    const done = attemptRound(math, rng, script);
+    expect(done.choice).toBeNull();
+    expect(done.round.base.reelGrid).toEqual(stopped.round.base.reelGrid);
+    expect(done.round.extra[0]!.spins).toHaveLength(3);
+    expect(done.round.base.ui?.[1]).toEqual({ kind: "set", name: "scelta", value: 3, from: null });
+
+    // La stessa risposta dà lo stesso round, compreso il valore estratto dallo script prima della scelta.
+    rng.rewind();
+    script.setAnswers([3]);
+    expect(attemptRound(math, rng, script).round).toEqual(done.round);
+  });
+
+  it("playRound segnala la scelta in attesa; con la regola choice risponde da solo", async () => {
+    expect(() => playRound(math, createRng(1), undefined)).not.toThrow();
+    const waiting = await create(source);
+    expect(() => playRound(math, createRng(1), waiting)).toThrow(ChoiceNeeded);
+    const second = await create(source, true, 2);
+    expect(playRound(math, createRng(1), second).extra[0]!.spins).toHaveLength(2);
+    const random = await create(source, false, "random");
+    const { averageSpins } = simulate(math, { spins: 3_000, seed: 2, hooks: random }).extra.gold!;
+    expect(averageSpins).toBeGreaterThan(1.8);
+    expect(averageSpins).toBeLessThan(2.2);
+  });
+
+  it("anche con pcall la scelta in attesa ferma il round", async () => {
+    const script = await create(`function onSpin(s) pcall(choose, "strada") end`);
+    expect(attemptRound(math, createRng(1), script).choice?.id).toBe("strada");
+  });
+
+  it("le scelte possono arrivare anche a fine feature", async () => {
+    const script = await create(`
+      function onSpin(s) if s.mode == "base" then return { mode = "gold", spins = 1 } end end
+      function onFeatureEnd(f) if choose("strada") == 1 then return { mode = "gold", spins = 2 } end end`);
+    const rng = createReplayableRng(createRng(4));
+    const stopped = attemptRound(math, rng, script);
+    expect(stopped.choice?.at).toBe("featureEnd");
+    expect(stopped.round.extra).toHaveLength(1);
+    rng.rewind();
+    script.setAnswers([1, 2]);
+    expect(attemptRound(math, rng, script).round.extra.map((e) => e.spins.length)).toEqual([1, 2]);
+  });
+
+  it("ui.pick annota i premi da scoprire", async () => {
+    const script = await create(`function onSpin(s) ui.pick("forzieri", { "×2", 50 }) end`);
+    expect(playRound(math, createRng(1), script).base.ui).toEqual([{ kind: "pick", id: "forzieri", prizes: ["×2", "50"] }]);
+  });
+
+  it.each([
+    [`function onSpin(s) choose("intro") end`, /choose: intro non è un pannello con options/],
+    [`function onSpin(s) ui.pick("barra", { 1 }) end`, /ui\.pick: barra non è un elemento picker/],
+    [`function onSpin(s) ui.pick("forzieri", { 1, 2, 3, 4 }) end`, /ui\.pick: servono da 1 a 3 premi/],
+    [`function onSpin(s) ui.pick("forzieri", {}) end`, /ui\.pick: servono da 1 a 3 premi/],
+  ])("segnala gli usi sbagliati: %s", async (src, error) => {
+    const script = await create(src);
+    expect(() => playRound(math, createRng(1), script)).toThrow(error);
+  });
+
+  it("rifiuta una risposta fuori dalle opzioni", async () => {
+    const script = await create(source);
+    script.setAnswers([4]);
+    expect(() => playRound(math, createRng(1), script)).toThrow(/choose: risposta 4 fuori da 1\.\.3/);
+  });
+
+  it("controlla pannelli e pick-em di scenes/ui.json", () => {
+    const problems = (elements: unknown[]) => buildUi(uiSchema.parse({ elements }), math).problems;
+    expect(problems([{ id: "p", type: "panel", ...box, options: [{ label: "A" }, { label: "B" }], button: "OK" }])).toEqual([
+      "elemento p: un pannello ha options oppure button, non tutti e due",
+    ]);
+    expect(problems([{ id: "p", type: "panel", ...box, text: "{value} {boh}" }])).toEqual([
+      "elemento p: text usa un segnaposto sconosciuto {value}",
+      "elemento p: text usa un segnaposto sconosciuto {boh}",
+    ]);
+    expect(() => uiSchema.parse({ elements: [{ id: "p", type: "panel", ...box, options: [{ label: "A" }] }] })).toThrow();
+    expect(() => uiSchema.parse({ elements: [{ id: "f", type: "picker", ...box, count: 1 }] })).toThrow();
   });
 });
