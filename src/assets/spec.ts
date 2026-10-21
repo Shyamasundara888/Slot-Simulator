@@ -107,6 +107,8 @@ export const artSchema = z
     prompt: z.string().optional(),
     /** "pixel": pixel netti e tessera quadrata; "smooth": bordi arrotondati e sfumature. */
     look: z.enum(["pixel", "smooth"]).default("pixel"),
+    /** Colore della cornice in rilievo attorno alle tessere con look "smooth" (predefinito: oro). */
+    frame: color.default("#c9a227"),
     symbols: z.record(z.string(), symbolArt),
     win: z
       .object({

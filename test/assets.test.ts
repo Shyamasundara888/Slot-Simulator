@@ -73,6 +73,14 @@ describe("pipeline degli asset", () => {
     expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a.webp", count: 3 } } } })).toThrow(/#/);
   });
 
+  it("con look smooth disegna la tessera con la cornice del colore scelto", () => {
+    const art = spec({ look: "smooth", frame: "#b0b0b0", symbols: { A: { tile: "#336699", pixels: { palette: { X: "#ffffff" }, rows: ["X"] } } } });
+    const svg = new TextDecoder().decode(buildAssets(art, noFiles).files.get("assets/symbols/a.svg"));
+    expect(svg).toContain('stop-color="#b0b0b0"');
+    expect(svg).toContain('fill="url(#cornice)"');
+    expect(svg).toContain("feTurbulence");
+  });
+
   it("segnala sorgenti incomplete", () => {
     expect(() => spec({ symbols: { A: { tile: "#000000" } } })).toThrow(/serve almeno uno tra pixels, svg e image/);
     expect(() => spec({ symbols: { A: { tile: "#000000", pixels: { palette: {}, rows: ["X"] } } } })).toThrow(/carattere X senza colore/);

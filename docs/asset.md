@@ -34,7 +34,8 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | Campo | Significato |
 | --- | --- |
 | `prompt` | stile comune, ripreso in testa a ogni prompt per il generatore esterno |
-| `look` (`pixel`) | `pixel`: tessere quadrate e pixel netti; `smooth`: tessere arrotondate con sfumatura e bagliore morbido |
+| `look` (`pixel`) | `pixel`: tessere quadrate e pixel netti; `smooth`: tessere arrotondate con cornice in rilievo, pannello incassato con luce dall'alto e grana leggera, bagliore morbido |
+| `frame` (`#c9a227`) | colore della cornice delle tessere `smooth` (predefinito oro; per esempio `#b8c4d0` argento, `#8a5a3c` bronzo) |
 | `symbols.<ID>.tile` | colore della tessera e colore del simbolo nella scena; scuro, diverso per ogni simbolo |
 | `symbols.<ID>.pixels` | pixel art: `rows` una stringa per riga (tutte lunghe uguali), `.` trasparente, ogni altro carattere preso da `palette` |
 | `symbols.<ID>.svg` | file vettoriale in `art/`, con `viewBox` (oppure `width` e `height`) |
