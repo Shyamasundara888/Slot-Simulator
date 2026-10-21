@@ -6,6 +6,7 @@ Workflow in formato API (quello che accetta `POST /prompt`) per generare in loca
 | --- | --- | --- |
 | `workflows/simbolo.json` | SDXL txt2img 1024x1024, poi scontorno con BiRefNet | PNG RGBA con sfondo trasparente |
 | `workflows/simbolo-stile.json` | come `simbolo.json`, con IP-Adapter che copia lo stile di un'immagine di riferimento | PNG RGBA con sfondo trasparente |
+| `workflows/simbolo-forma.json` | come `simbolo.json`, con ControlNet che impone i contorni (Canny) di un disegno: lettere, numeri, forme che SDXL non conosce | PNG RGBA con sfondo trasparente |
 | `workflows/sfondo.json` | SDXL txt2img 1344x768, senza scontorno | PNG RGB |
 | `workflows/animazione.json` | Wan 2.2 TI2V 5B image-to-video 704x704, 49 fotogrammi a 24 fps, poi scontorno di ogni fotogramma con BiRefNet | MP4 senza alfa e PNG RGBA per fotogramma (prova bocciata: [prove/scarabeo/](prove/scarabeo/README.md)) |
 
@@ -23,6 +24,11 @@ Solo per `simbolo-stile.json`:
   - `ip-adapter-plus_sdxl_vit-h.safetensors` (848 MB) in `models/ipadapter/`. In ComfyUI Desktop è la cartella condivisa `ComfyUI-Shared\models\ipadapter`, non quella dentro l'installazione: lì il nodo non lo vede.
   - `CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors` (2,5 GB, `models/image_encoder/model.safetensors` rinominato) in `models/clip_vision/`.
 - **Nodi aggiuntivi:** `LoadImage`, `IPAdapterModelLoader`, `CLIPVisionLoader`, `IPAdapterAdvanced`.
+
+Solo per `simbolo-forma.json`:
+
+- **Modello** [xinsir/controlnet-union-sdxl-1.0](https://huggingface.co/xinsir/controlnet-union-sdxl-1.0) (Apache-2.0): `diffusion_pytorch_model_promax.safetensors` (2,5 GB) rinominato `controlnet-union-sdxl-1.0-promax.safetensors`, in `models/controlnet/` (in ComfyUI Desktop la cartella condivisa `ComfyUI-Shared\models\controlnet`).
+- **Nodi aggiuntivi**, tutti nativi: `LoadImage` (intitolato `forma`, nodo `12`), `Canny`, `ControlNetLoader`, `SetUnionControlNetType` (tipo `canny/lineart/anime_lineart/mlsd`), `ControlNetApplyAdvanced` (nodo `16`, forza 0,8, smette al 70% dei passi).
 
 `RemoveBackground` restituisce una maschera con il soggetto a 1, mentre `JoinImageWithAlpha` usa la maschera invertita: per questo `InvertMask` sta in mezzo. Senza, si salverebbe trasparente il soggetto invece dello sfondo.
 
@@ -47,7 +53,7 @@ Provato con lo scarabeo di `simbolo.json` come riferimento e tre soggetti, seed 
 
 - **Occhio di Horus:** riuscito.
 - **Ankh:** è venuto come una croce, perché SDXL base conosce male l'ankh. Va descritto nel prompt, per esempio "loop on top".
-- **Lettera "A":** la forma è sbagliata. SDXL base disegna male le lettere, quindi per le carte conviene disegnare la lettera a parte (SVG di `art/`) o partire da una sagoma con img2img/ControlNet.
+- **Lettera "A":** la forma è sbagliata. SDXL base disegna male le lettere: per le carte si usa `simbolo-forma.json` con l'SVG della lettera come forma (`symbols.<ID>.shape` in `art.json`).
 
 ## Tempi misurati
 

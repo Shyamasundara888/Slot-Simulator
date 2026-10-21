@@ -68,6 +68,13 @@ const symbolArt = z
     reference: z.literal(false).optional(),
     /** Peso del riferimento di stile per questo simbolo, al posto di generate.referenceWeight. */
     referenceWeight: z.number().min(0).max(2).optional(),
+    /**
+     * Disegno (SVG o immagine in art/) che impone la forma al generatore con ControlNet: il simbolo
+     * si genera col workflow simbolo-forma.json, utile per lettere e forme che SDXL sbaglia.
+     */
+    shape: artFile(["svg", ...RASTER_EXTENSIONS]).optional(),
+    /** Forza della forma per questo simbolo, al posto di generate.shapeStrength. */
+    shapeStrength: z.number().min(0).max(2).optional(),
     /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
     seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */
@@ -147,6 +154,11 @@ export const artSchema = z
         referenceWeight: z.number().min(0).max(2).optional(),
         /** Modo dell'IP-Adapter, per esempio "style transfer" o "strong style transfer". */
         referenceMode: z.string().optional(),
+        /** Workflow per i simboli con shape (ControlNet); predefinito tools/comfyui/workflows/simbolo-forma.json. */
+        shapeWorkflow: jsonFile.optional(),
+        /** Quanto la forma guida il generatore (0-2) e fino a che punto della generazione (0-1). */
+        shapeStrength: z.number().min(0).max(2).optional(),
+        shapeEnd: z.number().min(0).max(1).optional(),
         /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
         cleanup: z.boolean().default(true),
         /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */
