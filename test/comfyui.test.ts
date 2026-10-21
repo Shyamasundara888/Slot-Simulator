@@ -150,6 +150,11 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
   const copy = () => {
     dir = join(mkdtempSync(join(tmpdir(), "generate-")), "tempio-del-sole");
     cpSync("slots/tempio-del-sole", dir, { recursive: true });
+    // Le impostazioni di generazione della slot (riferimento di stile) le provano i singoli test.
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    delete art.generate;
+    writeFileSync(artPath, JSON.stringify(art));
     return dir;
   };
 
@@ -164,7 +169,7 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     expect(meta).toMatchObject({ format: "webp", width: 512, height: 512, hasAlpha: true });
 
     const [symbol, background] = sent.map((s) => s.workflow);
-    expect(symbol!["2"]!.inputs.text).toMatch(/^Ancient Egyptian temple theme.*A golden pharaoh mask.*plain light grey background/);
+    expect(symbol!["2"]!.inputs.text).toMatch(/^Premium casino slot symbol.*A golden pharaoh death mask.*plain light grey background/);
     expect(symbol!["11"]!.inputs.filename_prefix).toBe("slot/tempio-del-sole/faraone");
     expect(Object.values(symbol!).some((n) => n.class_type === "ImageScale")).toBe(true);
     // Lo sfondo resta alla misura del workflow se generate.backgroundSize non c'è.
@@ -198,11 +203,13 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
   it("con generate.reference usa IP-Adapter, ma non per il simbolo di riferimento", async () => {
     copy();
     const { sent, uploads, client } = fakeComfy();
-    await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} });
     const artPath = join(dir, "art/art.json");
     const art = JSON.parse(readFileSync(artPath, "utf8"));
     art.generate = { reference: "art/raw/faraone.webp" };
     writeFileSync(artPath, JSON.stringify(art));
+    // Il riferimento manca ancora: si può generare lui, non gli altri.
+    await expect(generate(dir, { only: ["ANKH"], force: false, variants: 1, client, log: () => {} })).rejects.toThrow(/generalo prima/);
+    await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} });
 
     await generate(dir, { only: ["FARAONE", "ANKH", "SCARABEO", "background"], force: true, variants: 1, client, log: () => {} });
     const [, faraone, ankh, scarabeo, background] = sent.map((s) => s.workflow);
@@ -216,6 +223,14 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     const records = JSON.parse(readFileSync(join(dir, "art/raw/generated.json"), "utf8"));
     expect(records["art/raw/ankh.webp"]).toMatchObject({ workflow: "tools/comfyui/workflows/simbolo-stile.json", reference: "art/raw/faraone.webp" });
     expect(records["art/raw/faraone.webp"].reference).toBeUndefined();
+  });
+
+  it("salta i simboli con generate: false", async () => {
+    copy();
+    const { sent, client } = fakeComfy();
+    const files = await generate(dir, { only: [], force: false, variants: 1, client, log: () => {} });
+    expect(files).toEqual(["SOLE", "PORTALE", "FARAONE", "ANKH", "SCARABEO", "GATTO"].map((id) => `art/raw/${id.toLowerCase()}.webp`).concat("art/raw/background.webp"));
+    expect(sent).toHaveLength(7);
   });
 
   it("rifiuta simboli sconosciuti", async () => {

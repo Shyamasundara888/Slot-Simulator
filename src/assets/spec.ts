@@ -49,6 +49,8 @@ const symbolArt = z
     image: rasterFile.optional(),
     /** Descrizione per il generatore esterno (npm run assets -- prompts). */
     prompt: z.string().optional(),
+    /** false: npm run assets -- generate salta il simbolo (per esempio le lettere, che SDXL disegna male). */
+    generate: z.boolean().default(true),
     /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
     seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */

@@ -74,14 +74,26 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   const labels = new Map([...module.scene.symbols].map(([id, s]) => [id, s.label]));
   const settings = spec.generate;
 
-  const targets = [...Object.keys(spec.symbols), ...(spec.background ? ["background"] : [])];
+  const targets = [...Object.keys(spec.symbols).filter((id) => spec.symbols[id]!.generate), ...(spec.background ? ["background"] : [])];
   const unknown = options.only.filter((id) => !targets.includes(id));
-  if (unknown.length > 0) throw new ModuleError(unknown.map((id) => `--only ${id}: non è un simbolo di ${ART_FILE}${id === "background" ? " (manca background)" : ""}`));
+  if (unknown.length > 0) {
+    throw new ModuleError(
+      unknown.map((id) =>
+        spec.symbols[id]
+          ? `--only ${id}: in ${ART_FILE} ha "generate": false`
+          : `--only ${id}: non è un simbolo di ${ART_FILE}${id === "background" ? " (manca background)" : ""}`,
+      ),
+    );
+  }
   const chosen = options.only.length > 0 ? targets.filter((id) => options.only.includes(id)) : targets;
 
   // Con un riferimento di stile il workflow predefinito è quello con IP-Adapter.
   const reference = settings.reference;
-  if (reference && !existsSync(join(dir, reference))) throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference}`]);
+  // Il riferimento può mancare solo se si genera proprio lui (il primo passo della serie).
+  const needsReference = chosen.some((id) => id !== "background" && `art/raw/${id.toLowerCase()}.webp` !== reference);
+  if (reference && needsReference && !existsSync(join(dir, reference))) {
+    throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference} (generalo prima con --only)`]);
+  }
   const symbolFlow = await readWorkflow(dir, settings.workflow, reference ? "simbolo-stile.json" : "simbolo.json");
   const plainFlow = reference && !settings.workflow ? await readWorkflow(dir, undefined, "simbolo.json") : symbolFlow;
   const backgroundFlow = spec.background ? await readWorkflow(dir, settings.backgroundWorkflow, "sfondo.json") : undefined;
