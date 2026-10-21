@@ -81,6 +81,18 @@ describe("pipeline degli asset", () => {
     expect(svg).toContain("feTurbulence");
   });
 
+  it("copia i suoni già pronti, musiche comprese, con la loro estensione", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      symbols: {},
+      sounds: { music: { file: "art/audio/musica.ogg" }, bonusMusic: { file: "art/audio/bonus.mp3" }, stop: { notes: [[200, 0.04]] } },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.sounds).toEqual({ music: "assets/sounds/music.ogg", bonusMusic: "assets/sounds/bonus-music.mp3", stop: "assets/sounds/stop.wav" });
+    expect(new TextDecoder().decode(files.get("assets/sounds/music.ogg"))).toBe("art/audio/musica.ogg");
+    expect(() => spec({ symbols: {}, sounds: { music: { file: "suoni/musica.ogg" } } })).toThrow();
+  });
+
   it("segnala sorgenti incomplete", () => {
     expect(() => spec({ symbols: { A: { tile: "#000000" } } })).toThrow(/serve almeno uno tra pixels, svg e image/);
     expect(() => spec({ symbols: { A: { tile: "#000000", pixels: { palette: {}, rows: ["X"] } } } })).toThrow(/carattere X senza colore/);

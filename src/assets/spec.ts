@@ -92,7 +92,12 @@ const symbolArt = z
 
 const note = z.tuple([z.union([z.number().positive(), z.tuple([z.number().positive(), z.number().positive()])]), z.number().positive().max(5)]);
 
-const soundArt = z
+/** Suono già pronto in art/, per esempio composto con tools/audio: viene copiato in assets/sounds/. */
+const soundFile = z
+  .object({ file: artFile(["ogg", "mp3", "wav"]) })
+  .strict();
+
+const synthSound = z
   .object({
     wave: z.enum(["square", "triangle", "sine", "noise"]).default("square"),
     /** Note in sequenza: [frequenza in Hz oppure [inizio, fine] per una glissata, durata in secondi]. */
@@ -100,6 +105,9 @@ const soundArt = z
     volume: z.number().min(0).max(1).default(0.5),
   })
   .strict();
+
+/** Suono di un evento: sintetizzato a 8 bit dalle note, oppure un file. */
+const soundArt = z.union([synthSound, soundFile]);
 
 export const artSchema = z
   .object({
@@ -158,3 +166,4 @@ export const artSchema = z
 export type ArtSpec = z.infer<typeof artSchema>;
 export type SymbolArt = z.infer<typeof symbolArt>;
 export type SoundArt = z.infer<typeof soundArt>;
+export type SynthSound = z.infer<typeof synthSound>;

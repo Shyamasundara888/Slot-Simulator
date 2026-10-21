@@ -95,8 +95,13 @@ const assetPath = (extensions: readonly string[], what: string) =>
 const image = assetPath(IMAGE_EXTENSIONS, "immagine");
 const sound = assetPath(SOUND_EXTENSIONS, "suono");
 
-/** Eventi del client che possono avere un suono: partenza dei rulli, arresto di un rullo, vincita, vincita grande, bonus. */
-export const SOUND_EVENTS = ["spin", "stop", "win", "bigWin", "feature"] as const;
+/**
+ * Eventi del client che possono avere un suono: partenza dei rulli, arresto di un rullo, vincita, vincita grande, bonus,
+ * più le due musiche in loop, del gioco base e dei bonus (free spin e sequenze degli script).
+ */
+export const SOUND_EVENTS = ["spin", "stop", "win", "bigWin", "feature", "music", "bonusMusic"] as const;
+/** Eventi che sono musiche di sottofondo, suonate in loop. */
+export const MUSIC_EVENTS = ["music", "bonusMusic"] as const;
 
 export const sceneSchema = z
   .object({
@@ -128,6 +133,8 @@ export const sceneSchema = z
         win: sound.optional(),
         bigWin: sound.optional(),
         feature: sound.optional(),
+        music: sound.optional(),
+        bonusMusic: sound.optional(),
       })
       .strict()
       .default({}),

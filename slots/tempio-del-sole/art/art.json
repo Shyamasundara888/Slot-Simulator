@@ -18,10 +18,12 @@
   "generate": { "reference": "art/raw/scarabeo.webp", "referenceWeight": 0.5 },
   "background": { "seed": 777, "svg": "art/background.svg", "image": "art/raw/background.webp", "prompt": "desert at dusk with three pyramids, dunes, a large pale moon and stars" },
   "sounds": {
-    "spin": { "wave": "triangle", "notes": [[[330, 660], 0.2]], "volume": 0.4 },
-    "stop": { "wave": "noise", "notes": [[200, 0.04]], "volume": 0.3 },
-    "win": { "wave": "triangle", "notes": [[659.25, 0.08], [698.46, 0.08], [830.61, 0.18]], "volume": 0.55 },
-    "bigWin": { "wave": "triangle", "notes": [[659.25, 0.09], [698.46, 0.09], [830.61, 0.09], [880, 0.09], [987.77, 0.09], [1046.5, 0.09], [1174.66, 0.09], [1318.51, 0.35]], "volume": 0.55 },
-    "feature": { "wave": "square", "notes": [[329.63, 0.08], [415.3, 0.08], [493.88, 0.08], [659.25, 0.08], [493.88, 0.08], [659.25, 0.3]], "volume": 0.35 }
+    "spin": { "file": "art/audio/giro.ogg" },
+    "stop": { "file": "art/audio/arresto.ogg" },
+    "win": { "file": "art/audio/vincita.ogg" },
+    "bigWin": { "file": "art/audio/grande-vincita.ogg" },
+    "feature": { "file": "art/audio/bonus.ogg" },
+    "music": { "file": "art/audio/musica.ogg" },
+    "bonusMusic": { "file": "art/audio/musica-bonus.ogg" }
   }
 }
