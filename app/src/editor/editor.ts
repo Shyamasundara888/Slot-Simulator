@@ -10,6 +10,7 @@ import { h } from "./dom.js";
 import { generalTab, paytableTab, symbolsTab, type EditorView, type Tab, type TabContext, TABS } from "./tabs.js";
 import { featuresTab, linesTab, reelsTab } from "./tabs-math.js";
 import { scriptTab, type TrialState } from "./tabs-script.js";
+import { artTab, DEFAULT_ART_VIEW } from "./tabs-art.js";
 import { uiTab } from "./tabs-ui.js";
 import { CodeEditor } from "./code.js";
 import { errorLines } from "./lua.js";
@@ -58,7 +59,7 @@ export class Editor {
   private past: ModuleDraft[] = [];
   private future: ModuleDraft[] = [];
   private tab: Tab = "general";
-  private view: EditorView = { mode: "base", manualStrips: false, uiElement: null, uiMode: "", uiScale: false };
+  private view: EditorView = { mode: "base", manualStrips: false, uiElement: null, uiMode: "", uiScale: false, art: DEFAULT_ART_VIEW };
   private check: DraftCheck = { module: null, problems: [] };
   private lastValid: SlotModule | null = null;
   private exact: ExactResult | null = null;
@@ -417,7 +418,7 @@ export class Editor {
           this.queueRender();
         },
       });
-    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab, script, ui: uiTab };
+    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab, script, ui: uiTab, art: artTab };
     const body = tabs[this.tab](ctx);
     this.markProblems(body);
 

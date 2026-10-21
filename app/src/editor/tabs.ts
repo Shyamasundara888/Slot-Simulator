@@ -15,6 +15,7 @@ import {
 import type { SlotModule } from "../../../src/module/parse.js";
 import { t } from "../i18n/index.js";
 import { h, numberValue } from "./dom.js";
+import type { ArtView } from "./tabs-art.js";
 
 /** Quello che una scheda può leggere e fare. */
 export interface TabContext {
@@ -49,9 +50,11 @@ export interface EditorView {
   uiMode: string;
   /** Vero se cambiando lo stage anche rulli ed elementi cambiano misura. */
   uiScale: boolean;
+  /** Simbolo aperto e impostazioni delle tessere nella scheda Grafica e suoni. */
+  art: ArtView;
 }
 
-export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features", "script", "ui"] as const;
+export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features", "script", "ui", "art"] as const;
 export type Tab = (typeof TABS)[number];
 
 const SYMBOL_ID = /^[A-Z0-9_]+$/;

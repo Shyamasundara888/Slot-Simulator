@@ -231,7 +231,7 @@ L'editor sta nella stessa pagina: a sinistra le schede, a destra l'anteprima gio
 
 ![L'editor sul Tempio del Sole: simboli, numeri della simulazione e anteprima con un free spin](docs/editor.png)
 
-- Schede **Generale** (id, nome, versione, autore, descrizione, griglia, colore di sfondo), **Simboli** (id, tipo, etichetta, colore, ordine; rinominare un id aggiorna tutti i file), **Paytable** (pagamenti su linea e scatter), **Linee** (una mini griglia per linea, avviso sulle linee doppie), **Rulli** (quante volte compare ogni simbolo su ogni rullo, per ogni modalità, oppure le strisce a mano) **Funzioni** (wild espandenti, free spin, upgrade, vincita massima), **Script** (lo script Lua con colori, numeri di riga ed errori alla riga giusta) e **Interfaccia** (stage, rulli ed elementi di `scenes/ui.json` su una mappa dove si trascinano e si ridimensionano, con scelta o caricamento di immagini e suoni).
+- Schede **Generale** (id, nome, versione, autore, descrizione, griglia, colore di sfondo), **Simboli** (id, tipo, etichetta, colore, ordine; rinominare un id aggiorna tutti i file), **Paytable** (pagamenti su linea e scatter), **Linee** (una mini griglia per linea, avviso sulle linee doppie), **Rulli** (quante volte compare ogni simbolo su ogni rullo, per ogni modalità, oppure le strisce a mano) **Funzioni** (wild espandenti, free spin, upgrade, vincita massima), **Script** (lo script Lua con colori, numeri di riga ed errori alla riga giusta) **Interfaccia** (stage, rulli ed elementi di `scenes/ui.json` su una mappa dove si trascinano e si ridimensionano, con scelta o caricamento di immagini e suoni) e **Grafica e suoni** (immagini dei simboli, tessere con cornice create nel browser da un disegno, fotogrammi di vincita, movimento del disegno con anteprima, sfondo e suoni).
 - Lo script si prova da solo a ogni modifica: il motore lo carica e gioca 3.000 round in un worker. Un errore durante un round indica la riga e il seed del round, che si rigioca nell'anteprima con un clic.
 - Ogni modifica passa dalla validazione del motore: i problemi compaiono in alto con i messaggi di `docs/errori.md` e il campo sbagliato si colora.
 - L'RTP esatto dello spin base si aggiorna a ogni modifica. **Simula** gioca da 100.000 a 5 milioni di round in un worker e mostra RTP totale, quote di base, free spin e sequenze degli script, deviazione standard e vincita massima.
@@ -256,6 +256,6 @@ L'ultima parte aggiunge grafica e suoni dei simboli.
 
 ## Prossime fasi
 
-7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli, Funzioni, Script e Interfaccia; mancano grafica e suoni dei simboli.
+7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli, Funzioni, Script, Interfaccia e Grafica e suoni. Fase completata; resta possibile un editor di pixel art per `art/art.json`.
 8. Elementi di interfaccia: fatti `scenes/ui.json`, i valori del motore e l'API Lua (`ui.set`, `ui.show`...), pannelli, scelte del giocatore (`choose`, `--choice`), pick-em (`ui.pick`) valori che restano tra un round e l'altro (`session`) e la scheda Interfaccia dell'editor. Fase completata.
 9. API per integrare le slot in un gioco più grande.
