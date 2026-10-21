@@ -90,7 +90,9 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   // Con un riferimento di stile il workflow predefinito è quello con IP-Adapter.
   const reference = settings.reference;
   // Il riferimento può mancare solo se si genera proprio lui (il primo passo della serie).
-  const needsReference = chosen.some((id) => id !== "background" && `art/raw/${id.toLowerCase()}.webp` !== reference);
+  const needsReference = chosen.some(
+    (id) => id !== "background" && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
+  );
   if (reference && needsReference && !existsSync(join(dir, reference))) {
     throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference} (generalo prima con --only)`]);
   }
@@ -109,7 +111,9 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
     const name = isBackground ? "background" : id.toLowerCase();
     // Il simbolo che fa da riferimento non si rigenera guardando se stesso.
     const ownFile = `art/raw/${name}.webp`;
-    const styled = !isBackground && reference !== undefined && reference !== ownFile;
+    const art = isBackground ? undefined : spec.symbols[id];
+    const styled = !isBackground && reference !== undefined && reference !== ownFile && art?.reference !== false;
+    const referenceWeight = art?.referenceWeight ?? settings.referenceWeight;
     const flow = isBackground ? backgroundFlow! : styled ? symbolFlow : plainFlow;
     const prompt = isBackground ? backgroundPrompt(spec) : symbolPrompt(spec, id, labels, "plain light grey background");
     const ownSeed = isBackground ? spec.background?.seed : spec.symbols[id]?.seed;
@@ -133,7 +137,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         seed,
         filenamePrefix: `slot/${slot}/${name}`,
         size,
-        ...(styled && { reference: uploaded, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
+        ...(styled && { reference: uploaded, referenceWeight, referenceMode: settings.referenceMode }),
       });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
@@ -156,7 +160,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         seed,
         workflow: flow.name,
         checkpoint: workflowCheckpoint(flow.workflow),
-        ...(styled && { reference, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
+        ...(styled && { reference, referenceWeight, referenceMode: settings.referenceMode }),
         generator: "ComfyUI",
         date: new Date().toISOString(),
       };

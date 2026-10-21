@@ -233,6 +233,26 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     expect(sent).toHaveLength(7);
   });
 
+  it("per simbolo si può togliere il riferimento o cambiarne il peso", async () => {
+    copy();
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    art.generate = { reference: "art/raw/scarabeo.webp", referenceWeight: 0.5 };
+    art.symbols.GATTO.reference = false;
+    art.symbols.ANKH.referenceWeight = 0.3;
+    writeFileSync(artPath, JSON.stringify(art));
+    const { sent, client } = fakeComfy();
+    // Il gatto non usa il riferimento, quindi si genera anche se lo scarabeo non c'è ancora.
+    await generate(dir, { only: ["GATTO"], force: false, variants: 1, client, log: () => {} });
+    await generate(dir, { only: ["SCARABEO"], force: false, variants: 1, client, log: () => {} });
+    await generate(dir, { only: ["ANKH", "FARAONE"], force: false, variants: 1, client, log: () => {} });
+    const [gatto, , faraone, ankh] = sent.map((s) => s.workflow);
+    const ip = (w: Workflow) => Object.values(w).find((n) => n.class_type === "IPAdapterAdvanced");
+    expect(ip(gatto!)).toBeUndefined();
+    expect(ip(ankh!)!.inputs.weight).toBe(0.3);
+    expect(ip(faraone!)!.inputs.weight).toBe(0.5);
+  });
+
   it("rifiuta simboli sconosciuti", async () => {
     copy();
     const { client } = fakeComfy();

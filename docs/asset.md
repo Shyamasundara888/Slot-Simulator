@@ -114,6 +114,7 @@ Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scriv
 | `generate.backgroundSize` | `[larghezza, altezza]` dello sfondo; se manca resta quella del workflow (1344x768) |
 | `generate.workflow`, `generate.backgroundWorkflow` | workflow propri in `art/` (formato API); predefiniti quelli di [tools/comfyui/workflows](../tools/comfyui/workflows/) |
 | `symbols.<ID>.generate` (`true`) | `false` per saltare il simbolo, per esempio le lettere A K Q J 10, che SDXL disegna male: restano SVG |
+| `symbols.<ID>.reference: false`, `symbols.<ID>.referenceWeight` | genera quel simbolo senza riferimento di stile (per esempio se il riferimento ne cambia i colori), oppure con un peso diverso da `generate.referenceWeight` |
 | `symbols.<ID>.seed`, `background.seed` | seed di un'immagine, al posto di `generate.seed` |
 
 L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` e un solo `SaveImage`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).
