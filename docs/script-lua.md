@@ -157,7 +157,7 @@ Lo script gira in Lua 5.4 compilato in WebAssembly (wasmoon), isolato:
 - assenti: `io`, `os`, `require`, `load`, `loadfile`, `dofile`, `debug`, `collectgarbage`, le coroutine e `string.dump`;
 - al massimo 1.000.000 di istruzioni per chiamata (un ciclo infinito diventa un errore leggibile) e 16 MB di memoria.
 
-Un errore nello script annulla il round, con il messaggio e la riga (`scripts/main.lua:12: ...`). `npm run mod -- check` carica lo script e controlla gli hook e `spinModes`; gli errori che dipendono dai dati del round emergono solo giocando o simulando, quindi simula sempre dopo aver cambiato uno script.
+Un errore nello script annulla il round, con il messaggio e la riga (`scripts/main.lua:12: ...`). `npm run mod -- check` carica lo script e controlla gli hook e `spinModes`; gli errori che dipendono dai dati del round emergono solo giocando o simulando, quindi simula sempre dopo aver cambiato uno script. Nell'editor visuale (scheda **Script**) questa prova parte da sola: a ogni modifica il motore gioca 3.000 round e segnala la riga e il seed del primo round che sbaglia.
 
 ## Ricette
 

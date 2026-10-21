@@ -25,7 +25,7 @@ import { numberField, row, type TabContext, textField } from "./tabs.js";
 const MODE_ID = /^[a-z][a-z0-9_]*$/;
 
 /** Nome di una modalità dei rulli per chi usa l'editor. */
-function modeName(draft: ModuleDraft, mode: string): string {
+export function modeName(draft: ModuleDraft, mode: string): string {
   if (mode === "base") return t("editor.reels.base");
   if (mode === "free") return t("editor.reels.free");
   return draft.scene.modes?.[mode]?.label ?? mode;

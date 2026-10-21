@@ -38,7 +38,7 @@ export interface EditorView {
   manualStrips: boolean;
 }
 
-export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features"] as const;
+export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features", "script"] as const;
 export type Tab = (typeof TABS)[number];
 
 const SYMBOL_ID = /^[A-Z0-9_]+$/;
