@@ -7,7 +7,7 @@ Workflow in formato API (quello che accetta `POST /prompt`) per generare in loca
 | `workflows/simbolo.json` | SDXL txt2img 1024x1024, poi scontorno con BiRefNet | PNG RGBA con sfondo trasparente |
 | `workflows/simbolo-stile.json` | come `simbolo.json`, con IP-Adapter che copia lo stile di un'immagine di riferimento | PNG RGBA con sfondo trasparente |
 | `workflows/sfondo.json` | SDXL txt2img 1344x768, senza scontorno | PNG RGB |
-| `workflows/animazione.json` | Wan 2.2 TI2V 5B image-to-video 704x704, 49 fotogrammi a 24 fps, poi scontorno di ogni fotogramma con BiRefNet | MP4 senza alfa e PNG RGBA per fotogramma (prova: [prove/scarabeo/](prove/scarabeo/README.md)) |
+| `workflows/animazione.json` | Wan 2.2 TI2V 5B image-to-video 704x704, 49 fotogrammi a 24 fps, poi scontorno di ogni fotogramma con BiRefNet | MP4 senza alfa e PNG RGBA per fotogramma (prova bocciata: [prove/scarabeo/](prove/scarabeo/README.md)) |
 
 ## Requisiti
 

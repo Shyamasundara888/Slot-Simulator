@@ -125,7 +125,9 @@ Il comando gira solo dove ComfyUI è raggiungibile, di solito il PC su cui è in
 
 ### Animazioni generate
 
-Un simbolo già generato si anima con image-to-video: [`tools/comfyui/workflows/animazione.json`](../tools/comfyui/workflows/animazione.json) (Wan 2.2 TI2V 5B) parte dall'immagine del simbolo su fondo scuro e fa una clip di 2 s, poi lo scontorno di ogni fotogramma. Va lanciato a mano in ComfyUI. Sulla RTX 3080 una clip richiede circa 2 minuti e quasi tutta la RAM. Alla prova sullo scarabeo il seed 1 con 30 passi è rimasto fedele al simbolo; con 20 passi o altri seed il simbolo si è deformato o è rimasto fermo. Numeri in [tools/comfyui/prove/scarabeo/](../tools/comfyui/prove/scarabeo/README.md).
+Un simbolo già generato si può animare con un modello image-to-video, che parte dall'immagine del simbolo su fondo scuro e fa una clip di 2 s, seguita dallo scontorno di ogni fotogramma. [`tools/comfyui/workflows/animazione.json`](../tools/comfyui/workflows/animazione.json) (Wan 2.2 TI2V 5B, da lanciare a mano in ComfyUI) è stato provato sullo scarabeo del Tempio del Sole.
+
+Il risultato è stato bocciato: movimento quasi assente o simbolo deformato, circa 2 minuti a clip e quasi tutta la RAM su una RTX 3080. I numeri sono in [tools/comfyui/prove/scarabeo/](../tools/comfyui/prove/scarabeo/README.md). Per animazioni da slot serve un modello o una pipeline specializzati. Il campo `animation` e il comando `frames` valgono per i fotogrammi di qualsiasi provenienza, anche disegnati a mano o esportati da Spine o Blender.
 
 ```bash
 npm run assets -- frames slots/<id> --symbol SCARABEO --from <cartella-fotogrammi>
