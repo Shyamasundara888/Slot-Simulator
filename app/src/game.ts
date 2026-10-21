@@ -12,8 +12,14 @@ import { SlotView } from "./slot-view.js";
 import { setMuted, Sounds } from "./sound.js";
 import { net, type StatsStore } from "./stats.js";
 
-/** Da questa vincita, in multipli della puntata totale, si sente il suono della vincita grande. */
+/** Da questa vincita, in multipli della puntata totale, si sente il suono della vincita grande e parte la schermata. */
 const BIG_WIN = 20;
+/** Soglie dei titoli della schermata, in multipli della puntata totale, dalla più alta. */
+const WIN_TITLES: [number, "game.epicWin" | "game.megaWin" | "game.bigWin"][] = [
+  [100, "game.epicWin"],
+  [50, "game.megaWin"],
+  [BIG_WIN, "game.bigWin"],
+];
 
 /** Puntate totali disponibili, in crediti. */
 const BET_LEVELS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
@@ -160,8 +166,15 @@ export class Game {
       const multiplier = spin.multiplier > 1 ? ` (×${spin.multiplier})` : "";
       this.view.showWins(spin.lineWins, spin.scatterWin, spin.reelGrid, `${money(credits)}${multiplier}`);
       await wait(turbo ? 450 : 1100);
+      await this.celebrate(spin.win, turbo);
     }
     return credits;
+  }
+
+  /** Schermata delle vincite grandi, se `win` (in multipli della puntata) arriva a una soglia. */
+  private async celebrate(win: number, turbo: boolean): Promise<void> {
+    const title = WIN_TITLES.find(([min]) => win >= min)?.[1];
+    if (title) await this.view.celebrate(t(title), win * this.bet, money, turbo);
   }
 
   async spin(): Promise<void> {
@@ -229,6 +242,8 @@ export class Game {
     }
 
     const won = round.totalWin * bet;
+    // A fine bonus la schermata riassume quanto ha reso, se è una vincita grande.
+    if (free || round.extra.length > 0) await this.celebrate(round.totalWin - round.base.win, turbo);
     this.balance += won;
     this.saveBalance();
     this.stats.record(this.module.manifest.id, bet, won, free !== null || round.extra.length > 0);

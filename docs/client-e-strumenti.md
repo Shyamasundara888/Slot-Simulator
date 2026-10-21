@@ -19,6 +19,7 @@ Il client include nel bundle tutti i moduli in `slots/` e li mostra nel menu in 
 | Saldo | 1.000 crediti virtuali, salvati nel browser; **Azzera saldo** lo riporta a 1.000 |
 | Gira | pulsante o barra spaziatrice; **Turbo** accorcia le animazioni |
 | Audio | compare solo se la slot ha suoni; la scelta resta salvata |
+| Effetti di vincita | le celle vincenti hanno un bagliore del colore del simbolo, un riflesso che scorre e scintille; da 20 volte la puntata parte la schermata GRANDE VINCITA (50: MEGA, 100: EPICA) con monete e contatore, anche a fine bonus per il totale del bonus. Un clic porta subito alla cifra finale; con "riduci movimento" del sistema niente particelle |
 | Paytable | generata dalla matematica del modulo, con icone, regole delle funzioni e descrizioni delle modalità della scena |
 | Statistiche | per slot, sessione (dura quanto la scheda) e totale: round, puntato, vinto, bilancio, vincita massima, bonus, ritorno osservato |
 | Lingua | italiano o inglese, dal menu in alto a destra o con `?lang=it` / `?lang=en`; la scelta resta salvata |

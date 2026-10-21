@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import type { Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { easeOutBack, tween } from "./anim.js";
+import { lighten, WinEffects, type WinCell } from "./effects.js";
 
 /** Dimensioni logiche dello stage: il canvas viene scalato per riempire il contenitore. */
 export const STAGE_WIDTH = 900;
@@ -145,6 +146,7 @@ export class SlotView {
   private readonly animations = new Map<SymbolId, WinAnimation>();
 
   private winAnimation: ((ticker: Ticker) => void) | null = null;
+  private readonly effects: WinEffects;
 
   private constructor(
     private readonly app: Application,
@@ -176,6 +178,9 @@ export class SlotView {
       .stroke({ width: 3, color: 0xf5b301, alpha: 0.6 });
     app.stage.addChild(frame);
 
+    this.effects = new WinEffects(app, STAGE_WIDTH, STAGE_HEIGHT);
+    app.stage.addChild(this.effects.under);
+
     const textures = this.buildTextures(scene.symbols, images);
     for (const [id, style] of scene.symbols) {
       if (!style.winFrames) continue;
@@ -190,6 +195,7 @@ export class SlotView {
       app.stage.addChild(reel.container);
     });
 
+    app.stage.addChild(this.effects.over);
     app.stage.addChild(this.winLayer);
     this.winText = new Text({
       text: "",
@@ -198,6 +204,7 @@ export class SlotView {
     this.winText.anchor.set(0.5);
     this.winText.position.set(STAGE_WIDTH / 2, STAGE_HEIGHT / 2);
     app.stage.addChild(this.winText);
+    app.stage.addChild(this.effects.top);
 
     app.ticker.add((ticker) => {
       for (const reel of this.reels) reel.update(ticker.deltaMS, this.speed);
@@ -370,6 +377,13 @@ export class SlotView {
         for (let row = 0; row < math.rows; row++) reel.cell(row).tint = winning.has(`${i}:${row}`) ? 0xffffff : DIMMED;
       });
       this.animateWins(winning);
+      const cells: WinCell[] = [...winning].map((key) => {
+        const [reel, row] = key.split(":").map(Number) as [number, number];
+        const { x, y } = center(reel, row);
+        const color = this.module.scene.symbols.get(this.reels[reel]!.symbolAt(row))?.color ?? "#ffd43b";
+        return { x: x - this.cellW / 2, y: y - this.cellH / 2, w: this.cellW, h: this.cellH, color: lighten(toHex(color), 0.65) };
+      });
+      this.effects.highlight(cells);
     }
     this.winText.text = amount ?? "";
   }
@@ -392,7 +406,17 @@ export class SlotView {
     this.app.ticker.add(this.winAnimation);
   }
 
+  /**
+   * Schermata delle vincite grandi sopra i rulli: `title` è il testo da mostrare
+   * (per esempio "BIG WIN"), `credits` la vincita a cui sale il contatore.
+   */
+  celebrate(title: string, credits: number, format: (credits: number) => string, turbo: boolean): Promise<void> {
+    this.winText.text = "";
+    return this.effects.celebrate(title, credits, format, turbo ? 900 : 2600);
+  }
+
   clearWins(): void {
+    this.effects.clear();
     if (this.winAnimation) {
       this.app.ticker.remove(this.winAnimation);
       this.winAnimation = null;
@@ -404,6 +428,7 @@ export class SlotView {
   }
 
   destroy(): void {
+    this.effects.destroy();
     this.app.destroy(true, { children: true, texture: true });
   }
 }

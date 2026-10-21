@@ -50,6 +50,9 @@ export const en: Dictionary = {
   "game.bonusEnd": "Bonus over: won {money}",
   "game.won": "You won {money}",
   "game.noWin": "No win",
+  "game.bigWin": "BIG WIN",
+  "game.megaWin": "MEGA WIN",
+  "game.epicWin": "EPIC WIN",
 
   "mod.suffix": "{name} (mod)",
   "mod.invalid": "{file} is not a valid mod:\n\n{error}",
