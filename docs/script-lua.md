@@ -59,7 +59,7 @@ Lo script può pilotare gli elementi di `scenes/ui.json` ([modulo.md](modulo.md#
 
 | Funzione | Effetto |
 | --- | --- |
-| `ui.set(nome, valore)` | pubblica il valore `script.<nome>`: gli elementi con `"value": "script.<nome>"` o `{script.<nome>}` lo mostrano |
+| `ui.set(nome, valore)` | pubblica il valore `script.<nome>`: gli elementi con `"value": "script.<nome>"` o `{script.<nome>}` lo mostrano. Con `nome` uguale a `"session.<voce>"` cambia invece la voce di `session` |
 | `ui.add(nome, quanto)` | come `ui.set`, sommando al valore attuale |
 | `ui.set(nome, valore, { from = cella })` | anche con `ui.add`: un'icona del simbolo vola dalla cella agli elementi che mostrano il valore, che cambia quando arriva |
 | `ui.get(nome)` | valore attuale (0 se mai pubblicato) |
@@ -120,7 +120,31 @@ end
 ## Stato
 
 - `round` è una tabella vuota all'inizio di ogni round: è il posto per contatori e raccolte (`round.gold = (round.gold or 0) + 1`).
-- Le variabili globali definite al caricamento (costanti, tabelle) restano tra un round e l'altro. Non usarle per stato che cambia, o il risultato dipenderebbe dai round precedenti.
+- `session` resta tra un round e l'altro: è il posto per le raccolte lunghe, come "300 forzieri aprono il Tesoro" (sotto).
+- Le variabili globali definite al caricamento (costanti, tabelle) restano tra un round e l'altro. Non usarle per stato che cambia: non vengono salvate, e il risultato dipenderebbe da round che il client non ricorda.
+
+### session
+
+`session` parte vuota e, alla fine di ogni round, il motore la salva per il round dopo. Il client la tiene **per slot e per puntata**, come le slot reali: cambiare puntata non porta con sé una barra quasi piena. Un round fermato su una scelta non salva niente, così il round rigiocato riparte dalla stessa `session`.
+
+- Le voci hanno nomi in minuscolo (`forzieri`, `livello_2`) e valgono numeri, testi (fino a 200 caratteri) o `true`/`false`; al massimo 50 voci. Una voce che non rispetta queste regole è un errore alla fine del round.
+- Le voci numeriche si vedono negli elementi come `session.<nome>` ([modulo.md](modulo.md#scenesuijson)): ogni cambio fatto in uno hook arriva all'interfaccia da solo. Con `ui.add("session.forzieri", 1, { from = cella })` cambia la voce e l'icona vola dalla cella; `ui.get("session.forzieri")` legge la voce (0 se manca).
+- Il simulatore gioca i round in fila con la stessa `session`, come un giocatore che resta sempre alla stessa puntata: l'RTP misurato è quello di lungo periodo. Con `--session-reset N` la `session` riparte da zero ogni N round, come un giocatore nuovo: confrontare le due misure dice quanto pesa la barra.
+- Lo stesso spin vale di più con la barra quasi piena: la taratura si fa sull'RTP di lungo periodo, e un premio che arriva dopo molti round va pagato da altre parti della slot.
+
+```lua
+-- Pixel Quest: ogni forziere dello spin base va nella barra del Tesoro; ogni 300 si apre un Boss Spin.
+local function treasure(spin)
+  for _, cella in ipairs(spin.scatterCells) do
+    ui.add("session.forzieri", 1, { from = cella })
+  end
+  if (session.forzieri or 0) >= 300 then
+    session.forzieri = session.forzieri - 300
+    ui.message("Tesoro aperto: Boss Spin!")
+    return { mode = "boss", spins = 1, guaranteeWin = true }
+  end
+end
+```
 
 ## Casualità
 

@@ -1,6 +1,6 @@
 import { attemptRound } from "../../src/core/engine.js";
 import { createReplayableRng, createRng, type Rng } from "../../src/core/rng.js";
-import type { Mode, RoundAttempt, RoundHooks, RoundResult, SpinResult, UiEvent } from "../../src/core/types.js";
+import type { Mode, RoundAttempt, RoundHooks, RoundResult, SessionState, SpinResult, UiEvent } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { ScriptRuntime } from "../../src/script/runtime.js";
 import { initialValues, type UiValues } from "../../src/ui/values.js";
@@ -26,6 +26,7 @@ const WIN_TITLES: [number, "game.epicWin" | "game.megaWin" | "game.bigWin"][] = 
 const BET_LEVELS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50];
 const START_BALANCE = 1000;
 const STORAGE_KEY = "slot-simulator:balance";
+const SESSION_KEY = "slot-simulator:session";
 
 
 function readBalance(): number {
@@ -45,6 +46,47 @@ function saveBalance(value: number): void {
   }
 }
 
+/**
+ * Session degli script, salvata per slot (e versione) e per puntata, come
+ * nelle slot reali: cambiare puntata non porta con sé una barra già piena.
+ * Senza `persist` resta in memoria, come serve all'anteprima dell'editor.
+ */
+class SessionStore {
+  private readonly memory = new Map<number, SessionState>();
+
+  constructor(
+    private readonly prefix: string,
+    private readonly persist: boolean,
+  ) {}
+
+  load(bet: number): SessionState | null {
+    if (!this.persist) return this.memory.get(bet) ?? null;
+    try {
+      const raw = localStorage.getItem(`${this.prefix}:${bet}`);
+      const value: unknown = raw === null ? null : JSON.parse(raw);
+      return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as SessionState) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  save(bet: number, state: SessionState): void {
+    if (!this.persist) {
+      this.memory.set(bet, state);
+      return;
+    }
+    try {
+      localStorage.setItem(`${this.prefix}:${bet}`, JSON.stringify(state));
+    } catch {
+      // Senza storage la session vale solo per questa visita.
+    }
+  }
+}
+
+/** Valori session.<nome> da mostrare: le voci numeriche della session. */
+const sessionValues = (state: SessionState | null): Partial<UiValues> =>
+  Object.fromEntries(Object.entries(state ?? {}).flatMap(([key, value]) => (typeof value === "number" ? [[`session.${key}`, value]] : [])));
+
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 /** Collega motore, vista e controlli HTML. Il saldo è virtuale e condiviso tra le slot. */
@@ -56,6 +98,7 @@ export class Game {
   /** Valori mostrati dagli elementi di interfaccia del modulo e modalità in corso. */
   private values: UiValues;
   private mode: Mode = "base";
+  private readonly sessions: SessionStore;
   private readonly ui = {
     balance: $<HTMLElement>("balance"),
     bet: $<HTMLElement>("bet"),
@@ -83,7 +126,8 @@ export class Game {
   ) {
     this.balance = persist ? readBalance() : START_BALANCE;
     this.rng = createRng(seed);
-    this.values = initialValues(this.bet, module.math.maxWin);
+    this.sessions = new SessionStore(`${SESSION_KEY}:${module.manifest.id}@${module.manifest.version}`, persist);
+    this.values = this.restValues();
     view.hud.update(this.values, this.mode);
     this.ui.spin.onclick = () => void this.spin();
     this.ui.betDown.onclick = () => this.changeBet(-1);
@@ -135,8 +179,15 @@ export class Game {
   private changeBet(delta: number): void {
     if (this.busy) return;
     this.betIndex = Math.max(0, Math.min(BET_LEVELS.length - 1, this.betIndex + delta));
-    this.showValues({ bet: this.bet });
+    // Ogni puntata ha la sua session: gli elementi mostrano quella della puntata nuova.
+    this.values = this.restValues();
+    this.view.hud.update(this.values, this.mode);
     this.render();
+  }
+
+  /** Valori a riposo, fuori dai round: quelli iniziali più la session della puntata in corso. */
+  private restValues(): UiValues {
+    return { ...initialValues(this.bet, this.module.math.maxWin), ...sessionValues(this.sessions.load(this.bet)) };
   }
 
   /** Aggiorna i contatori, per esempio dopo aver azzerato le statistiche. */
@@ -174,7 +225,7 @@ export class Game {
     for (const event of events) {
       switch (event.kind) {
         case "set": {
-          const key = `script.${event.name}` as const;
+          const key = event.name.startsWith("session.") ? (event.name as `session.${string}`) : (`script.${event.name}` as const);
           if (!event.from) {
             this.showValues({ [key]: event.value }, this.mode, turbo);
             break;
@@ -266,7 +317,7 @@ export class Game {
     this.ui.win.textContent = money(0);
     this.setStatus("");
     this.render();
-    this.values = initialValues(bet, this.module.math.maxWin);
+    this.values = this.restValues();
     this.view.hud.clearForced();
     this.showValues({}, "base", turbo);
     try {
@@ -293,6 +344,8 @@ export class Game {
    * che è già sullo schermo resta identico.
    */
   private async playOne(bet: number, turbo: boolean): Promise<void> {
+    // Ogni tentativo del round riparte dalla session salvata per questa puntata.
+    this.hooks?.setSession?.(this.sessions.load(bet));
     const rng = createReplayableRng(this.rng);
     const answers: number[] = [];
     const attempt = (): RoundAttempt => {
@@ -397,10 +450,11 @@ export class Game {
     if (bonus) await this.celebrate(final.totalWin - final.base.win, turbo);
     this.balance += won;
     this.saveBalance();
+    if (final.session) this.sessions.save(bet, final.session);
     this.stats.record(this.module.manifest.id, bet, won, bonus);
     this.ui.win.textContent = money(won);
     // Finito il bonus si torna al gioco base: gli elementi dei bonus si nascondono.
-    this.showValues({ "win.round": won }, "base", turbo);
+    this.showValues({ "win.round": won, ...sessionValues(final.session ?? null) }, "base", turbo);
     if (final.capped) this.setStatus(t("game.capped", { money: money(won) }), "win");
     else if (bonus) this.setStatus(t("game.bonusEnd", { money: money(won - final.base.win * bet) }), "win");
     else if (won > 0) this.setStatus(t("game.won", { money: money(won) }), "win");

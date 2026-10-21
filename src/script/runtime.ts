@@ -6,6 +6,7 @@ import {
   type FeatureSummary,
   type PlayRequest,
   type RoundHooks,
+  type SessionState,
   type SlotMath,
   type SpinResult,
   UI_EFFECTS,
@@ -33,6 +34,10 @@ export class ScriptError extends Error {
 
 /** Testo massimo di ui.message. */
 export const MAX_MESSAGE = 120;
+/** Voci al massimo nella tabella session. */
+export const MAX_SESSION_KEYS = 50;
+/** Lunghezza massima di un testo in session. */
+export const MAX_SESSION_TEXT = 200;
 
 /**
  * Preambolo eseguito prima dello script del modulo. Toglie le librerie che
@@ -75,11 +80,31 @@ end
 local current_round = nil
 local in_hook = false
 local ui_values, ui_events = {}, {}
+-- session: stato che resta tra un round e l'altro. saved è quello dell'ultimo round finito,
+-- shown i valori numerici già comunicati all'interfaccia nel round in corso.
+local saved, shown = {}, {}
+local changed, session_changed = false, __session_changed
+__session_changed = nil
+local function copy(t)
+  local out = {}
+  for k, v in pairs(t) do out[k] = v end
+  return out
+end
+local function same(a, b)
+  if type(a) ~= "table" then return false end
+  for k, v in pairs(a) do if b[k] ~= v then return false end end
+  for k in pairs(b) do if a[k] == nil then return false end end
+  return true
+end
 local function begin(id)
   if id ~= current_round then
     current_round = id
     round = {}
     ui_values = {}
+    session = copy(saved)
+    changed = false
+    shown = {}
+    for k, v in pairs(session) do if type(v) == "number" then shown[k] = v end end
   end
   ui_events = {}
 end
@@ -96,9 +121,18 @@ local function check_hook(fname)
   if not in_hook then error(fname .. " si può usare solo dentro gli hook", 3) end
 end
 local function check_name(name, fname)
-  if type(name) ~= "string" or not name:match("^[a-z][a-z0-9_]*$") then
-    error(fname .. ": nome non valido " .. tostring(name) .. " (usa lettere minuscole, cifre e _)", 3)
+  if type(name) ~= "string" or not (name:match("^[a-z][a-z0-9_]*$") or name:match("^session%.[a-z][a-z0-9_]*$")) then
+    error(fname .. ": nome non valido " .. tostring(name) .. " (usa lettere minuscole, cifre e _, oppure session.<nome>)", 3)
   end
+end
+-- Valore attuale di un nome: quelli che iniziano con session. stanno nella tabella session.
+local function get_value(name)
+  local key = name:match("^session%.(.+)$")
+  if key then
+    local v = type(session) == "table" and session[key] or nil
+    return type(v) == "number" and v or 0
+  end
+  return ui_values[name] or 0
 end
 local function check_number(value, fname)
   if math.type(value) == nil or value ~= value or value == math.huge or value == -math.huge then
@@ -125,8 +159,32 @@ local function push(event)
   if RECORD then ui_events[#ui_events + 1] = event end
 end
 local function set_value(name, value, reel, row)
-  ui_values[name] = value
+  local key = name:match("^session%.(.+)$")
+  if key then
+    if type(session) ~= "table" then session = {} end
+    session[key] = value
+    shown[key] = value
+  else
+    ui_values[name] = value
+  end
   push({ kind = "set", name = name, value = value, reel = reel, row = row })
+end
+-- Comunica all'interfaccia i valori numerici di session cambiati direttamente dallo script.
+local function push_session()
+  if type(session) ~= "table" then return end
+  local keys = {}
+  for k, v in pairs(session) do
+    if type(k) == "string" and type(v) == "number" and shown[k] ~= v then keys[#keys + 1] = k end
+  end
+  for k in pairs(shown) do
+    if session[k] == nil or type(session[k]) ~= "number" then keys[#keys + 1] = k end
+  end
+  table.sort(keys)
+  for _, k in ipairs(keys) do
+    local v = type(session[k]) == "number" and session[k] or 0
+    shown[k] = type(session[k]) == "number" and session[k] or nil
+    push({ kind = "set", name = "session." .. k, value = v })
+  end
 end
 ui = {}
 function ui.set(name, value, opts)
@@ -135,11 +193,11 @@ function ui.set(name, value, opts)
 end
 function ui.add(name, delta, opts)
   check_hook("ui.add"); check_name(name, "ui.add"); check_number(delta, "ui.add")
-  set_value(name, (ui_values[name] or 0) + delta, check_cell(opts, "ui.add"))
+  set_value(name, get_value(name) + delta, check_cell(opts, "ui.add"))
 end
 function ui.get(name)
   check_name(name, "ui.get")
-  return ui_values[name] or 0
+  return get_value(name)
 end
 function ui.show(id)
   check_hook("ui.show"); check_id(id, "ui.show")
@@ -200,6 +258,12 @@ local function hook(f, arg)
   local ok, res = pcall(guarded, f, arg)
   in_hook = false
   if not ok then error(res, 0) end
+  push_session()
+  -- Avvisa il motore una volta per round se session è cambiata: solo allora va salvata.
+  if not changed and not same(session, saved) then
+    changed = true
+    session_changed()
+  end
   if #ui_events == 0 then return res end
   local events = ui_events
   ui_events = {}
@@ -233,6 +297,50 @@ function dispatch.featureEnd(id, mode, spins, win, level, multiplier)
   begin(id)
   return hook(onFeatureEnd, { mode = mode, spins = spins, win = win, level = level, multiplier = multiplier })
 end
+-- Fine del round: controlla session e la salva per il round dopo. Restituisce il testo "chiave tipo valore" per voce.
+function dispatch.commit(id)
+  begin(id)
+  if type(session) ~= "table" then error("session deve restare una tabella", 0) end
+  -- Niente di cambiato: il motore tiene quella che ha già.
+  if same(session, saved) then return nil end
+  local out, n = {}, 0
+  for k, v in pairs(session) do
+    n = n + 1
+    if type(k) ~= "string" or not k:match("^[a-z][a-z0-9_]*$") then
+      error("session: chiave non valida " .. tostring(k) .. " (usa lettere minuscole, cifre e _)", 0)
+    end
+    local t = type(v)
+    if t == "number" then
+      if v ~= v or v == math.huge or v == -math.huge then error("session." .. k .. ": numero non valido", 0) end
+      out[#out + 1] = k .. "\\31" .. (math.type(v) == "integer" and ("i\\31" .. v) or ("n\\31" .. string.format("%.17g", v)))
+    elseif t == "boolean" then
+      out[#out + 1] = k .. "\\31b\\31" .. (v and "1" or "0")
+    elseif t == "string" then
+      if #v > ${MAX_SESSION_TEXT} or v:find("[\\30\\31]") then error("session." .. k .. ": testo non valido (al massimo ${MAX_SESSION_TEXT} caratteri)", 0) end
+      out[#out + 1] = k .. "\\31s\\31" .. v
+    else
+      error("session." .. k .. ": vale " .. t .. ", ma session tiene solo numeri, testi e true/false", 0)
+    end
+  end
+  if n > ${MAX_SESSION_KEYS} then error("session: troppe voci (" .. n .. ", al massimo ${MAX_SESSION_KEYS})", 0) end
+  saved = copy(session)
+  table.sort(out)
+  return table.concat(out, "\\30")
+end
+-- Riprende una session salvata (testo di commit); il prossimo round parte da qui.
+function dispatch.restore(text)
+  saved = {}
+  for entry in text:gmatch("[^\\30]+") do
+    local k, t, v = entry:match("^([^\\31]*)\\31(.)\\31(.*)$")
+    if k then
+      if t == "i" then saved[k] = math.tointeger(tonumber(v))
+      elseif t == "n" then saved[k] = tonumber(v)
+      elseif t == "b" then saved[k] = v == "1"
+      else saved[k] = v end
+    end
+  end
+  current_round = nil
+end
 return dispatch
 `;
 
@@ -258,6 +366,8 @@ type Dispatch = {
     scatterCells: string,
   ): unknown;
   featureEnd(id: number, mode: string, spins: number, win: number, level: number, multiplier: number): unknown;
+  commit(id: number): string | null;
+  restore(text: string): void;
 };
 
 export interface ScriptOptions {
@@ -314,6 +424,10 @@ export class ScriptRuntime implements RoundHooks {
   /** Risposte alle scelte del round, nell'ordine in cui lo script le chiede. */
   private answers: readonly number[] = [];
   private answered = 0;
+  /** Se nel round in corso uno hook ha cambiato session (altrimenti non serve salvarla). */
+  private changed = false;
+  /** Ultima session salvata, restituita senza chiamare Lua nei round che non la cambiano. */
+  private session: SessionState = {};
   /** Scelta chiesta dallo script senza risposta, durante l'hook in corso. */
   private waiting: { id: string; options: number } | null = null;
 
@@ -345,6 +459,9 @@ export class ScriptRuntime implements RoundHooks {
     };
     lua.global.set("__rng_int", (n: number) => rng().int(n));
     lua.global.set("__rng_float", () => rng().float());
+    lua.global.set("__session_changed", () => {
+      if (runtime) runtime.changed = true;
+    });
     lua.global.set("__choose", (id: string, options: number) => runtime?.answer(id, options, options_.choice) ?? undefined);
 
     let info: LoadInfo;
@@ -382,6 +499,7 @@ export class ScriptRuntime implements RoundHooks {
     this.pending = [];
     this.answered = 0;
     this.waiting = null;
+    this.changed = false;
   }
 
   /** Risposte (da 1) alle scelte del prossimo round, nell'ordine in cui lo script le chiede. */
@@ -400,6 +518,21 @@ export class ScriptRuntime implements RoundHooks {
     if (typeof policy === "number") return Math.max(1, Math.min(options, Math.floor(policy)));
     this.waiting = { id, options };
     return null;
+  }
+
+  /** Fine di un round completo: salva session per il round dopo e la restituisce. */
+  endRound(): SessionState {
+    if (!this.changed) return this.session;
+    const text = this.call("fine del round", () => this.dispatch.commit(this.round)) as string | null | undefined;
+    if (typeof text === "string") this.session = parseSession(text);
+    return this.session;
+  }
+
+  /** Riparte da una session salvata (per esempio quella di questa slot e di questa puntata); null la svuota. */
+  setSession(state: SessionState | null): void {
+    const text = serializeSession(state ?? {});
+    this.dispatch.restore(text);
+    this.session = parseSession(text);
   }
 
   takeUiEvents(): UiEvent[] {
@@ -484,6 +617,36 @@ export class ScriptRuntime implements RoundHooks {
 }
 
 /** Una richiesta all'interfaccia come arriva da Lua, già controllata dal preambolo. */
+/** Testo di dispatch.commit: voci separate da 0x1e, campi (chiave, tipo, valore) da 0x1f. */
+function parseSession(text: string): SessionState {
+  const state: SessionState = {};
+  for (const entry of text.split("\u001e")) {
+    const [key, type, value] = entry.split("\u001f");
+    if (key === undefined || type === undefined || value === undefined) continue;
+    state[key] = type === "i" || type === "n" ? Number(value) : type === "b" ? value === "1" : value;
+  }
+  return state;
+}
+
+const SESSION_KEY = /^[a-z][a-z0-9_]*$/;
+
+/** Il contrario di parseSession; le voci non valide (per esempio da uno storage modificato a mano) si scartano. */
+function serializeSession(state: SessionState): string {
+  return Object.entries(state)
+    .slice(0, MAX_SESSION_KEYS)
+    .flatMap(([key, value]) => {
+      if (!SESSION_KEY.test(key)) return [];
+      if (typeof value === "number") {
+        if (!Number.isFinite(value)) return [];
+        return [`${key}\u001f${Number.isInteger(value) && Math.abs(value) < 2 ** 53 ? "i" : "n"}\u001f${value}`];
+      }
+      if (typeof value === "boolean") return [`${key}\u001fb\u001f${value ? 1 : 0}`];
+      if (typeof value === "string" && value.length <= MAX_SESSION_TEXT && !/[\u001e\u001f]/.test(value)) return [`${key}\u001fs\u001f${value}`];
+      return [];
+    })
+    .join("\u001e");
+}
+
 function toUiEvent(raw: Record<string, unknown>): UiEvent {
   switch (raw.kind) {
     case "set": {

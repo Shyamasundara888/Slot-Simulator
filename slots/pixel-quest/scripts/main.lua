@@ -9,12 +9,29 @@
 -- Prima dei Boss Spin il giocatore sceglie: giocarli così come sono oppure
 -- tentare la Sfida, un forziere su due che li raddoppia (l'altro è vuoto).
 -- Le due strade rendono in media lo stesso, cambia solo il rischio.
+--
+-- Il Tesoro dura tra un round e l'altro (tabella session): ogni forziere che
+-- compare nello spin base va nella barra del Tesoro, e ogni 300 forzieri si
+-- apre un Boss Spin. La barra è salvata per puntata.
 
-spinModes = { "free" }
+spinModes = { "base", "free" }
 
 local COMBO_FOR_BOSS = 5
+local CHESTS_FOR_TREASURE = 300
+
+local function treasure(spin)
+  for _, cella in ipairs(spin.scatterCells) do
+    ui.add("session.forzieri", 1, { from = cella })
+  end
+  if (session.forzieri or 0) >= CHESTS_FOR_TREASURE then
+    session.forzieri = session.forzieri - CHESTS_FOR_TREASURE
+    ui.message("Tesoro aperto: Boss Spin!")
+    return { mode = "boss", spins = 1, guaranteeWin = true }
+  end
+end
 
 function onSpin(spin)
+  if spin.mode == "base" then return treasure(spin) end
   if spin.win > 0 then
     round.combo = (round.combo or 0) + 1
     round.best = math.max(round.best or 0, round.combo)

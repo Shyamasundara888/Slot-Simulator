@@ -18,6 +18,12 @@ export interface SimulationOptions {
   seed: number | string;
   /** Regole aggiuntive del modulo, in pratica il suo script Lua. */
   hooks?: RoundHooks | undefined;
+  /**
+   * Ogni quanti round la session degli script riparte da zero, come un
+   * giocatore nuovo. Senza, prosegue per tutta la simulazione, come un
+   * giocatore che gioca sempre alla stessa puntata. All'inizio è sempre vuota.
+   */
+  sessionReset?: number | undefined;
 }
 
 export interface FreeSpinsStats {
@@ -70,7 +76,7 @@ export interface SimulationResult {
   extra: Record<Mode, ExtraModeStats>;
 }
 
-export function simulate(math: SlotMath, { spins, seed, hooks }: SimulationOptions): SimulationResult {
+export function simulate(math: SlotMath, { spins, seed, hooks, sessionReset }: SimulationOptions): SimulationResult {
   if (!Number.isInteger(spins) || spins <= 0) throw new RangeError("spins deve essere un intero positivo");
   const rng = createRng(seed);
 
@@ -90,6 +96,7 @@ export function simulate(math: SlotMath, { spins, seed, hooks }: SimulationOptio
   const extra = new Map<Mode, { sequences: number; rounds: number; spins: number; win: number }>();
 
   for (let i = 0; i < spins; i++) {
+    if (i === 0 || (sessionReset && i % sessionReset === 0)) hooks?.setSession?.(null);
     const round = playRound(math, rng, hooks);
     const win = round.totalWin;
     const baseWin = Math.min(round.base.win, math.maxWin);

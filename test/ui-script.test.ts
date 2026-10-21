@@ -227,3 +227,70 @@ describe("scelte del giocatore e pick-em", () => {
     expect(() => uiSchema.parse({ elements: [{ id: "f", type: "picker", ...box, count: 1 }] })).toThrow();
   });
 });
+
+describe("session: stato che resta tra i round", () => {
+  const counter = `
+    function onSpin(spin)
+      if spin.mode ~= "base" then return end
+      session.giri = (session.giri or 0) + 1
+      if session.giri % 3 == 0 then ui.add("session.monete", 10) end
+    end`;
+
+  it("prosegue tra i round, si salva sul risultato e si riprende con setSession", async () => {
+    const script = await create(counter);
+    const rng = createRng(1);
+    const rounds = [1, 2, 3].map(() => playRound(math, rng, script));
+    expect(rounds.map((r) => r.session)).toEqual([{ giri: 1 }, { giri: 2 }, { giri: 3, monete: 10 }]);
+    expect(rounds[2]!.base.ui).toEqual([
+      { kind: "set", name: "session.monete", value: 10, from: null },
+      { kind: "set", name: "session.giri", value: 3, from: null },
+    ]);
+    script.setSession({ giri: 8, monete: 1, nome: "Ada", vip: true });
+    expect(playRound(math, rng, script).session).toEqual({ giri: 9, monete: 11, nome: "Ada", vip: true });
+    script.setSession(null);
+    expect(playRound(math, rng, script).session).toEqual({ giri: 1 });
+  });
+
+  it("un round fermato su una scelta non salva niente: il round rigiocato riparte dalla stessa session", async () => {
+    const script = await create(`
+      function onSpin(spin)
+        if spin.mode ~= "base" then return end
+        session.n = (session.n or 0) + 1
+        session.scelta = choose("strada")
+      end`);
+    script.setSession({ n: 5 });
+    const rng = createReplayableRng(createRng(2));
+    expect(attemptRound(math, rng, script).choice).not.toBeNull();
+    rng.rewind();
+    script.setAnswers([2]);
+    expect(attemptRound(math, rng, script).round.session).toEqual({ n: 6, scelta: 2 });
+  });
+
+  it("nel simulatore prosegue, oppure riparte da zero ogni N round", async () => {
+    // Ogni 10 round lo script regala una sequenza gold: con la session azzerata ogni 5 non arriva mai.
+    const script = await create(`
+      function onSpin(spin)
+        if spin.mode ~= "base" then return end
+        session.n = (session.n or 0) + 1
+        if session.n == 10 then session.n = 0 return { mode = "gold", spins = 1 } end
+      end`, false);
+    expect(simulate(math, { spins: 1_000, seed: 1, hooks: script }).extra.gold?.sequences).toBe(100);
+    expect(simulate(math, { spins: 1_000, seed: 1, hooks: script, sessionReset: 5 }).extra.gold).toBeUndefined();
+  });
+
+  it.each([
+    [`function onSpin(s) session.x = {} end`, /session\.x: vale table, ma session tiene solo numeri, testi e true\/false/],
+    [`function onSpin(s) session.Oro = 1 end`, /session: chiave non valida Oro/],
+    [`function onSpin(s) session = 3 end`, /session deve restare una tabella/],
+    [`function onSpin(s) for i = 1, 51 do session["k" .. i] = i end end`, /session: troppe voci \(51, al massimo 50\)/],
+    [`function onSpin(s) session.t = string.rep("a", 201) end`, /session\.t: testo non valido/],
+  ])("segnala le session non valide alla fine del round: %s", async (source, error) => {
+    const script = await create(source);
+    expect(() => playRound(math, createRng(1), script)).toThrow(error);
+  });
+
+  it("gli elementi possono mostrare session.<nome>", () => {
+    expect(uiElementSchema.parse({ id: "t", type: "meter", ...box, value: "session.monete", max: 100 })).toMatchObject({ value: "session.monete" });
+    expect(() => uiElementSchema.parse({ id: "t", type: "meter", ...box, value: "sessione.monete", max: 100 })).toThrow(/session\.<nome>/);
+  });
+});

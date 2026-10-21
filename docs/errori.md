@@ -80,6 +80,10 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `choose: risposta N fuori da 1..M` | il simulatore o l'editor hanno dato una risposta che il pannello non ha |
 | `ui.pick: X non è un elemento picker di scenes/ui.json` / `ui.pick: servono da 1 a N premi` | `ui.pick` vuole l'id di un `picker` e un premio per ogni oggetto da scoprire, al massimo `count` |
 | `scelta del giocatore senza risposta: X` | un programma ha giocato il round con `playRound` senza dire come rispondere alle scelte: usa `attemptRound`, oppure l'opzione `choice` dello script (`--choice` nel simulatore) |
+| `fine del round: session.X: vale table, ma session tiene solo numeri, testi e true/false` | in `session` vanno solo valori semplici: per un elenco usa voci separate (`pezzo_1`, `pezzo_2`) |
+| `fine del round: session: chiave non valida X` / `session: troppe voci` | nomi in minuscolo con cifre e `_`, al massimo 50 voci |
+| `fine del round: session.X: testo non valido` | testo oltre i 200 caratteri |
+| `fine del round: session deve restare una tabella` | lo script ha assegnato a `session` qualcosa che non è una tabella |
 | `--choice each`: `nessun pannello con options` | non ci sono scelte da confrontare: togli `--choice each` |
 
 Nel client un errore dello script annulla il round, restituisce la puntata e mostra il messaggio.

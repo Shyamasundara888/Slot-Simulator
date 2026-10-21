@@ -5,8 +5,10 @@ import { SCRIPT_VALUE, UI_VALUES, type UiValue } from "../module/schema.js";
  * mentre mette in scena un round già deciso dal motore. Le vincite e la
  * puntata sono in crediti, gli altri valori sono numeri puri. I valori
  * script.<nome> arrivano dagli script; finché lo script non li tocca valgono 0.
+ * I valori session.<nome> sono le voci numeriche della tabella session, che
+ * restano tra un round e l'altro.
  */
-export type UiValues = Record<(typeof UI_VALUES)[number], number> & Partial<Record<`script.${string}`, number>>;
+export type UiValues = Record<(typeof UI_VALUES)[number], number> & Partial<Record<`script.${string}` | `session.${string}`, number>>;
 
 const KNOWN: ReadonlySet<string> = new Set(UI_VALUES);
 
