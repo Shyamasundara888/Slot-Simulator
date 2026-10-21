@@ -66,10 +66,13 @@ Lo script può pilotare gli elementi di `scenes/ui.json` ([modulo.md](modulo.md#
 | `ui.show(id)` / `ui.hide(id)` | mostra o nasconde un elemento fino alla fine del round, a prescindere da `visibleIn` |
 | `ui.fx(id, effetto)` | anima un elemento una volta: `"pop"`, `"pulse"` o `"shake"` |
 | `ui.message(testo)` | testo grande sopra i rulli per un attimo (fino a 120 caratteri) |
+| `ui.pick(id, premi)` | pick-em: mostra il `picker` `id`, il giocatore tocca un oggetto per ogni premio e li scopre nell'ordine dato |
+| `choose(id)` | chiede al giocatore di scegliere tra le `options` del `panel` `id`; restituisce il numero dell'opzione, da 1 |
 
 - I nomi dei valori usano lettere minuscole, cifre e `_`; gli `id` sono quelli di `scenes/ui.json`. I valori ripartono da 0 a ogni round, come `round`.
 - Le celle sono tabelle `{ reel = r, row = n }` contate da 1. `onSpin` riceve le celle utili: `spin.wildCells` (i wild atterrati), `spin.expandedCells` (per ogni wild espanso, la cella in cui è atterrato: tante quante `spin.wilds`) e `spin.scatterCells`.
 - Le funzioni `ui` si usano solo dentro gli hook e non toccano `math.random`: aggiungerle a uno script non cambia i round.
+- `ui.show` su un `panel` con `button` ferma la scena finché il giocatore non tocca il pulsante (in turbo il pannello si chiude da solo); il round però è già deciso.
 
 ```lua
 -- Tempio del Sole: ogni wild d'oro manda una moneta nella barra dei Gold Spin.
@@ -84,6 +87,34 @@ end
 ```json
 { "id": "oro", "type": "meter", "value": "script.gold", "max": 10, "style": "segments", "direction": "up",
   "x": 12, "y": 334, "width": 120, "height": 206, "visibleIn": ["free"] }
+```
+
+## Scelte del giocatore
+
+`choose(id)` mostra il pannello `id` di `scenes/ui.json` (un `panel` con `options`) e restituisce l'opzione scelta, da 1. Il motore calcola il round tutto in una volta, quindi la scelta funziona così:
+
+1. il motore gioca il round finché lo script chiama `choose`, poi si ferma;
+2. il client mostra il round fino a quel punto e aspetta il tocco del giocatore;
+3. il motore rigioca il round dallo stesso stato dell'RNG con la risposta: tutto ciò che viene prima della scelta esce identico e lo script prosegue con l'opzione scelta.
+
+Per questo lo script deve arrivare alla scelta sempre per la stessa strada: usa solo `round`, `math.random` e i dati dello spin, come già chiede la regola sulla casualità. Una scelta si può chiedere in `onSpin` (dopo che i rulli si sono fermati, prima delle vincite) o in `onFeatureEnd`.
+
+Il simulatore non ha un giocatore: con `--choice random` (predefinito) sceglie a caso, con `--choice 2` sceglie sempre la seconda opzione, con `--choice each` fa una simulazione per opzione e le confronta. Nelle slot vere le opzioni di un menu rendono quasi lo stesso RTP e cambiano la volatilità: controllalo con `--choice each`.
+
+**Pick-em.** I premi si decidono nello script, prima che il giocatore tocchi: `ui.pick(id, premi)` dice solo in che ordine scoprirli (da 1 al numero di oggetti del `picker`, testi o numeri). Dove tocca il giocatore non cambia niente, come nelle slot reali.
+
+```lua
+-- Pixel Quest: prima dei Boss Spin si sceglie se giocarli o tentare la Sfida.
+local spins = round.boss
+if choose("scelta") == 2 then
+  if math.random(2) == 1 then
+    spins = 2 * spins
+    ui.pick("forzieri", { "Doppio! " .. spins .. " Boss Spin" })
+  else
+    spins = 0
+    ui.pick("forzieri", { "Vuoto" })
+  end
+end
 ```
 
 ## Stato

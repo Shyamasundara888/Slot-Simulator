@@ -1,6 +1,6 @@
-import { playRound } from "../../src/core/engine.js";
-import { createRng, type Rng } from "../../src/core/rng.js";
-import type { Mode, RoundHooks, RoundResult, SpinResult, UiEvent } from "../../src/core/types.js";
+import { attemptRound } from "../../src/core/engine.js";
+import { createReplayableRng, createRng, type Rng } from "../../src/core/rng.js";
+import type { Mode, RoundAttempt, RoundHooks, RoundResult, SpinResult, UiEvent } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { ScriptRuntime } from "../../src/script/runtime.js";
 import { initialValues, type UiValues } from "../../src/ui/values.js";
@@ -107,7 +107,7 @@ export class Game {
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
   static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string, persist = true): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
-    const elements = module.ui.elements.map((e) => e.id);
+    const elements = module.ui.elements;
     const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri, elements });
     const sounds = new Sounds(module.scene, assets, module.ui.elements.flatMap((e) => (e.sound ? [e.sound] : [])));
     const view = await SlotView.create(
@@ -190,8 +190,18 @@ export class Game {
           break;
         }
         case "show":
+          await Promise.all(flights);
+          // Un pannello copre i rulli: le vincite dello spin lasciate in vista andrebbero sopra.
+          if (this.module.ui.elements.some((e) => e.id === event.id && e.type === "panel")) this.view.clearWins();
+          await this.view.hud.show(event.id, turbo);
+          break;
         case "hide":
-          this.view.hud.force(event.id, event.kind === "show", turbo);
+          this.view.hud.force(event.id, false, turbo);
+          break;
+        case "pick":
+          await Promise.all(flights);
+          this.view.clearWins();
+          await this.view.hud.pick(event.id, event.prizes, turbo);
           break;
         case "fx":
           this.view.hud.effect(event.id, event.effect, turbo);
@@ -210,15 +220,25 @@ export class Game {
     this.ui.status.className = `status ${tone}`.trim();
   }
 
-  /** Gioca uno spin già deciso dal motore: rulli, trasformazioni, vincite. */
-  /** Mostra uno spin; `onRevealed` viene chiamata quando griglia ed espansioni sono visibili, prima delle vincite. */
-  private async present(spin: SpinResult, turbo: boolean, onRevealed?: () => void): Promise<number> {
+  /**
+   * Mostra uno spin già deciso dal motore: rulli, trasformazioni, vincite.
+   * `onRevealed` viene chiamata quando griglia ed espansioni sono visibili,
+   * prima delle vincite; `settle` risponde alle scelte che lo script chiede
+   * dopo questo spin e restituisce lo spin del round rigiocato.
+   */
+  private async present(
+    first: SpinResult,
+    turbo: boolean,
+    onRevealed?: () => void,
+    settle: () => Promise<SpinResult> = async () => first,
+  ): Promise<number> {
     this.sounds.play("spin");
-    await this.view.spin(spin.reelGrid, turbo);
-    if (spin.grid.some((column, reel) => column.some((s, row) => s !== spin.reelGrid[reel]![row]))) {
-      await this.view.reveal(spin.reelGrid, spin.grid, turbo);
+    await this.view.spin(first.reelGrid, turbo);
+    if (first.grid.some((column, reel) => column.some((s, row) => s !== first.reelGrid[reel]![row]))) {
+      await this.view.reveal(first.reelGrid, first.grid, turbo);
     }
     onRevealed?.();
+    const spin = await settle();
     await this.playUi(spin.ui, turbo);
     const credits = spin.win * this.bet;
     if (credits > 0) {
@@ -249,44 +269,79 @@ export class Game {
     this.values = initialValues(bet, this.module.math.maxWin);
     this.view.hud.clearForced();
     this.showValues({}, "base", turbo);
-
-    // L'esito dell'intero round è deciso qui; da ora in poi è solo presentazione.
-    let round: RoundResult;
     try {
-      round = playRound(this.module.math, this.rng, this.hooks);
+      await this.playOne(bet, turbo);
     } catch (err) {
+      // Un errore dello script, anche mentre il round si rigioca dopo una scelta: la puntata torna al giocatore.
       console.error(err);
       this.balance += bet;
+      this.view.hud.clearForced();
+      this.showValues({}, "base", turbo);
       this.setStatus(t("game.roundError", { error: (err as Error).message }));
+    } finally {
+      this.hooks?.setAnswers?.([]);
       this.busy = false;
       this.render();
-      return;
     }
-    let shown = await this.present(round.base, turbo);
+  }
+
+  /**
+   * Gioca e mette in scena un round. Il round è deciso dal motore tutto in
+   * una volta; se uno script chiede una scelta al giocatore il motore si
+   * ferma lì, il client mostra il round fino a quel punto, chiede la scelta e
+   * fa rigiocare il round con la risposta dallo stesso stato dell'RNG: ciò
+   * che è già sullo schermo resta identico.
+   */
+  private async playOne(bet: number, turbo: boolean): Promise<void> {
+    const rng = createReplayableRng(this.rng);
+    const answers: number[] = [];
+    const attempt = (): RoundAttempt => {
+      rng.rewind();
+      this.hooks?.setAnswers?.(answers);
+      return attemptRound(this.module.math, rng, this.hooks);
+    };
+    let state = attempt();
+    /** Risponde alle scelte chieste nel punto `at` del round (vedi stopAt), finché il motore si ferma lì. */
+    const settle = async (at: string): Promise<RoundResult> => {
+      while (state.choice && stopAt(state) === at) {
+        const before = this.ui.status.textContent ?? "";
+        this.setStatus(t("game.choice"), "feature");
+        this.view.clearWins();
+        answers.push(await this.view.hud.choose(state.choice.id));
+        this.setStatus(before, "feature");
+        state = attempt();
+      }
+      return state.round;
+    };
+    const round = () => state.round;
+
+    let shown = await this.present(round().base, turbo, undefined, async () => (await settle("base")).base);
     this.ui.win.textContent = money(shown);
     this.showValues({ "win.spin": shown, "win.round": shown }, "base", turbo);
     /** Somma le vincite di uno spin del bonus ai contatori. */
     const addWin = (credits: number) => {
       shown += credits;
-      const total = Math.min(shown, round.totalWin * bet);
+      const total = Math.min(shown, round().totalWin * bet);
       this.ui.win.textContent = money(total);
-      this.showValues({ "win.spin": credits, "win.feature": total - round.base.win * bet, "win.round": total }, this.mode, turbo);
+      this.showValues({ "win.spin": credits, "win.feature": total - round().base.win * bet, "win.round": total }, this.mode, turbo);
     };
 
-    const free = round.freeSpins;
-    if (free) {
-      this.setStatus(t("game.freeStart", { n: free.initial }), "feature");
+    if (round().freeSpins) {
+      const initial = round().freeSpins!.initial;
+      this.setStatus(t("game.freeStart", { n: initial }), "feature");
       this.showValues(
-        { "free.total": free.initial, "free.played": 0, "free.remaining": free.initial, multiplier: 1, level: 0, "win.spin": 0 },
+        { "free.total": initial, "free.played": 0, "free.remaining": initial, multiplier: 1, level: 0, "win.spin": 0 },
         "free",
         turbo,
       );
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       const ladder = this.module.math.freeSpins?.upgradeLadder ?? [];
-      for (let i = 0; i < free.spins.length; i++) {
-        const spin = free.spins[i]!;
-        const total = i === 0 ? free.initial : free.awardedAfter[i - 1]!;
+      // Le scelte possono cambiare il seguito del round: i free spin si rileggono a ogni passo.
+      const free = () => round().freeSpins!;
+      for (let i = 0; i < free().spins.length; i++) {
+        const spin = free().spins[i]!;
+        const total = i === 0 ? free().initial : free().awardedAfter[i - 1]!;
         const label = (id: string) => this.module.scene.symbols.get(id)?.label ?? id;
         const level =
           spin.upgradeLevel > 0
@@ -294,60 +349,81 @@ export class Game {
             : "";
         // Prima dello spin si vede il moltiplicatore già raggiunto: quello nuovo arriva con i wild di questo spin.
         const status = (m: number) => `${t("game.freeSpin", { i: i + 1, n: total })}${m > 1 ? t("game.multiplier", { m }) : ""}${level}`;
-        const before = i === 0 ? 1 : free.spins[i - 1]!.multiplier;
+        const before = i === 0 ? 1 : free().spins[i - 1]!.multiplier;
         this.setStatus(status(before), "feature");
         this.showValues({ "free.total": total, "free.played": i + 1, "free.remaining": total - i - 1, multiplier: before, level: spin.upgradeLevel }, "free", turbo);
-        const credits = await this.present(spin, turbo, () => {
-          if (spin.multiplier !== before) this.setStatus(status(spin.multiplier), "feature");
-          this.showValues({ multiplier: spin.multiplier }, "free", turbo);
-        });
+        const credits = await this.present(
+          spin,
+          turbo,
+          () => {
+            if (spin.multiplier !== before) this.setStatus(status(spin.multiplier), "feature");
+            this.showValues({ multiplier: spin.multiplier }, "free", turbo);
+          },
+          async () => (await settle(`free:${i}`)).freeSpins!.spins[i]!,
+        );
         // Riattivazioni e spin extra arrivano con lo spin che li assegna.
-        const after = free.awardedAfter[i]!;
+        const after = free().awardedAfter[i]!;
         this.showValues({ "free.total": after, "free.remaining": after - i - 1 }, "free", turbo);
         addWin(credits);
       }
-      await this.playUi(free.endUi, turbo);
+      await settle("free:end");
+      await this.playUi(free().endUi, turbo);
     }
 
-    for (const sequence of round.extra) {
-      const label = this.module.scene.modes.get(sequence.mode)?.label ?? t("game.modeFallback", { mode: sequence.mode });
-      const intro = sequence.multiplier > 1 ? t("game.withMultiplier", { m: sequence.multiplier }) : "";
-      this.setStatus(t("game.sequenceStart", { n: sequence.spins.length, label, intro }), "feature");
-      const n = sequence.spins.length;
-      this.showValues(
-        { "sequence.total": n, "sequence.played": 0, "sequence.remaining": n, multiplier: sequence.multiplier, "win.spin": 0 },
-        sequence.mode,
-        turbo,
-      );
+    for (let s = 0; s < round().extra.length; s++) {
+      const sequence = () => round().extra[s]!;
+      const { mode, multiplier: m } = sequence();
+      const label = this.module.scene.modes.get(mode)?.label ?? t("game.modeFallback", { mode });
+      const intro = m > 1 ? t("game.withMultiplier", { m }) : "";
+      const n = () => sequence().spins.length;
+      this.setStatus(t("game.sequenceStart", { n: n(), label, intro }), "feature");
+      this.showValues({ "sequence.total": n(), "sequence.played": 0, "sequence.remaining": n(), multiplier: m, "win.spin": 0 }, mode, turbo);
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
-      for (let i = 0; i < sequence.spins.length; i++) {
-        const multiplier = sequence.multiplier > 1 ? t("game.multiplier", { m: sequence.multiplier }) : "";
-        this.setStatus(`${t("game.sequenceSpin", { label, i: i + 1, n: sequence.spins.length })}${multiplier}`, "feature");
-        this.showValues({ "sequence.played": i + 1, "sequence.remaining": n - i - 1 }, sequence.mode, turbo);
-        addWin(await this.present(sequence.spins[i]!, turbo));
+      for (let i = 0; i < n(); i++) {
+        const multiplier = m > 1 ? t("game.multiplier", { m }) : "";
+        this.setStatus(`${t("game.sequenceSpin", { label, i: i + 1, n: n() })}${multiplier}`, "feature");
+        this.showValues({ "sequence.played": i + 1, "sequence.remaining": n() - i - 1 }, mode, turbo);
+        addWin(await this.present(sequence().spins[i]!, turbo, undefined, async () => (await settle(`extra:${s}:${i}`)).extra[s]!.spins[i]!));
       }
-      await this.playUi(sequence.endUi, turbo);
+      await settle(`extra:${s}:end`);
+      await this.playUi(sequence().endUi, turbo);
     }
 
-    const won = round.totalWin * bet;
+    const final = round();
+    const bonus = final.freeSpins !== null || final.extra.length > 0;
+    const won = final.totalWin * bet;
     // A fine bonus la schermata riassume quanto ha reso, se è una vincita grande.
-    if (free || round.extra.length > 0) await this.celebrate(round.totalWin - round.base.win, turbo);
+    if (bonus) await this.celebrate(final.totalWin - final.base.win, turbo);
     this.balance += won;
     this.saveBalance();
-    this.stats.record(this.module.manifest.id, bet, won, free !== null || round.extra.length > 0);
+    this.stats.record(this.module.manifest.id, bet, won, bonus);
     this.ui.win.textContent = money(won);
     // Finito il bonus si torna al gioco base: gli elementi dei bonus si nascondono.
     this.showValues({ "win.round": won }, "base", turbo);
-    if (round.capped) this.setStatus(t("game.capped", { money: money(won) }), "win");
-    else if (free || round.extra.length > 0) this.setStatus(t("game.bonusEnd", { money: money(won - round.base.win * bet) }), "win");
+    if (final.capped) this.setStatus(t("game.capped", { money: money(won) }), "win");
+    else if (bonus) this.setStatus(t("game.bonusEnd", { money: money(won - final.base.win * bet) }), "win");
     else if (won > 0) this.setStatus(t("game.won", { money: money(won) }), "win");
     else this.setStatus(t("game.noWin"));
-    this.busy = false;
-    this.render();
   }
 
   destroy(): void {
     this.view.destroy();
   }
+}
+
+/**
+ * Punto del round in cui il motore si è fermato per una scelta: lo spin
+ * ("base", "free:3", "extra:0:2") o la fine di una feature ("free:end",
+ * "extra:0:end"). Nel round parziale è sempre l'ultimo elemento giocato.
+ */
+function stopAt({ round, choice }: RoundAttempt): string | null {
+  if (!choice) return null;
+  const end = choice.at === "featureEnd";
+  if (round.extra.length > 0) {
+    const s = round.extra.length - 1;
+    return end ? `extra:${s}:end` : `extra:${s}:${round.extra[s]!.spins.length - 1}`;
+  }
+  if (round.freeSpins) return end ? "free:end" : `free:${round.freeSpins.spins.length - 1}`;
+  return "base";
 }

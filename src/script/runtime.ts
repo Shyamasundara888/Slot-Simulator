@@ -2,6 +2,7 @@ import { LuaFactory } from "wasmoon";
 import type { Rng } from "../core/rng.js";
 import {
   type Cell,
+  ChoiceNeeded,
   type FeatureSummary,
   type PlayRequest,
   type RoundHooks,
@@ -13,6 +14,7 @@ import {
 } from "../core/types.js";
 import { ModuleError } from "../module/build.js";
 import { MODULE_FILES } from "../module/parse.js";
+import type { UiElement } from "../module/schema.js";
 
 /** Istruzioni Lua concesse a ogni chiamata di uno hook (e al caricamento). */
 export const INSTRUCTION_LIMIT = 1_000_000;
@@ -39,11 +41,11 @@ export const MAX_MESSAGE = 120;
  * tabella ui per l'interfaccia e il dispatcher che chiama gli hook con un
  * limite di istruzioni.
  *
- * `elements` sono gli id degli elementi di scenes/ui.json (null = non
- * controllarli); con `record` falso le richieste a ui vengono controllate ma
- * non registrate, come serve al simulatore.
+ * `elements` sono gli elementi di scenes/ui.json (null = non controllare gli
+ * id); con `record` falso le richieste a ui vengono controllate ma non
+ * registrate, come serve al simulatore.
  */
-const prelude = (math: SlotMath, elements: readonly string[] | null, record: boolean) => `
+const prelude = (math: SlotMath, elements: readonly UiElement[] | null, record: boolean) => `
 local sethook, load, pcall, error, type = debug.sethook, load, pcall, error, type
 _G.debug, _G.load, _G.loadfile, _G.dofile, _G.require, _G.collectgarbage = nil, nil, nil, nil, nil, nil
 string.dump = nil
@@ -84,7 +86,11 @@ end
 
 -- Interfaccia: lo script dice cosa è cambiato, il client lo mette in scena.
 local REELS, ROWS, RECORD = ${math.reelCount}, ${math.rows}, ${record}
-local ELEMENTS = ${elements === null ? "nil" : `{ ${elements.map((id) => `["${id}"] = true`).join(", ")} }`}
+local ELEMENTS = ${elements === null ? "nil" : luaMap(elements.map((e) => [e.id, "true"]))}
+local PANELS = ${luaMap((elements ?? []).flatMap((e) => (e.type === "panel" && e.options ? [[e.id, String(e.options.length)]] : [])))}
+local PICKERS = ${luaMap((elements ?? []).flatMap((e) => (e.type === "picker" ? [[e.id, String(e.count)]] : [])))}
+local choose_answer = __choose
+__choose = nil
 local EFFECTS = { ${UI_EFFECTS.map((e) => `${e} = true`).join(", ")} }
 local function check_hook(fname)
   if not in_hook then error(fname .. " si può usare solo dentro gli hook", 3) end
@@ -154,6 +160,33 @@ function ui.message(text)
     error("ui.message: serve un testo da 1 a ${MAX_MESSAGE} caratteri", 2)
   end
   push({ kind = "message", text = text })
+end
+
+function ui.pick(id, prizes)
+  check_hook("ui.pick")
+  if ELEMENTS ~= nil and not PICKERS[id] then
+    error("ui.pick: " .. tostring(id) .. " non è un elemento picker di scenes/ui.json", 2)
+  end
+  if type(prizes) ~= "table" or #prizes == 0 or (PICKERS[id] and #prizes > PICKERS[id]) then
+    error("ui.pick: servono da 1 a " .. tostring(PICKERS[id] or "count") .. " premi", 2)
+  end
+  local list = {}
+  for i, prize in ipairs(prizes) do
+    if type(prize) ~= "string" and type(prize) ~= "number" then error("ui.pick: il premio " .. i .. " deve essere un testo o un numero", 2) end
+    list[i] = tostring(prize)
+  end
+  push({ kind = "pick", id = id, prizes = table.concat(list, "\\31") })
+end
+
+-- Scelta del giocatore: restituisce il numero dell'opzione scelta, da 1.
+function choose(id)
+  check_hook("choose")
+  if not PANELS[id] then
+    error("choose: " .. tostring(id) .. " non è un pannello con options in scenes/ui.json", 2)
+  end
+  local answer = choose_answer(id, PANELS[id])
+  if answer == nil then error("scelta in attesa", 0) end
+  return answer
 end
 
 local function cells(text)
@@ -230,11 +263,21 @@ type Dispatch = {
 export interface ScriptOptions {
   /** URL di glue.wasm di wasmoon: serve nel browser, in Node si trova da solo. */
   wasmUri?: string;
-  /** Id degli elementi di scenes/ui.json: ui.show, ui.hide e ui.fx accettano solo questi. Senza, non si controllano. */
-  elements?: readonly string[];
+  /** Elementi di scenes/ui.json: ui.show, ui.hide e ui.fx accettano solo questi id, choose e ui.pick solo i loro pannelli. Senza, gli id non si controllano. */
+  elements?: readonly UiElement[];
   /** Falso per non registrare le richieste all'interfaccia (il simulatore non le usa). Predefinito vero. */
   recordUi?: boolean;
+  /**
+   * Chi risponde alle scelte (choose) senza una risposta data con setAnswers:
+   * "random" sceglie a caso con l'RNG del round, un numero sceglie sempre
+   * quell'opzione (o l'ultima, se sono meno). Senza, il round si ferma sulla
+   * scelta (ChoiceNeeded), come serve al client.
+   */
+  choice?: "random" | number;
 }
+
+/** Tabella Lua da coppie chiave-valore già sicure (id validati dallo schema). */
+const luaMap = (pairs: readonly (readonly [string, string])[]) => `{ ${pairs.map(([k, v]) => `["${k}"] = ${v}`).join(", ")} }`;
 
 /** Celle come testo "rullo,riga;...", contate da 1 come in Lua. */
 const cellText = (cells: readonly Cell[]) => cells.map((c) => `${c.reel + 1},${c.row + 1}`).join(";");
@@ -268,6 +311,11 @@ export class ScriptRuntime implements RoundHooks {
   private rng: Rng | null = null;
   private round = 0;
   private pending: UiEvent[] = [];
+  /** Risposte alle scelte del round, nell'ordine in cui lo script le chiede. */
+  private answers: readonly number[] = [];
+  private answered = 0;
+  /** Scelta chiesta dallo script senza risposta, durante l'hook in corso. */
+  private waiting: { id: string; options: number } | null = null;
 
   private constructor(
     private readonly math: SlotMath,
@@ -277,6 +325,7 @@ export class ScriptRuntime implements RoundHooks {
   ) {}
 
   static async create(math: SlotMath, source: string, options: ScriptOptions = {}): Promise<ScriptRuntime> {
+    const options_ = options;
     const factory = new LuaFactory(options.wasmUri);
     const lua = await factory.createEngine({
       openStandardLibs: false,
@@ -296,6 +345,7 @@ export class ScriptRuntime implements RoundHooks {
     };
     lua.global.set("__rng_int", (n: number) => rng().int(n));
     lua.global.set("__rng_float", () => rng().float());
+    lua.global.set("__choose", (id: string, options: number) => runtime?.answer(id, options, options_.choice) ?? undefined);
 
     let info: LoadInfo;
     let dispatch: Dispatch;
@@ -330,6 +380,26 @@ export class ScriptRuntime implements RoundHooks {
     this.rng = rng;
     this.round++;
     this.pending = [];
+    this.answered = 0;
+    this.waiting = null;
+  }
+
+  /** Risposte (da 1) alle scelte del prossimo round, nell'ordine in cui lo script le chiede. */
+  setAnswers(answers: readonly number[]): void {
+    this.answers = [...answers];
+  }
+
+  /** Risposta a una choose: quella data con setAnswers, quella della regola `choice` o nessuna (il round si ferma). */
+  private answer(id: string, options: number, policy: ScriptOptions["choice"]): number | null {
+    if (this.answered < this.answers.length) {
+      const given = this.answers[this.answered++]!;
+      if (!Number.isInteger(given) || given < 1 || given > options) throw new Error(`choose: risposta ${given} fuori da 1..${options}`);
+      return given;
+    }
+    if (policy === "random") return 1 + this.rng!.int(options);
+    if (typeof policy === "number") return Math.max(1, Math.min(options, Math.floor(policy)));
+    this.waiting = { id, options };
+    return null;
   }
 
   takeUiEvents(): UiEvent[] {
@@ -375,11 +445,24 @@ export class ScriptRuntime implements RoundHooks {
   }
 
   private call(hook: string, fn: () => unknown): unknown {
+    let result: unknown;
     try {
-      return fn();
+      result = fn();
     } catch (err) {
+      this.raiseChoice();
       throw new ScriptError(`${hook}: ${(err as Error).message}`);
     }
+    // Anche se lo script ha intercettato l'errore con pcall, la scelta resta in attesa.
+    this.raiseChoice();
+    return result;
+  }
+
+  private raiseChoice(): void {
+    if (!this.waiting) return;
+    const { id, options } = this.waiting;
+    this.waiting = null;
+    this.pending = [];
+    throw new ChoiceNeeded(id, options);
   }
 
   /** Lo hook può restituire nil o { mode = "...", spins = n, guaranteeWin = true, multiplier = m }. */
@@ -412,6 +495,8 @@ function toUiEvent(raw: Record<string, unknown>): UiEvent {
       return { kind: raw.kind, id: String(raw.id) };
     case "fx":
       return { kind: "fx", id: String(raw.id), effect: raw.effect as UiEffect };
+    case "pick":
+      return { kind: "pick", id: String(raw.id), prizes: String(raw.prizes).split("\u001f") };
     default:
       return { kind: "message", text: String(raw.text) };
   }

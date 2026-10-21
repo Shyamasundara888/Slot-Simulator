@@ -270,7 +270,62 @@ const textSchema = z
   })
   .strict();
 
-export const uiElementSchema = z.discriminatedUnion("type", [counterSchema, meterSchema, ladderSchema, imageSchema, textSchema]);
+/** Opzioni al massimo in un pannello di scelta. */
+export const MAX_OPTIONS = 4;
+
+const panelSchema = z
+  .object({
+    ...common,
+    type: z.literal("panel"),
+    title: z.string().optional(),
+    /** Testo con segnaposto come {free.total} o {script.gold}. */
+    text: z.string().optional(),
+    /** Immagine in cima al pannello. */
+    image: image.optional(),
+    /** Opzioni tra cui il giocatore sceglie, quando lo script chiama choose(id). */
+    options: z
+      .array(z.object({ label: z.string().min(1), text: z.string().optional() }).strict())
+      .min(2)
+      .max(MAX_OPTIONS)
+      .optional(),
+    /** Pulsante per chiudere: con questo il gioco aspetta il tocco del giocatore. */
+    button: z.string().min(1).optional(),
+    /** Colore di titolo, pulsanti e bordo delle opzioni. */
+    accent: color.default("#ffd43b"),
+    ...panelLook,
+    opacity: z.number().min(0).max(1).default(0.9),
+    ...textLook,
+  })
+  .strict();
+
+const pickerSchema = z
+  .object({
+    ...common,
+    type: z.literal("picker"),
+    title: z.string().optional(),
+    /** Oggetti da toccare. */
+    count: z.number().int().min(2).max(30),
+    /** Oggetti per riga; senza, tutti su una riga. */
+    columns: z.number().int().min(1).max(30).optional(),
+    /** Immagine di un oggetto ancora coperto. */
+    cover: image.optional(),
+    coverColor: color.default("#b8860b"),
+    accent: color.default("#ffd43b"),
+    ...panelLook,
+    opacity: z.number().min(0).max(1).default(0.9),
+    ...textLook,
+  })
+  .strict();
+
+export const uiElementSchema = z.discriminatedUnion("type", [
+  counterSchema,
+  meterSchema,
+  ladderSchema,
+  imageSchema,
+  textSchema,
+  panelSchema,
+  pickerSchema,
+]);
 
 /** Layout dello stage ed elementi di interfaccia di un modulo (scenes/ui.json). */
 export const uiSchema = z

@@ -52,7 +52,11 @@ export function createRng(seed: number | string): Rng {
 
   // Scarta i primi valori, come raccomandato per sfc32.
   for (let i = 0; i < 12; i++) nextUint32();
+  return fromUint32(nextUint32);
+}
 
+/** Costruisce int e float a partire da una sorgente di interi a 32 bit. */
+function fromUint32(nextUint32: () => number): Rng {
   return {
     nextUint32,
     int(maxExclusive: number): number {
@@ -67,6 +71,34 @@ export function createRng(seed: number | string): Rng {
     },
     float(): number {
       return nextUint32() / UINT32;
+    },
+  };
+}
+
+/** RNG che può ripetere da capo i valori già estratti (vedi createReplayableRng). */
+export interface ReplayableRng extends Rng {
+  /** Riparte dal primo valore estratto: le estrazioni successive ripetono quelle già fatte, poi proseguono. */
+  rewind(): void;
+}
+
+/**
+ * Avvolge un RNG in modo da poter rigiocare un round dallo stesso punto: i
+ * valori estratti restano in memoria e dopo rewind() si rileggono uguali.
+ * Serve alle scelte del giocatore: il round si rigioca con la risposta e
+ * tutto ciò che viene prima della scelta esce identico. Il RNG avvolto avanza
+ * solo per i valori nuovi.
+ */
+export function createReplayableRng(base: Rng): ReplayableRng {
+  const drawn: number[] = [];
+  let next = 0;
+  const rng = fromUint32(() => {
+    if (next === drawn.length) drawn.push(base.nextUint32());
+    return drawn[next++]!;
+  });
+  return {
+    ...rng,
+    rewind() {
+      next = 0;
     },
   };
 }

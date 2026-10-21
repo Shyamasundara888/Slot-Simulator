@@ -101,6 +101,8 @@ export type UiEvent =
   | { kind: "set"; name: string; value: number; from: Cell | null }
   | { kind: "show" | "hide"; id: string }
   | { kind: "fx"; id: string; effect: UiEffect }
+  /** Pick-em: il giocatore tocca gli oggetti del picker e scopre i premi in quest'ordine. */
+  | { kind: "pick"; id: string; prizes: string[] }
   | { kind: "message"; text: string };
 
 export interface SpinResult {
@@ -181,6 +183,8 @@ export interface RoundHooks {
   onFeatureEnd(feature: FeatureSummary): PlayRequest | null;
   /** Richieste all'interfaccia fatte nell'ultimo hook, se ce ne sono; le consegna una volta sola. */
   takeUiEvents?(): UiEvent[];
+  /** Risposte del giocatore alle scelte (choose) del round, nell'ordine in cui le chiede: servono per rigiocarlo. */
+  setAnswers?(answers: readonly number[]): void;
 }
 
 export interface RoundResult {
@@ -192,4 +196,33 @@ export interface RoundResult {
   totalWin: number;
   /** Se il round si è fermato perché ha raggiunto maxWin. */
   capped: boolean;
+}
+
+/**
+ * Sollevato da uno script che chiede una scelta al giocatore (choose) quando
+ * la risposta non c'è ancora: il motore ferma il round in quel punto.
+ */
+export class ChoiceNeeded extends Error {
+  constructor(
+    /** Id del pannello di scenes/ui.json con le opzioni. */
+    readonly id: string,
+    /** Numero di opzioni. */
+    readonly options: number,
+  ) {
+    super(`scelta del giocatore senza risposta: ${id}`);
+    this.name = "ChoiceNeeded";
+  }
+}
+
+/** Una scelta che aspetta il giocatore; `at` dice se è stata chiesta da onSpin o da onFeatureEnd. */
+export interface PendingChoice {
+  id: string;
+  options: number;
+  at: "spin" | "featureEnd";
+}
+
+/** Risultato di attemptRound: il round completo, oppure quello giocato fino alla scelta in attesa. */
+export interface RoundAttempt {
+  round: RoundResult;
+  choice: PendingChoice | null;
 }

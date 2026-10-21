@@ -97,6 +97,28 @@
       "color": "#ffffff", "fontSize": 16,
       "background": "#0f1a2b", "opacity": 0.7, "border": "#63e6be",
       "visibleIn": ["base"]
+    },
+    {
+      "id": "scelta",
+      "type": "panel",
+      "x": 280, "y": 124, "width": 500, "height": 320,
+      "title": "Boss in arrivo!",
+      "text": "Hai {script.boss} Boss Spin a ×{script.boss_x}. Come li vuoi giocare?",
+      "options": [
+        { "label": "Boss Spin", "text": "Gioca i {script.boss} Boss Spin" },
+        { "label": "Sfida", "text": "Un forziere su due li raddoppia, l'altro è vuoto" }
+      ],
+      "accent": "#63e6be", "color": "#ffffff", "fontSize": 20,
+      "background": "#0f1a2b", "border": "#63e6be"
+    },
+    {
+      "id": "forzieri",
+      "type": "picker",
+      "x": 280, "y": 144, "width": 500, "height": 280,
+      "title": "Scegli un forziere",
+      "count": 2,
+      "coverColor": "#8f5b2e", "accent": "#63e6be", "color": "#ffffff", "fontSize": 20,
+      "background": "#0f1a2b", "border": "#63e6be"
     }
   ]
 }

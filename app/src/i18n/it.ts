@@ -48,6 +48,7 @@ export const it = {
   "game.bonusEnd": "Bonus finito: vinti {money}",
   "game.won": "Hai vinto {money}",
   "game.noWin": "Nessuna vincita",
+  "game.choice": "Fai la tua scelta",
   "game.bigWin": "GRANDE VINCITA",
   "game.megaWin": "MEGA VINCITA",
   "game.epicWin": "VINCITA EPICA",

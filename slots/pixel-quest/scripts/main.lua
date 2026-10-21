@@ -5,6 +5,10 @@
 -- free spin, i Boss Spin si giocano sui rulli "boss", con soli personaggi e
 -- spade, vincono sempre e hanno un moltiplicatore pari al doppio della combo
 -- più lunga (×10 con una combo di 5, ×14 con una di 7).
+--
+-- Prima dei Boss Spin il giocatore sceglie: giocarli così come sono oppure
+-- tentare la Sfida, un forziere su due che li raddoppia (l'altro è vuoto).
+-- Le due strade rendono in media lo stesso, cambia solo il rischio.
 
 spinModes = { "free" }
 
@@ -34,6 +38,19 @@ end
 
 function onFeatureEnd(feature)
   if feature.mode == "free" and (round.boss or 0) > 0 then
-    return { mode = "boss", spins = round.boss, guaranteeWin = true, multiplier = 2 * round.best }
+    local spins = round.boss
+    if choose("scelta") == 2 then
+      -- Il premio si decide qui; il giocatore lo scopre aprendo un forziere.
+      if math.random(2) == 1 then
+        spins = 2 * spins
+        ui.pick("forzieri", { "Doppio! " .. spins .. " Boss Spin" })
+      else
+        spins = 0
+        ui.pick("forzieri", { "Vuoto" })
+      end
+    end
+    if spins > 0 then
+      return { mode = "boss", spins = spins, guaranteeWin = true, multiplier = 2 * round.best }
+    end
   end
 end

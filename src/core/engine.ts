@@ -1,17 +1,20 @@
 import { evaluateLines, evaluateScatter } from "./evaluate.js";
 import type { Rng } from "./rng.js";
-import type {
-  ExtraSpinsResult,
-  FreeSpinsResult,
-  Grid,
-  Mode,
-  PlayRequest,
-  RoundHooks,
-  RoundResult,
-  SlotMath,
-  SpinResult,
-  SymbolId,
-  UiEvent,
+import {
+  ChoiceNeeded,
+  type ExtraSpinsResult,
+  type FreeSpinsResult,
+  type Grid,
+  type Mode,
+  type PendingChoice,
+  type PlayRequest,
+  type RoundAttempt,
+  type RoundHooks,
+  type RoundResult,
+  type SlotMath,
+  type SpinResult,
+  type SymbolId,
+  type UiEvent,
 } from "./types.js";
 
 /** Spin giocabili in un round tra tutte le sequenze richieste dagli script. */
@@ -102,15 +105,32 @@ function scatterAward(math: SlotMath, count: number): number {
 
 /**
  * Gioca un round completo: lo spin base, i free spin se attivati e poi le
- * sequenze che gli script chiedono (per esempio i Gold Spins).
+ * sequenze che gli script chiedono (per esempio i Gold Spins). Se uno script
+ * chiede una scelta al giocatore senza risposta, solleva ChoiceNeeded: per
+ * le scelte usa attemptRound.
  */
 export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundResult {
+  const { round, choice } = attemptRound(math, rng, hooks);
+  if (choice) throw new ChoiceNeeded(choice.id, choice.options);
+  return round;
+}
+
+/**
+ * Come playRound, ma se uno script chiede una scelta al giocatore e non ha
+ * ancora la risposta si ferma lì: restituisce il round giocato fino a quel
+ * punto e la scelta in attesa. Il round si rigioca poi dallo stesso stato
+ * dell'RNG (vedi createReplayableRng) dopo aver dato la risposta allo script:
+ * tutto ciò che viene prima della scelta esce identico.
+ *
+ * Nel round parziale lo spin o la feature che ha chiesto la scelta è
+ * l'ultimo elemento, senza le sue richieste all'interfaccia.
+ */
+export function attemptRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundAttempt {
   hooks?.beginRound(rng);
   const queue: PlayRequest[] = [];
   const request = (req: PlayRequest | null | undefined) => {
     if (req && req.spins > 0) queue.push(req);
   };
-
   /** Richieste all'interfaccia dell'ultimo hook, o undefined se non ce ne sono. */
   const uiEvents = (): UiEvent[] | undefined => {
     const events = hooks?.takeUiEvents?.();
@@ -121,76 +141,100 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
     return ui ? { ...result, ui } : result;
   };
 
-  let base = spin(math, rng, "base");
-  request(hooks?.onSpin(base, 0));
-  base = withUi(base);
-  let total = base.win;
+  // Lo stato del round cresce passo per passo, così una scelta in attesa può restituirne la parte già giocata.
+  let base: SpinResult | null = null;
   let freeSpins: FreeSpinsResult | null = null;
-  const fs = math.freeSpins;
-  const initial = scatterAward(math, base.scatterCount);
-
-  if (fs && initial > 0 && total < math.maxWin) {
-    let remaining = initial;
-    let awarded = initial;
-    let level = 0;
-    let multiplier = 1;
-    const maxLevel = Math.max(0, fs.upgradeLadder.length - 1);
-    const spins: SpinResult[] = [];
-    const awardedAfter: number[] = [];
-    let win = 0;
-
-    while (remaining > 0 && spins.length < fs.maxSpins && total < math.maxWin) {
-      remaining--;
-      const drawn = spin(math, rng, "free", level);
-      const wilds = drawn.expandedReels.length;
-      // I wild espansi fanno salire il moltiplicatore già per lo spin in cui compaiono.
-      multiplier = Math.min(fs.maxMultiplier, multiplier + wilds * fs.multiplierPerExpandedWild);
-      const result = multiply(drawn, multiplier);
-      spins.push(result);
-      win += result.win;
-      total += result.win;
-
-      if (wilds > 0) {
-        remaining += wilds * fs.extraSpinsPerExpandedWild;
-        awarded += wilds * fs.extraSpinsPerExpandedWild;
-        if (fs.upgradeOnExpandedWild) level = Math.min(maxLevel, level + wilds);
-      }
-      if (fs.retrigger) {
-        const again = scatterAward(math, result.scatterCount);
-        remaining += again;
-        awarded += again;
-      }
-      awardedAfter.push(awarded);
-      request(hooks?.onSpin(result, spins.length - 1));
-      spins[spins.length - 1] = withUi(result);
-    }
-    request(hooks?.onFeatureEnd({ mode: "free", spins: spins.length, win, upgradeLevel: level, multiplier }));
-    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, multiplier, win, endUi: uiEvents() };
-  }
-
   const extra: ExtraSpinsResult[] = [];
-  let extraSpins = 0;
-  while (queue.length > 0 && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
-    const { mode, spins: count, guaranteeWin, multiplier } = queue.shift()!;
-    const spins: SpinResult[] = [];
-    let win = 0;
-    while (spins.length < count && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
-      let result = spin(math, rng, mode);
-      for (let tries = 1; guaranteeWin && result.win === 0 && tries < MAX_WIN_RESAMPLES; tries++) {
-        result = spin(math, rng, mode);
-      }
-      result = multiply(result, multiplier);
-      spins.push(result);
-      extraSpins++;
-      win += result.win;
-      total += result.win;
-      request(hooks?.onSpin(result, spins.length - 1));
-      spins[spins.length - 1] = withUi(result);
+  let total = 0;
+  const result = (): RoundResult => ({ base: base!, freeSpins, extra, totalWin: Math.min(total, math.maxWin), capped: total >= math.maxWin });
+  /** Chiama uno hook; se chiede una scelta senza risposta, segna dove si è fermato il round. */
+  const call = <T>(at: PendingChoice["at"], hook: () => T): T => {
+    try {
+      return hook();
+    } catch (err) {
+      if (err instanceof ChoiceNeeded) throw new Interrupted({ id: err.id, options: err.options, at });
+      throw err;
     }
-    request(hooks?.onFeatureEnd({ mode, spins: spins.length, win, upgradeLevel: 0, multiplier }));
-    extra.push({ mode, multiplier, spins, win, endUi: uiEvents() });
-  }
+  };
 
-  const capped = total >= math.maxWin;
-  return { base, freeSpins, extra, totalWin: Math.min(total, math.maxWin), capped };
+  try {
+    base = spin(math, rng, "base");
+    total = base.win;
+    request(call("spin", () => hooks?.onSpin(base!, 0)));
+    base = withUi(base);
+    const fs = math.freeSpins;
+    const initial = scatterAward(math, base.scatterCount);
+
+    if (fs && initial > 0 && total < math.maxWin) {
+      let remaining = initial;
+      let level = 0;
+      const maxLevel = Math.max(0, fs.upgradeLadder.length - 1);
+      const free: FreeSpinsResult = { initial, awarded: initial, spins: [], awardedAfter: [], upgradeLevel: 0, multiplier: 1, win: 0 };
+      freeSpins = free;
+
+      while (remaining > 0 && free.spins.length < fs.maxSpins && total < math.maxWin) {
+        remaining--;
+        const drawn = spin(math, rng, "free", level);
+        const wilds = drawn.expandedReels.length;
+        // I wild espansi fanno salire il moltiplicatore già per lo spin in cui compaiono.
+        free.multiplier = Math.min(fs.maxMultiplier, free.multiplier + wilds * fs.multiplierPerExpandedWild);
+        const result = multiply(drawn, free.multiplier);
+        free.spins.push(result);
+        free.win += result.win;
+        total += result.win;
+
+        if (wilds > 0) {
+          remaining += wilds * fs.extraSpinsPerExpandedWild;
+          free.awarded += wilds * fs.extraSpinsPerExpandedWild;
+          if (fs.upgradeOnExpandedWild) level = Math.min(maxLevel, level + wilds);
+        }
+        if (fs.retrigger) {
+          const again = scatterAward(math, result.scatterCount);
+          remaining += again;
+          free.awarded += again;
+        }
+        free.upgradeLevel = level;
+        free.awardedAfter.push(free.awarded);
+        request(call("spin", () => hooks?.onSpin(result, free.spins.length - 1)));
+        free.spins[free.spins.length - 1] = withUi(result);
+      }
+      const summary = { mode: "free", spins: free.spins.length, win: free.win, upgradeLevel: level, multiplier: free.multiplier };
+      request(call("featureEnd", () => hooks?.onFeatureEnd(summary)));
+      free.endUi = uiEvents();
+    }
+
+    let extraSpins = 0;
+    while (queue.length > 0 && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
+      const { mode, spins: count, guaranteeWin, multiplier } = queue.shift()!;
+      const sequence: ExtraSpinsResult = { mode, multiplier, spins: [], win: 0 };
+      extra.push(sequence);
+      while (sequence.spins.length < count && extraSpins < MAX_EXTRA_SPINS && total < math.maxWin) {
+        let result = spin(math, rng, mode);
+        for (let tries = 1; guaranteeWin && result.win === 0 && tries < MAX_WIN_RESAMPLES; tries++) {
+          result = spin(math, rng, mode);
+        }
+        result = multiply(result, multiplier);
+        sequence.spins.push(result);
+        extraSpins++;
+        sequence.win += result.win;
+        total += result.win;
+        request(call("spin", () => hooks?.onSpin(result, sequence.spins.length - 1)));
+        sequence.spins[sequence.spins.length - 1] = withUi(result);
+      }
+      const summary = { mode, spins: sequence.spins.length, win: sequence.win, upgradeLevel: 0, multiplier };
+      request(call("featureEnd", () => hooks?.onFeatureEnd(summary)));
+      sequence.endUi = uiEvents();
+    }
+  } catch (err) {
+    if (err instanceof Interrupted) return { round: result(), choice: err.choice };
+    throw err;
+  }
+  return { round: result(), choice: null };
+}
+
+/** Segnale interno: il round si è fermato su una scelta. */
+class Interrupted extends Error {
+  constructor(readonly choice: PendingChoice) {
+    super(`scelta in attesa: ${choice.id}`);
+  }
 }

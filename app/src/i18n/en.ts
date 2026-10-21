@@ -50,6 +50,7 @@ export const en: Dictionary = {
   "game.bonusEnd": "Bonus over: won {money}",
   "game.won": "You won {money}",
   "game.noWin": "No win",
+  "game.choice": "Make your choice",
   "game.bigWin": "BIG WIN",
   "game.megaWin": "MEGA WIN",
   "game.epicWin": "EPIC WIN",
