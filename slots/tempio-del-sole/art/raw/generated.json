@@ -1,0 +1,378 @@
+{
+  "art/raw/varianti/scarabeo-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A turquoise scarab beetle seen from above with spread golden wings, holding a red sun gem, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:05:34.828Z"
+  },
+  "art/raw/varianti/scarabeo-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A turquoise scarab beetle seen from above with spread golden wings, holding a red sun gem, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:05:50.888Z"
+  },
+  "art/raw/varianti/scarabeo-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A turquoise scarab beetle seen from above with spread golden wings, holding a red sun gem, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:06:07.122Z"
+  },
+  "art/raw/varianti/scarabeo-780.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 780,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:08:45.000Z"
+  },
+  "art/raw/varianti/scarabeo-781.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 781,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:09:02.281Z"
+  },
+  "art/raw/varianti/scarabeo-782.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 782,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:09:18.228Z"
+  },
+  "art/raw/varianti/scarabeo-783.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 783,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:09:34.707Z"
+  },
+  "art/raw/scarabeo.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 783,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:10:34.716Z"
+  },
+  "art/raw/varianti/sole-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:11:06.962Z"
+  },
+  "art/raw/varianti/sole-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:11:24.430Z"
+  },
+  "art/raw/varianti/sole-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:11:42.684Z"
+  },
+  "art/raw/varianti/portale-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:12:00.060Z"
+  },
+  "art/raw/varianti/portale-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:12:19.416Z"
+  },
+  "art/raw/varianti/portale-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:12:37.181Z"
+  },
+  "art/raw/varianti/faraone-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:12:56.199Z"
+  },
+  "art/raw/varianti/faraone-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:13:12.558Z"
+  },
+  "art/raw/varianti/faraone-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:13:29.532Z"
+  },
+  "art/raw/varianti/ankh-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:13:49.140Z"
+  },
+  "art/raw/varianti/ankh-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:14:05.202Z"
+  },
+  "art/raw/varianti/ankh-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:14:21.562Z"
+  },
+  "art/raw/varianti/gatto-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek black Egyptian cat statue sitting upright, gold collar and gold earring, single object. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:14:39.011Z"
+  },
+  "art/raw/varianti/gatto-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek black Egyptian cat statue sitting upright, gold collar and gold earring, single object. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:14:57.016Z"
+  },
+  "art/raw/varianti/gatto-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek black Egyptian cat statue sitting upright, gold collar and gold earring, single object. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:15:13.365Z"
+  },
+  "art/raw/varianti/background-777.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. desert at dusk with three pyramids, dunes, a large pale moon and stars. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/sfondo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:15:27.627Z"
+  },
+  "art/raw/varianti/background-778.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. desert at dusk with three pyramids, dunes, a large pale moon and stars. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/sfondo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:15:38.872Z"
+  },
+  "art/raw/varianti/background-779.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. desert at dusk with three pyramids, dunes, a large pale moon and stars. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.",
+    "seed": 779,
+    "workflow": "tools/comfyui/workflows/sfondo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:15:50.106Z"
+  },
+  "art/raw/varianti/gatto-780.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 780,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:21:06.146Z"
+  },
+  "art/raw/varianti/gatto-781.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 781,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:21:23.855Z"
+  },
+  "art/raw/varianti/gatto-782.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 782,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:21:41.899Z"
+  },
+  "art/raw/varianti/sole-790.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 790,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:22:00.355Z"
+  },
+  "art/raw/varianti/sole-791.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 791,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:22:16.390Z"
+  },
+  "art/raw/varianti/sole-792.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 792,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:22:32.061Z"
+  },
+  "art/raw/varianti/ankh-790.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 790,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:22:48.801Z"
+  },
+  "art/raw/varianti/ankh-791.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 791,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:23:05.238Z"
+  },
+  "art/raw/varianti/ankh-792.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. An ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 792,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:23:20.817Z"
+  },
+  "art/raw/varianti/gatto-790.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 790,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:23:39.028Z"
+  },
+  "art/raw/varianti/gatto-791.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 791,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:23:54.869Z"
+  },
+  "art/raw/varianti/gatto-792.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 792,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:24:10.763Z"
+  },
+  "art/raw/portale.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 778,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:26:35.408Z"
+  },
+  "art/raw/faraone.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/simbolo-stile.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "reference": "art/raw/scarabeo.webp",
+    "referenceWeight": 0.5,
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:26:54.103Z"
+  },
+  "art/raw/background.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. desert at dusk with three pyramids, dunes, a large pale moon and stars. Wide 16:9 landscape, calm and slightly dark so symbols stay readable, no text, no characters in the center.",
+    "seed": 777,
+    "workflow": "tools/comfyui/workflows/sfondo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:27:07.611Z"
+  },
+  "art/raw/gatto.webp": {
+    "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light. A sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame. Single game icon, centered, fills most of a square 1:1 frame, plain light grey background, no text, no border, no frame.",
+    "seed": 791,
+    "workflow": "tools/comfyui/workflows/simbolo.json",
+    "checkpoint": "sd_xl_base_1.0.safetensors",
+    "generator": "ComfyUI",
+    "date": "2026-10-21T09:27:25.357Z"
+  }
+}
