@@ -1,6 +1,6 @@
 import { playRound } from "../../src/core/engine.js";
 import { createRng, type Rng } from "../../src/core/rng.js";
-import type { Mode, RoundHooks, RoundResult, SpinResult } from "../../src/core/types.js";
+import type { Mode, RoundHooks, RoundResult, SpinResult, UiEvent } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { ScriptRuntime } from "../../src/script/runtime.js";
 import { initialValues, type UiValues } from "../../src/ui/values.js";
@@ -107,7 +107,8 @@ export class Game {
   /** Senza seed ne sceglie uno casuale; con lo stesso seed la sequenza dei round si ripete. */
   static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string, persist = true): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
-    const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
+    const elements = module.ui.elements.map((e) => e.id);
+    const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri, elements });
     const sounds = new Sounds(module.scene, assets, module.ui.elements.flatMap((e) => (e.sound ? [e.sound] : [])));
     const view = await SlotView.create(
       host,
@@ -166,6 +167,44 @@ export class Game {
     this.view.hud.update(this.values, mode, turbo);
   }
 
+  /** Mette in scena le richieste di uno script all'interfaccia, nell'ordine in cui le ha fatte. */
+  private async playUi(events: readonly UiEvent[] | undefined, turbo: boolean): Promise<void> {
+    if (!events) return;
+    const flights: Promise<void>[] = [];
+    for (const event of events) {
+      switch (event.kind) {
+        case "set": {
+          const key = `script.${event.name}` as const;
+          if (!event.from) {
+            this.showValues({ [key]: event.value }, this.mode, turbo);
+            break;
+          }
+          // Le raccolte partono una dopo l'altra e il valore cambia quando l'icona arriva.
+          const delay = flights.length * (turbo ? 60 : 140);
+          const { from, value } = event;
+          flights.push(
+            wait(delay)
+              .then(() => this.view.collect(from, this.view.hud.targets(key), turbo))
+              .then(() => this.showValues({ [key]: value }, this.mode, turbo)),
+          );
+          break;
+        }
+        case "show":
+        case "hide":
+          this.view.hud.force(event.id, event.kind === "show", turbo);
+          break;
+        case "fx":
+          this.view.hud.effect(event.id, event.effect, turbo);
+          break;
+        case "message":
+          await Promise.all(flights);
+          await this.view.message(event.text, turbo);
+          break;
+      }
+    }
+    await Promise.all(flights);
+  }
+
   private setStatus(text: string, tone: "" | "win" | "feature" = ""): void {
     this.ui.status.textContent = text;
     this.ui.status.className = `status ${tone}`.trim();
@@ -180,6 +219,7 @@ export class Game {
       await this.view.reveal(spin.reelGrid, spin.grid, turbo);
     }
     onRevealed?.();
+    await this.playUi(spin.ui, turbo);
     const credits = spin.win * this.bet;
     if (credits > 0) {
       this.sounds.play(spin.win >= BIG_WIN ? "bigWin" : "win");
@@ -207,6 +247,7 @@ export class Game {
     this.setStatus("");
     this.render();
     this.values = initialValues(bet, this.module.math.maxWin);
+    this.view.hud.clearForced();
     this.showValues({}, "base", turbo);
 
     // L'esito dell'intero round è deciso qui; da ora in poi è solo presentazione.
@@ -265,6 +306,7 @@ export class Game {
         this.showValues({ "free.total": after, "free.remaining": after - i - 1 }, "free", turbo);
         addWin(credits);
       }
+      await this.playUi(free.endUi, turbo);
     }
 
     for (const sequence of round.extra) {
@@ -285,6 +327,7 @@ export class Game {
         this.showValues({ "sequence.played": i + 1, "sequence.remaining": n - i - 1 }, sequence.mode, turbo);
         addWin(await this.present(sequence.spins[i]!, turbo));
       }
+      await this.playUi(sequence.endUi, turbo);
     }
 
     const won = round.totalWin * bet;

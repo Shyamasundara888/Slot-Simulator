@@ -1,0 +1,102 @@
+{
+  "stage": { "width": 1060, "height": 568 },
+  "reels": { "x": 150, "y": 44, "width": 760, "height": 480 },
+  "elements": [
+    {
+      "id": "giri",
+      "type": "counter",
+      "x": 12, "y": 44, "width": 120, "height": 110,
+      "label": "Free spin",
+      "value": "free.remaining",
+      "format": "{value} / {free.total}",
+      "color": "#ffffff", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["free"]
+    },
+    {
+      "id": "boss",
+      "type": "counter",
+      "x": 12, "y": 170, "width": 120, "height": 110,
+      "label": "Boss Spin",
+      "value": "script.boss",
+      "color": "#ff8787", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["free"]
+    },
+    {
+      "id": "boss-x",
+      "type": "counter",
+      "x": 12, "y": 296, "width": 120, "height": 110,
+      "label": "Valore Boss",
+      "value": "script.boss_x",
+      "format": "×{value}",
+      "color": "#ffd43b", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["free"]
+    },
+    {
+      "id": "boss-giri",
+      "type": "counter",
+      "x": 12, "y": 44, "width": 120, "height": 110,
+      "label": "Boss Spin",
+      "value": "sequence.remaining",
+      "format": "{value} / {sequence.total}",
+      "color": "#ff8787", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["boss"]
+    },
+    {
+      "id": "boss-moltiplicatore",
+      "type": "counter",
+      "x": 12, "y": 170, "width": 120, "height": 110,
+      "label": "Moltiplicatore",
+      "value": "multiplier",
+      "format": "×{value}",
+      "color": "#ffd43b", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["boss"]
+    },
+    {
+      "id": "combo",
+      "type": "meter",
+      "x": 928, "y": 170, "width": 120, "height": 354,
+      "label": "Combo",
+      "value": "script.combo",
+      "max": 5, "style": "segments", "direction": "up",
+      "fillColor": "#63e6be",
+      "color": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["free"],
+      "onChange": "pulse"
+    },
+    {
+      "id": "vincita-bonus",
+      "type": "counter",
+      "x": 928, "y": 44, "width": 120, "height": 110,
+      "label": "Vincita bonus",
+      "value": "win.feature",
+      "color": "#69db7c", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["free", "boss"],
+      "onChange": "count"
+    },
+    {
+      "id": "promessa",
+      "type": "text",
+      "x": 12, "y": 44, "width": 120, "height": 236,
+      "text": "Vinci fino a {maxWin}× la puntata",
+      "color": "#63e6be", "fontSize": 22,
+      "background": "#0f1a2b", "opacity": 0.7, "border": "#63e6be",
+      "visibleIn": ["base"]
+    },
+    {
+      "id": "regola-free",
+      "type": "text",
+      "x": 928, "y": 44, "width": 120, "height": 236,
+      "text": "3, 4 o 5 forzieri: 8, 12 o 20 free spin. 5 vincite di fila sbloccano un Boss Spin",
+      "color": "#ffffff", "fontSize": 16,
+      "background": "#0f1a2b", "opacity": 0.7, "border": "#63e6be",
+      "visibleIn": ["base"]
+    }
+  ]
+}

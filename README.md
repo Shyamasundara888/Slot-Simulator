@@ -144,6 +144,7 @@ end
 - `math.random` usa l'RNG del motore: con lo stesso seed lo script fa sempre le stesse scelte. Si può usare solo dentro gli hook.
 - Lo script gira isolato (Lua 5.4 in WebAssembly, con wasmoon): niente `io`, `os`, `require`, `load`, `debug` né coroutine, al massimo 1.000.000 di istruzioni per chiamata e 16 MB di memoria. Un errore annulla il round e indica la riga dello script.
 - In un round si giocano al massimo 1.000 spin richiesti dagli script, e il tetto di vincita vale anche per loro.
+- La tabella `ui` pilota gli elementi di `scenes/ui.json`: `ui.set("gold", 3)` e `ui.add("gold", 1, { from = cella })` pubblicano il valore `script.gold` (con l'icona che vola dalla cella), `ui.show`, `ui.hide`, `ui.fx` e `ui.message` fanno comparire, sparire o animare gli elementi. Il client le mette in scena, il simulatore le ignora. Dettagli in [docs/script-lua.md](docs/script-lua.md#interfaccia).
 - Per dare un nome a una modalità nel client: `"modes": { "gold": { "label": "Gold Spin", "description": "..." } }` in `scenes/main.json`; la descrizione compare nella paytable.
 
 ### Scena e asset (`scenes/main.json`, `assets/`)
@@ -175,7 +176,7 @@ La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. 
 
 ### Elementi di interfaccia (`scenes/ui.json`)
 
-Un modulo può fissare la misura dello stage, il riquadro dei rulli e una serie di elementi attorno ai rulli: contatori (free spin rimasti, moltiplicatore, vincita del bonus), barre che si riempiono, scale di livelli (anche fatte di simboli), immagini e testi. Ogni elemento ha posizione, aspetto, modalità in cui si vede, animazione e suono quando cambia, e mostra i valori del round deciso dal motore (`free.remaining`, `multiplier`, `level`, `win.feature`...). Il Tempio del Sole li usa per free spin, Gold Spin, moltiplicatore, vincita del bonus e livello dei simboli. Formato completo in [docs/modulo.md](docs/modulo.md#scenesuijson).
+Un modulo può fissare la misura dello stage, il riquadro dei rulli e una serie di elementi attorno ai rulli: contatori (free spin rimasti, moltiplicatore, vincita del bonus), barre che si riempiono, scale di livelli (anche fatte di simboli), immagini e testi. Ogni elemento ha posizione, aspetto, modalità in cui si vede, animazione e suono quando cambia, e mostra i valori del round deciso dal motore (`free.remaining`, `multiplier`, `level`, `win.feature`...). Il Tempio del Sole li usa per free spin, Gold Spin raccolti, moltiplicatore, vincita del bonus e livello dei simboli; Pixel Quest per la barra della combo e i Boss Spin. Formato completo in [docs/modulo.md](docs/modulo.md#scenesuijson).
 
 ### Creare gli asset (`art/`, `npm run assets`)
 
@@ -251,5 +252,5 @@ Le prossime parti aggiungono lo script Lua, poi grafica e suoni.
 ## Prossime fasi
 
 7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli e Funzioni; mancano script, grafica e suoni.
-8. Elementi di interfaccia: fatti `scenes/ui.json` e i valori del motore; seguono l'API Lua (`ui.set`, `ui.show`...), pannelli e scelte del giocatore, valori che restano tra un round e l'altro e la scheda Interfaccia dell'editor.
+8. Elementi di interfaccia: fatti `scenes/ui.json`, i valori del motore e l'API Lua (`ui.set`, `ui.show`...); seguono pannelli e scelte del giocatore, valori che restano tra un round e l'altro e la scheda Interfaccia dell'editor.
 9. API per integrare le slot in un gioco più grande.

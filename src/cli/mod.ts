@@ -25,7 +25,7 @@ const exists = (path: string) =>
 /** Controlla un modulo come farebbe il motore, script compreso. */
 async function validate(raw: Record<string, Uint8Array>): Promise<SlotModule> {
   const module = parseSlotModule(decodeModuleFiles(raw), assetPaths(raw));
-  if (module.script !== null) await ScriptRuntime.create(module.math, module.script);
+  if (module.script !== null) await ScriptRuntime.create(module.math, module.script, { elements: module.ui.elements.map((e) => e.id) });
   return module;
 }
 

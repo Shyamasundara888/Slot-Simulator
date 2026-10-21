@@ -75,7 +75,7 @@ const MIME: Record<string, string> = {
  */
 export async function loadModZip(zip: Uint8Array, checkScript = false): Promise<ClientModule> {
   const { module, raw } = parseModuleZip(zip);
-  if (checkScript && module.script !== null) await ScriptRuntime.create(module.math, module.script, { wasmUri });
+  if (checkScript && module.script !== null) await ScriptRuntime.create(module.math, module.script, { wasmUri, elements: module.ui.elements.map((e) => e.id) });
   const assets = assetUrls(Object.fromEntries(Object.entries(raw).filter(([path]) => path.startsWith("assets/"))));
   return { module, assets, files: decodeModuleFiles(raw) };
 }

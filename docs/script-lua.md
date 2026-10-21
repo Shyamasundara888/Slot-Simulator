@@ -27,6 +27,7 @@ Serve almeno uno dei due hook. Dati ricevuti:
 | | `scatters` | scatter visibili |
 | | `level` | livello di upgrade con cui è stato valutato |
 | | `multiplier` | moltiplicatore applicato allo spin (1 se nessuno) |
+| | `wildCells`, `expandedCells`, `scatterCells` | celle `{ reel, row }` (da 1) di wild, wild espansi e scatter, per le animazioni (vedi [Interfaccia](#interfaccia)) |
 | `onFeatureEnd(feature)` | `mode` | `"free"` o la modalità della sequenza finita |
 | | `spins` | spin giocati |
 | | `win` | vincita totale della feature |
@@ -51,6 +52,39 @@ return { mode = "gold", spins = 3, guaranteeWin = true, multiplier = 5 }
 Le sequenze si mettono in coda e si giocano **dopo** i free spin, una dopo l'altra. Anche gli spin delle sequenze chiamano `onSpin` e la loro fine chiama `onFeatureEnd`, quindi una sequenza può chiederne un'altra. In un round si giocano al massimo 1000 spin richiesti dagli script e il tetto `maxWin` vale anche per loro.
 
 Per mostrare un nome nel client aggiungi la modalità alla scena: `"modes": { "gold": { "label": "Gold Spin", "description": "regola per la paytable" } }`.
+
+## Interfaccia
+
+Lo script può pilotare gli elementi di `scenes/ui.json` ([modulo.md](modulo.md#scenesuijson)). Non disegna niente: dice cosa è cambiato, il motore lo annota sullo spin (o sulla fine della feature) e il client lo mette in scena dopo che i rulli si sono fermati, prima delle vincite. Il simulatore ignora queste richieste, quindi l'RTP non cambia.
+
+| Funzione | Effetto |
+| --- | --- |
+| `ui.set(nome, valore)` | pubblica il valore `script.<nome>`: gli elementi con `"value": "script.<nome>"` o `{script.<nome>}` lo mostrano |
+| `ui.add(nome, quanto)` | come `ui.set`, sommando al valore attuale |
+| `ui.set(nome, valore, { from = cella })` | anche con `ui.add`: un'icona del simbolo vola dalla cella agli elementi che mostrano il valore, che cambia quando arriva |
+| `ui.get(nome)` | valore attuale (0 se mai pubblicato) |
+| `ui.show(id)` / `ui.hide(id)` | mostra o nasconde un elemento fino alla fine del round, a prescindere da `visibleIn` |
+| `ui.fx(id, effetto)` | anima un elemento una volta: `"pop"`, `"pulse"` o `"shake"` |
+| `ui.message(testo)` | testo grande sopra i rulli per un attimo (fino a 120 caratteri) |
+
+- I nomi dei valori usano lettere minuscole, cifre e `_`; gli `id` sono quelli di `scenes/ui.json`. I valori ripartono da 0 a ogni round, come `round`.
+- Le celle sono tabelle `{ reel = r, row = n }` contate da 1. `onSpin` riceve le celle utili: `spin.wildCells` (i wild atterrati), `spin.expandedCells` (per ogni wild espanso, la cella in cui è atterrato: tante quante `spin.wilds`) e `spin.scatterCells`.
+- Le funzioni `ui` si usano solo dentro gli hook e non toccano `math.random`: aggiungerle a uno script non cambia i round.
+
+```lua
+-- Tempio del Sole: ogni wild d'oro manda una moneta nella barra dei Gold Spin.
+for _, cella in ipairs(spin.expandedCells) do
+  if math.random(GOLD_CHANCE) == 1 then
+    round.gold = (round.gold or 0) + 1
+    ui.add("gold", 1, { from = cella })
+  end
+end
+```
+
+```json
+{ "id": "oro", "type": "meter", "value": "script.gold", "max": 10, "style": "segments", "direction": "up",
+  "x": 12, "y": 334, "width": 120, "height": 206, "visibleIn": ["free"] }
+```
 
 ## Stato
 

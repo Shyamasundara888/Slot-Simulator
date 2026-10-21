@@ -32,6 +32,8 @@ describe("valori dell'interfaccia", () => {
     expect(formatTemplate("fino a {maxWin}× {boh}", values, null, show)).toBe("fino a 5000× {boh}");
     expect(unknownPlaceholders("{value} {bet} {boh}", true)).toEqual(["boh"]);
     expect(unknownPlaceholders("{value}", false)).toEqual(["value"]);
+    expect(unknownPlaceholders("{script.gold} {script.Oro}", false)).toEqual(["script.Oro"]);
+    expect(formatTemplate("{script.gold}/{script.altro}", { ...values, "script.gold": 3 }, null, show)).toBe("3/0");
   });
 
   it("parte senza bonus, con moltiplicatore 1 e senza tetto se manca maxWin", () => {

@@ -253,6 +253,7 @@ Un gradino di `ladder` può essere un testo, un numero o l'id di un simbolo, che
 | `win.spin`, `win.feature`, `win.round` | vincita dell'ultimo spin, del bonus (free spin e sequenze) e del round, in crediti |
 | `bet` | puntata totale, in crediti |
 | `maxWin` | vincita massima in multipli della puntata (0 se il modulo non ha un tetto) |
+| `script.<nome>` | valore pubblicato dallo script con `ui.set` o `ui.add` ([script-lua.md](script-lua.md#interfaccia)); vale 0 finché lo script non lo tocca e riparte da 0 a ogni round |
 
 Gli asset degli elementi vanno in `assets/ui/` (per esempio `assets/ui/cornice.webp`) e `npm run mod -- check` controlla che esistano. `npm run assets -- build` non tocca né `scenes/ui.json` né `assets/ui/`.
 

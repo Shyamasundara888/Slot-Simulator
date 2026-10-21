@@ -70,6 +70,11 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `math.random si può usare solo durante un round` | `math.random` chiamato al caricamento dello script, fuori dagli hook |
 | `math.random: intervallo non valido` | argomenti non interi o `n < m` |
 | `attempt to perform arithmetic on a nil value (field 'x')` | contatore non inizializzato: usa `(round.x or 0) + 1` |
+| `ui.show: elemento sconosciuto X (non è in scenes/ui.json)` | anche per `ui.hide` e `ui.fx`: l'id non esiste in `scenes/ui.json` |
+| `ui.set: nome non valido X` | i nomi dei valori usano lettere minuscole, cifre e `_` (`Oro` → `oro`) |
+| `ui.set: from deve essere una cella { reel = 1..R, row = 1..N }` | la cella conta da 1; usa quelle di `spin.wildCells` e simili |
+| `ui.set si può usare solo dentro gli hook` | vale per tutte le funzioni `ui` tranne `ui.get` |
+| `ui.fx: effetto sconosciuto X` / `ui.message: serve un testo da 1 a 120 caratteri` | effetti ammessi: `pop`, `pulse`, `shake` |
 
 Nel client un errore dello script annulla il round, restituisce la puntata e mostra il messaggio.
 
