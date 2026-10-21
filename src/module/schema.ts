@@ -124,6 +124,76 @@ export const motionSchema = z
   .strict();
 export type Motion = z.infer<typeof motionSchema>;
 
+/** Valori che un movimento di una parte del rig può cambiare. */
+export const RIG_CHANNELS = ["rotate", "scaleX", "scaleY", "x", "y", "perspective", "shade"] as const;
+
+/**
+ * Movimento di una parte del disegno (rig): un'onda che si ripete `cycles` volte in ogni loop,
+ * così il loop chiude sempre senza salti.
+ */
+const rigMove = z
+  .object({
+    /** Rotazione attorno al perno, in gradi. */
+    rotate: z.number().min(-180).max(180).optional(),
+    /** Allungamento orizzontale e verticale attorno al perno: -0.4 schiaccia del 40%. */
+    scaleX: z.number().min(-0.95).max(2).optional(),
+    scaleY: z.number().min(-0.95).max(2).optional(),
+    /** Spostamento, nelle stesse unità di shape e pivot. */
+    x: z.number().optional(),
+    y: z.number().optional(),
+    /** Prospettiva: il lato lontano dal perno cresce in altezza, come un'ala che si alza verso chi guarda. */
+    perspective: z.number().min(-1).max(2).optional(),
+    /** Ombra: 0.3 scurisce la parte del 30% nel punto più alto dell'onda. */
+    shade: z.number().min(0).max(0.9).optional(),
+    /** Quante volte il movimento si ripete in un loop (intero, così il loop chiude). */
+    cycles: z.number().int().min(1).max(16).default(1),
+    /** Sfasamento dell'onda, in frazioni del suo periodo: 0.5 va in controfase. */
+    phase: z.number().min(0).max(1).default(0),
+    /** "sine": avanti e indietro attorno alla posa ferma; "pulse": dalla posa ferma al massimo e ritorno. */
+    wave: z.enum(["sine", "pulse"]).default("sine"),
+  })
+  .strict()
+  .refine((m) => RIG_CHANNELS.some((k) => m[k] !== undefined), `serve almeno uno tra ${RIG_CHANNELS.join(", ")}`);
+export type RigMove = z.infer<typeof rigMove>;
+
+const point = z.tuple([z.number(), z.number()]);
+
+const rigPart = z
+  .object({
+    /** Nome della parte, in minuscolo (per esempio ala-sx). */
+    id: z.string().regex(/^[a-z0-9-]+$/, "usa lettere minuscole, cifre e trattini"),
+    /** Poligono che ritaglia la parte dal disegno; un pixel va alla prima parte che lo contiene. */
+    shape: z.array(point).min(3).max(64),
+    /** Punto attorno a cui la parte ruota e si allunga (l'attaccatura). */
+    pivot: point,
+    /** true: la parte sta davanti al resto del disegno (ali sopra il corpo); di solito sta dietro. */
+    front: z.boolean().default(false),
+    moves: z.array(rigMove).min(1).max(8),
+  })
+  .strict();
+export type RigPart = z.infer<typeof rigPart>;
+
+const rigFields = {
+  /** Durata del loop in secondi: tutti i movimenti ci stanno un numero intero di volte. */
+  loop: z.number().min(0.3).max(10).default(1.2),
+  parts: z.array(rigPart).min(1).max(24),
+};
+const uniqueParts = (rig: { parts: { id: string }[] }) => new Set(rig.parts.map((p) => p.id)).size === rig.parts.length;
+
+/**
+ * Rig del disegno nella scena: parti ritagliate dal disegno che si muovono ognuna per conto suo
+ * nelle vincite (ali che battono, zampe che camminano). Coordinate in frazioni del disegno, da 0 a 1.
+ */
+export const rigSchema = z.object(rigFields).strict().refine(uniqueParts, "ogni parte deve avere un id diverso");
+export type Rig = z.infer<typeof rigSchema>;
+
+/** Rig scritto in art/: coordinate in pixel dell'immagine del simbolo, grande `size`. */
+export const rigSourceSchema = z
+  .object({ size: z.tuple([z.number().int().positive(), z.number().int().positive()]), ...rigFields })
+  .strict()
+  .refine(uniqueParts, "ogni parte deve avere un id diverso");
+export type RigSource = z.infer<typeof rigSourceSchema>;
+
 export const sceneSchema = z
   .object({
     background: color.optional(),
@@ -148,9 +218,12 @@ export const sceneSchema = z
             tile: image.optional(),
             /** Movimento del disegno; con motion anche winFrames sono tessere senza disegno. */
             motion: motionSchema.optional(),
+            /** Parti del disegno che si muovono da sole nelle vincite, sopra il movimento di motion. */
+            rig: rigSchema.optional(),
           })
           .strict()
-          .refine((s) => !s.motion || (s.art && s.tile), "motion richiede art e tile"),
+          .refine((s) => !s.motion || (s.art && s.tile), "motion richiede art e tile")
+          .refine((s) => !s.rig || s.motion, "rig richiede motion"),
       )
       .default({}),
     /** Suoni facoltativi per gli eventi del client. */

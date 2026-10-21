@@ -46,7 +46,7 @@ async function build(dir: string): Promise<void> {
     .map((id) => `${ART_FILE}: symbols.${id}: simbolo non presente in math/paytable.json`);
   for (const [id, art] of Object.entries(spec.symbols)) {
     const frames = art.animation ? framePaths(art.animation.frames, art.animation.count) : [];
-    for (const file of [art.svg, art.image, ...frames]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: symbols.${id}: manca ${file}`);
+    for (const file of [art.svg, art.image, art.rig, ...frames]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: symbols.${id}: manca ${file}`);
   }
   for (const file of [spec.background?.svg, spec.background?.image]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: background: manca ${file}`);
   for (const [event, sound] of Object.entries(spec.sounds)) {

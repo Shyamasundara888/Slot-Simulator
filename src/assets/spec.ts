@@ -98,10 +98,16 @@ const symbolArt = z
      * si ferma) il soggetto si anima da solo, senza fotogrammi. Vedi MOTIONS in src/module/schema.ts.
      */
     motion: motionSchema.optional(),
+    /**
+     * Rig del disegno (file JSON in art/, vedi rigSourceSchema): parti ritagliate dall'immagine
+     * che si muovono ognuna per conto suo nelle vincite. Richiede motion.
+     */
+    rig: jsonFile.optional(),
   })
   .strict()
   .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image")
-  .refine((s) => !(s.motion && s.animation), "motion e animation sono alternativi: tieni uno dei due");
+  .refine((s) => !(s.motion && s.animation), "motion e animation sono alternativi: tieni uno dei due")
+  .refine((s) => !s.rig || s.motion, "rig richiede motion");
 
 const note = z.tuple([z.union([z.number().positive(), z.tuple([z.number().positive(), z.number().positive()])]), z.number().positive().max(5)]);
 

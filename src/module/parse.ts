@@ -7,6 +7,7 @@ import {
   type Manifest,
   manifestSchema,
   type Motion,
+  type Rig,
   paytableSchema,
   reelsSchema,
   sceneSchema,
@@ -42,6 +43,8 @@ export interface SymbolStyle {
   art?: string | undefined;
   tile?: string | undefined;
   motion?: Motion | undefined;
+  /** Parti del disegno che si muovono da sole nelle vincite. */
+  rig?: Rig | undefined;
 }
 
 export interface ModeStyle {
@@ -149,6 +152,7 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>, assets
       art: style?.art,
       tile: style?.tile,
       motion: style?.motion,
+      rig: style?.rig,
     });
   }
 

@@ -44,6 +44,7 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | `symbols.<ID>.glow` | colore del bagliore nelle vincite (predefinito: la tessera schiarita) |
 | `symbols.<ID>.animation` | animazione di vincita fatta di immagini (vedi [Animazioni generate](#animazioni-generate)): `frames` percorso con `#` al posto del numero, `count`, `fps` (`12`), `loop` (`pingpong` o `loop`); prende il posto di `win.frames` per quel simbolo |
 | `symbols.<ID>.motion` | il disegno si muove da solo nel client sopra la tessera, senza fotogrammi (vedi [Disegni che si muovono](#disegni-che-si-muovono)): `win` (`pop`), `shine` (`true`), `land` (`false`), `strength` (`1`); alternativo a `animation` |
+| `symbols.<ID>.rig` | file JSON in `art/` con le parti del disegno che si muovono ognuna per conto suo nelle vincite (vedi [Simboli a parti](#simboli-a-parti-rig)); richiede `motion` |
 | `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
 | `win.fps` (`6`) | velocità dell'animazione |
 | `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
@@ -75,6 +76,53 @@ Con `motion` il client separa il disegno dalla tessera e lo anima con PixiJS nel
 ```json
 "SOLE": { "tile": "#8a5a00", "image": "art/raw/sole.webp", "motion": { "win": "pop", "land": true } }
 ```
+
+### Simboli a parti (rig)
+
+Con `rig` il disegno si divide in parti che si muovono ognuna per conto suo, come nelle slot commerciali fatte con Spine: ali che battono, zampe che camminano, una corona che oscilla. Le parti sono pixel dell'immagine originale, quindi il simbolo non cambia mai aspetto, il loop chiude sempre e lo sfondo resta trasparente. Il movimento di `motion` (uscita dalla tessera, respiro, riflesso) resta e porta con sé tutte le parti.
+
+Il rig sta in un file a parte, per esempio `art/rig/scarabeo.json`, con le coordinate in pixel dell'immagine del simbolo:
+
+```json
+{
+  "size": [512, 512],
+  "loop": 1.2,
+  "parts": [
+    {"id": "zampa-a-sx", "shape": [[78, 64], [132, 64], [150, 138], [186, 152], [188, 182], [140, 184]], "pivot": [186, 170], "moves": [{"rotate": 7, "cycles": 2}]},
+    {"id": "ala-sx", "shape": [[4, 176], [176, 178], [180, 192], [177, 250], [100, 280], [4, 280]], "pivot": [180, 214], "front": true,
+     "moves": [{"scaleX": -0.42, "perspective": 0.5, "shade": 0.22, "rotate": 4, "cycles": 2, "wave": "pulse"}]}
+  ]
+}
+```
+
+| Campo | Significato |
+| --- | --- |
+| `size` | larghezza e altezza in pixel dell'immagine a cui si riferiscono le coordinate |
+| `loop` (`1.2`) | durata del loop in secondi |
+| `parts[].id` | nome della parte, in minuscolo |
+| `parts[].shape` | poligono che ritaglia la parte; un pixel va alla prima parte dell'elenco che lo contiene, quello che resta fuori da tutte è il corpo, che sta fermo |
+| `parts[].pivot` | attaccatura: il punto attorno a cui la parte ruota e si allunga |
+| `parts[].front` (`false`) | `true` disegna la parte davanti al corpo (ali); di solito sta dietro (zampe, antenne) |
+| `parts[].moves` | da 1 a 8 movimenti che si sommano |
+| `moves[].rotate` | rotazione in gradi |
+| `moves[].scaleX`, `moves[].scaleY` | allungamento: `-0.4` schiaccia del 40% verso il perno |
+| `moves[].x`, `moves[].y` | spostamento in pixel |
+| `moves[].perspective` | il lato lontano dal perno cresce in altezza, come un'ala che si alza verso chi guarda |
+| `moves[].shade` | scurisce la parte, da 0 a 0.9, quando il movimento è al massimo |
+| `moves[].cycles` (`1`) | quante volte il movimento si ripete in un loop (intero) |
+| `moves[].phase` (`0`) | sfasamento da 0 a 1: `0.5` va in controfase, utile per zampe alternate |
+| `moves[].wave` (`sine`) | `sine` va avanti e indietro attorno alla posa ferma; `pulse` va dalla posa ferma al massimo e torna (battito d'ali) |
+
+Il client ritaglia le parti una volta sola all'avvio e le muove con mesh PixiJS; nelle prime 0,25 s i movimenti crescono da zero, così il disegno non salta. L'ampiezza segue `motion.strength`, e con "riduci movimento" il rig si ferma come il resto.
+
+Come si prepara:
+
+1. Genera il simbolo in una posa aperta: parti che non si coprono a vicenda (ali spiegate, zampe staccate dal corpo).
+2. Guarda l'immagine con una griglia sopra (Python con Pillow va bene) e scrivi i poligoni larghi attorno a ogni parte, senza toccare il corpo; le parti vicine vanno messe prima nell'elenco.
+3. Per controllare, disegna i poligoni sopra l'immagine e verifica che nessun pezzo resti staccato fuori dalle parti.
+4. `npm run assets -- build slots/<id>`, poi nel client una vincita con quel simbolo.
+
+Sullo scarabeo del Tempio del Sole (`slots/tempio-del-sole/art/rig/scarabeo.json`) bastano 11 parti: due ali davanti al corpo, sei zampe che si muovono a tre a tre come in un insetto vero, due antenne e la testa.
 
 ## Linee guida per disegnare
 
@@ -155,7 +203,7 @@ Il comando gira solo dove ComfyUI è raggiungibile, di solito il PC su cui è in
 
 Un simbolo già generato si può animare con un modello image-to-video, che parte dall'immagine del simbolo su fondo scuro e fa una clip di 2 s, seguita dallo scontorno di ogni fotogramma. [`tools/comfyui/workflows/animazione.json`](../tools/comfyui/workflows/animazione.json) (Wan 2.2 TI2V 5B, da lanciare a mano in ComfyUI) è stato provato sullo scarabeo del Tempio del Sole.
 
-Il risultato è stato bocciato: movimento quasi assente o simbolo deformato, circa 2 minuti a clip e quasi tutta la RAM su una RTX 3080. I numeri sono in [tools/comfyui/prove/scarabeo/](../tools/comfyui/prove/scarabeo/README.md). Per animazioni da slot serve un modello o una pipeline specializzati. Il campo `animation` e il comando `frames` valgono per i fotogrammi di qualsiasi provenienza, anche disegnati a mano o esportati da Spine o Blender.
+Il risultato è stato bocciato: movimento quasi assente o simbolo deformato, circa 2 minuti a clip e quasi tutta la RAM su una RTX 3080. I numeri sono in [tools/comfyui/prove/scarabeo/](../tools/comfyui/prove/scarabeo/README.md). Un modello video ridisegna il simbolo a ogni fotogramma, quindi perde i dettagli e non dà né trasparenza né loop puliti: per i simboli conviene il [rig a parti](#simboli-a-parti-rig), e i modelli video restano per effetti come fuoco o fumo. Il campo `animation` e il comando `frames` valgono per i fotogrammi di qualsiasi provenienza, anche disegnati a mano o esportati da Spine o Blender.
 
 ```bash
 npm run assets -- frames slots/<id> --symbol SCARABEO --from <cartella-fotogrammi>

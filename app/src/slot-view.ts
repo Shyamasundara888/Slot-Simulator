@@ -6,7 +6,7 @@ import { centeredReels, REEL_GAP, uiImages } from "../../src/module/ui.js";
 import { easeOutBack, tween } from "./anim.js";
 import { lighten, reducedMotion, WinEffects, type WinCell } from "./effects.js";
 import { Hud } from "./hud.js";
-import { SymbolMotion } from "./motion.js";
+import { cutRig, SymbolMotion, type RigArt } from "./motion.js";
 const GAP = REEL_GAP;
 const LINE_COLORS = [0xffd43b, 0x69db7c, 0x4dabf7, 0xff8787, 0xda77f2, 0x63e6be, 0xffa94d, 0x74c0fc, 0xa9e34b, 0xf783ac];
 /** Tinta delle celle che non fanno parte di una vincita. */
@@ -33,6 +33,8 @@ interface MotionArt {
   art: Texture;
   tile: Texture;
   motion: Motion;
+  /** Parti del disegno già ritagliate, se il simbolo ha un rig. */
+  rig?: RigArt | undefined;
 }
 
 /** Disegno in movimento sopra una cella, con la cella a cui rimettere la tessera piena alla fine. */
@@ -224,7 +226,9 @@ export class SlotView {
     }
     for (const [id, style] of scene.symbols) {
       if (!style.motion || !style.art || !style.tile) continue;
-      this.motions.set(id, { art: images.get(style.art)!, tile: this.imageTile(id, images.get(style.tile)!), motion: style.motion });
+      const art = images.get(style.art)!;
+      const rig = style.rig ? cutRig(app.renderer, art, style.rig) : undefined;
+      this.motions.set(id, { art, tile: this.imageTile(id, images.get(style.tile)!), motion: style.motion, rig });
     }
     math.reels.base.forEach((strip, i) => {
       const reel = new ReelView(strip, textures, math.rows, this.cellW, this.cellH);
@@ -408,7 +412,7 @@ export class SlotView {
     const sprite = this.reels[reel]!.cell(row);
     const full = this.symbolTextures.get(this.reels[reel]!.symbolAt(row))!;
     sprite.texture = art.tile;
-    const view = new SymbolMotion(this.app.renderer, art.art, art.motion, this.cellW, this.cellH, mode);
+    const view = new SymbolMotion(this.app.renderer, art.art, art.motion, this.cellW, this.cellH, mode, art.rig);
     const { x, y } = this.cellCenter(reel, row);
     view.container.position.set(x, y);
     this.motionLayer.addChild(view.container);
