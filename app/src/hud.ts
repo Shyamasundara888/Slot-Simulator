@@ -2,7 +2,7 @@ import { Container, Graphics, Sprite, Text, type Application, type Texture, type
 import type { Mode } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import type { UiElement, UiValue } from "../../src/module/schema.js";
-import { formatTemplate, ladderIndex, MONEY_VALUES, type UiValues } from "../../src/ui/values.js";
+import { formatTemplate, ladderIndex, MONEY_VALUES, type UiValues, valueOf } from "../../src/ui/values.js";
 import { easeOutBack, tween } from "./anim.js";
 import { money } from "./format.js";
 import { locale } from "./i18n/index.js";
@@ -95,14 +95,15 @@ abstract class ElementView<E extends UiElement = UiElement> {
     const first = this.shown === null;
     this.shown = key;
     this.draw(values, first ? null : previous, app, turbo);
-    if (!first) void this.animate(app, turbo);
+    if (!first) void this.animate(app, this.element.onChange, turbo);
     return !first;
   }
 
-  private async animate(app: Application, turbo: boolean): Promise<void> {
+  /** Anima l'elemento una volta: per i cambi di valore e per ui.fx degli script. */
+  async animate(app: Application, effect: UiElement["onChange"], turbo: boolean): Promise<void> {
     const ms = turbo ? 220 : 420;
     const { container, flash } = this;
-    switch (this.element.onChange) {
+    switch (effect) {
       case "pop":
       case "count":
         await tween(app.ticker, ms, (t) => container.scale.set(1 + 0.18 * Math.sin(Math.PI * easeOutBack(t))));
@@ -155,8 +156,8 @@ class CounterView extends ElementView<Of<"counter">> {
     const e = this.element;
     if (this.counting) app.ticker.remove(this.counting);
     this.counting = null;
-    const from = previous?.[e.value];
-    const to = values[e.value];
+    const from = previous ? valueOf(previous, e.value) : undefined;
+    const to = valueOf(values, e.value);
     const write = (n: number) => {
       this.value.text = formatTemplate(e.format, { ...values, [e.value]: n }, e.value, showValue);
       fitWidth(this.value, e.width - 12);
@@ -206,13 +207,13 @@ class MeterView extends ElementView<Of<"meter">> {
   }
 
   protected key(values: UiValues): string {
-    return String(Math.max(0, Math.min(this.element.max, values[this.element.value])));
+    return String(Math.max(0, Math.min(this.element.max, valueOf(values, this.element.value))));
   }
 
   protected draw(values: UiValues): void {
     const e = this.element;
     const { x, y, w, h } = this.inner;
-    const value = Math.max(0, Math.min(e.max, values[e.value]));
+    const value = Math.max(0, Math.min(e.max, valueOf(values, e.value)));
     this.fill.removeChildren().forEach((child) => child.destroy());
     const color = toHex(e.fillColor);
     const image = e.fill ? this.images.get(e.fill) : undefined;
@@ -306,11 +307,11 @@ class LadderView extends ElementView<Of<"ladder">> {
   }
 
   protected key(values: UiValues): string {
-    return String(ladderIndex(this.element.steps, values[this.element.value]));
+    return String(ladderIndex(this.element.steps, valueOf(values, this.element.value)));
   }
 
   protected draw(values: UiValues): void {
-    const current = ladderIndex(this.element.steps, values[this.element.value]);
+    const current = ladderIndex(this.element.steps, valueOf(values, this.element.value));
     this.steps.forEach((cell, i) => {
       // I gradini superati restano in ombra, quelli ancora da raggiungere un po' meno.
       cell.alpha = i === current ? 1 : i < current ? 0.3 : 0.6;
@@ -391,6 +392,10 @@ export class Hud {
   private readonly views: ElementView[] = [];
   private values: UiValues | null = null;
   private mode: Mode | null = null;
+  /** Visibilità decisa dagli script con ui.show e ui.hide, fino alla fine del round. */
+  private readonly forced = new Map<string, boolean>();
+  /** Visibilità attuale di ogni elemento, per sapere quando farlo comparire o sparire. */
+  private readonly visible = new Map<ElementView, boolean>();
 
   /**
    * `images` contiene le immagini degli elementi, `symbols` un'immagine per
@@ -423,19 +428,44 @@ export class Hud {
   update(values: UiValues, mode: Mode, turbo = false): void {
     const previous = this.values;
     this.values = { ...values };
-    const previousMode = this.mode;
-    const modeChanged = mode !== previousMode;
     this.mode = mode;
     for (const view of this.views) {
-      const visible = !view.element.visibleIn || view.element.visibleIn.includes(mode);
-      if (modeChanged && previousMode === null) {
+      const visible = this.forced.get(view.element.id) ?? (!view.element.visibleIn || view.element.visibleIn.includes(mode));
+      const was = this.visible.get(view);
+      this.visible.set(view, visible);
+      if (was === undefined) {
         view.container.visible = visible;
         view.container.alpha = visible ? 1 : 0;
-      } else if (modeChanged) void this.fade(view.container, visible, turbo);
+      } else if (was !== visible) void this.fade(view.container, visible, turbo);
       // Un elemento nascosto si aggiorna senza animazioni né suoni.
       const changed = view.update(values, previous, this.app, turbo || !visible);
       if (changed && visible && view.element.sound) this.onSound(view.element.sound);
     }
+  }
+
+  /** ui.show e ui.hide: l'elemento resta come chiesto fino a clearForced. */
+  force(id: string, visible: boolean, turbo = false): void {
+    this.forced.set(id, visible);
+    if (this.values && this.mode !== null) this.update(this.values, this.mode, turbo);
+  }
+
+  /** All'inizio di un round gli elementi tornano a seguire visibleIn. */
+  clearForced(): void {
+    this.forced.clear();
+  }
+
+  /** ui.fx: anima un elemento, se si vede. */
+  effect(id: string, effect: UiElement["onChange"], turbo = false): void {
+    for (const view of this.views) {
+      if (view.element.id === id && this.visible.get(view)) void view.animate(this.app, effect, turbo);
+    }
+  }
+
+  /** Centri, in coordinate dello stage, degli elementi visibili che mostrano il valore dato. */
+  targets(value: string): { x: number; y: number }[] {
+    return this.views
+      .filter((view) => this.visible.get(view) && "value" in view.element && view.element.value === value)
+      .map(({ element: e }) => ({ x: e.x + e.width / 2, y: e.y + e.height / 2 }));
   }
 
   private async fade(container: Container, visible: boolean, turbo: boolean): Promise<void> {

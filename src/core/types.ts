@@ -81,6 +81,28 @@ export interface ScatterWin {
   pay: number;
 }
 
+/** Una cella della griglia, contando da 0. */
+export interface Cell {
+  reel: number;
+  row: number;
+}
+
+/** Effetti che uno script può chiedere a un elemento di interfaccia. */
+export const UI_EFFECTS = ["pop", "pulse", "shake"] as const;
+export type UiEffect = (typeof UI_EFFECTS)[number];
+
+/**
+ * Cosa uno script ha chiesto all'interfaccia durante uno hook. Il motore lo
+ * annota sullo spin o sulla feature; il client lo mette in scena, il
+ * simulatore lo ignora.
+ */
+export type UiEvent =
+  /** Nuovo valore di script.<name>; `from` è la cella da cui parte l'animazione di raccolta. */
+  | { kind: "set"; name: string; value: number; from: Cell | null }
+  | { kind: "show" | "hide"; id: string }
+  | { kind: "fx"; id: string; effect: UiEffect }
+  | { kind: "message"; text: string };
+
 export interface SpinResult {
   mode: Mode;
   /** Livello di upgrade con cui è stato valutato lo spin. */
@@ -99,6 +121,8 @@ export interface SpinResult {
   multiplier: number;
   /** Vincita dello spin in multipli della puntata totale, moltiplicatore compreso. */
   win: number;
+  /** Richieste all'interfaccia fatte dallo script dopo questo spin. */
+  ui?: UiEvent[];
 }
 
 export interface FreeSpinsResult {
@@ -114,6 +138,8 @@ export interface FreeSpinsResult {
   /** Moltiplicatore raggiunto alla fine. */
   multiplier: number;
   win: number;
+  /** Richieste all'interfaccia fatte dallo script alla fine dei free spin. */
+  endUi?: UiEvent[] | undefined;
 }
 
 /** Sequenza di spin richiesta da uno script, giocata dopo i free spin. */
@@ -131,6 +157,8 @@ export interface ExtraSpinsResult {
   multiplier: number;
   spins: SpinResult[];
   win: number;
+  /** Richieste all'interfaccia fatte dallo script alla fine della sequenza. */
+  endUi?: UiEvent[] | undefined;
 }
 
 /** Riassunto di una feature appena finita, passato agli script. */
@@ -151,6 +179,8 @@ export interface RoundHooks {
   beginRound(rng: Rng): void;
   onSpin(spin: SpinResult, index: number): PlayRequest | null;
   onFeatureEnd(feature: FeatureSummary): PlayRequest | null;
+  /** Richieste all'interfaccia fatte nell'ultimo hook, se ce ne sono; le consegna una volta sola. */
+  takeUiEvents?(): UiEvent[];
 }
 
 export interface RoundResult {

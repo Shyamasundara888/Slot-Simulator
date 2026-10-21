@@ -1,16 +1,22 @@
-import { UI_VALUES, type UiValue } from "../module/schema.js";
+import { SCRIPT_VALUE, UI_VALUES, type UiValue } from "../module/schema.js";
 
 /**
  * Valori che gli elementi di interfaccia mostrano, aggiornati dal client
  * mentre mette in scena un round già deciso dal motore. Le vincite e la
- * puntata sono in crediti, gli altri valori sono numeri puri.
+ * puntata sono in crediti, gli altri valori sono numeri puri. I valori
+ * script.<nome> arrivano dagli script; finché lo script non li tocca valgono 0.
  */
-export type UiValues = Record<UiValue, number>;
+export type UiValues = Record<(typeof UI_VALUES)[number], number> & Partial<Record<`script.${string}`, number>>;
+
+const KNOWN: ReadonlySet<string> = new Set(UI_VALUES);
+
+/** Legge un valore; quelli degli script non ancora pubblicati valgono 0. */
+export const valueOf = (values: UiValues, key: UiValue): number => values[key] ?? 0;
+
+const isValue = (name: string): name is UiValue => KNOWN.has(name) || SCRIPT_VALUE.test(name);
 
 /** Valori mostrati in crediti, quindi con il formato della valuta. */
 export const MONEY_VALUES: ReadonlySet<UiValue> = new Set(["win.spin", "win.feature", "win.round", "bet"]);
-
-const KNOWN: ReadonlySet<string> = new Set(UI_VALUES);
 
 /** Valori all'inizio di un round: niente free spin, moltiplicatore ×1, nessuna vincita. */
 export function initialValues(bet: number, maxWin: number): UiValues {
@@ -28,7 +34,7 @@ export function placeholders(template: string): string[] {
 
 /** Segnaposto che un testo non può usare: `value` vale solo per gli elementi collegati a un valore. */
 export function unknownPlaceholders(template: string, hasValue: boolean): string[] {
-  return placeholders(template).filter((name) => !(KNOWN.has(name) || (hasValue && name === "value")));
+  return placeholders(template).filter((name) => !(isValue(name) || (hasValue && name === "value")));
 }
 
 /**
@@ -42,8 +48,8 @@ export function formatTemplate(
   show: (key: UiValue, value: number) => string,
 ): string {
   return template.replace(/\{([^{}]+)\}/g, (whole, name: string) => {
-    const key = name === "value" ? own : KNOWN.has(name) ? (name as UiValue) : null;
-    return key === null ? whole : show(key, values[key]);
+    const key = name === "value" ? own : isValue(name) ? name : null;
+    return key === null ? whole : show(key, valueOf(values, key));
   });
 }
 

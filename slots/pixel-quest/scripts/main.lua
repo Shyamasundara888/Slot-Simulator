@@ -16,8 +16,18 @@ function onSpin(spin)
     round.best = math.max(round.best or 0, round.combo)
     if round.combo % COMBO_FOR_BOSS == 0 then
       round.boss = (round.boss or 0) + 1
+      -- La barra si riempie, arriva il Boss Spin e la barra riparte da zero.
+      ui.set("combo", COMBO_FOR_BOSS)
+      ui.set("boss", round.boss)
+      ui.message("Boss Spin sbloccato!")
     end
+    ui.set("combo", round.combo % COMBO_FOR_BOSS)
+    ui.set("boss_x", 2 * round.best)
   else
+    if (round.combo or 0) % COMBO_FOR_BOSS > 0 then
+      ui.set("combo", 0)
+      ui.fx("combo", "shake")
+    end
     round.combo = 0
   end
 end

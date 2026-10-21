@@ -11,15 +11,18 @@ spinModes = { "free" }
 local GOLD_CHANCE = 5 -- un wild espanso su 5 è d'oro
 
 function onSpin(spin)
-  for _ = 1, spin.wilds do
+  -- Un controllo per ogni wild espanso: la moneta parte dalla cella in cui è atterrato.
+  for _, cella in ipairs(spin.expandedCells) do
     if math.random(GOLD_CHANCE) == 1 then
       round.gold = (round.gold or 0) + 1
+      ui.add("gold", 1, { from = cella })
     end
   end
 end
 
 function onFeatureEnd(feature)
   if feature.mode == "free" and (round.gold or 0) > 0 then
+    ui.message(round.gold == 1 and "1 Gold Spin!" or round.gold .. " Gold Spin!")
     return { mode = "gold", spins = round.gold, guaranteeWin = true, multiplier = feature.multiplier }
   end
 end

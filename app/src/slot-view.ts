@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from "pixi.js";
-import type { Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
+import type { Cell, Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { uiImages } from "../../src/module/ui.js";
 import { easeOutBack, tween } from "./anim.js";
@@ -425,6 +425,67 @@ export class SlotView {
       }
     };
     this.app.ticker.add(this.winAnimation);
+  }
+
+  /** Centro di una cella in coordinate dello stage. */
+  private cellCenter(reel: number, row: number): { x: number; y: number } {
+    return {
+      x: this.gridX + reel * (this.cellW + GAP) + this.cellW / 2,
+      y: this.gridY + row * (this.cellH + GAP) + this.cellH / 2,
+    };
+  }
+
+  /**
+   * Animazione di raccolta: una copia rimpicciolita del simbolo vola dalla
+   * cella a ciascun punto, con un arco. Si risolve quando è arrivata.
+   */
+  async collect(cell: Cell, targets: readonly { x: number; y: number }[], turbo: boolean): Promise<void> {
+    const reel = this.reels[cell.reel];
+    if (!reel || targets.length === 0) return;
+    const start = this.cellCenter(cell.reel, cell.row);
+    const texture = reel.cell(cell.row).texture;
+    const ms = turbo ? 260 : 560;
+    await Promise.all(
+      targets.map(async (target) => {
+        const sprite = new Sprite(texture);
+        sprite.anchor.set(0.5);
+        this.app.stage.addChild(sprite);
+        const lift = Math.min(160, Math.hypot(target.x - start.x, target.y - start.y) / 3);
+        await tween(this.app.ticker, ms, (t) => {
+          const e = 1 - (1 - t) ** 2;
+          sprite.position.set(start.x + (target.x - start.x) * e, start.y + (target.y - start.y) * e - lift * Math.sin(Math.PI * t));
+          sprite.scale.set(0.55 - 0.3 * t);
+          sprite.alpha = 1 - 0.3 * t;
+        });
+        sprite.destroy();
+      }),
+    );
+  }
+
+  /** Testo grande e breve sopra i rulli (ui.message degli script). */
+  async message(text: string, turbo: boolean): Promise<void> {
+    const banner = new Text({
+      text,
+      style: {
+        fill: 0xffd43b,
+        fontSize: 44,
+        fontWeight: "800",
+        align: "center",
+        wordWrap: true,
+        wordWrapWidth: this.app.screen.width * 0.8,
+        stroke: { color: 0x1b1430, width: 8, join: "round" },
+      },
+    });
+    banner.anchor.set(0.5);
+    banner.position.set(this.app.screen.width / 2, this.gridY + (this.cellH * this.module.math.rows) / 2);
+    this.app.stage.addChild(banner);
+    await tween(this.app.ticker, turbo ? 120 : 220, (t) => {
+      banner.alpha = t;
+      banner.scale.set(0.6 + 0.4 * easeOutBack(t));
+    });
+    await new Promise((r) => setTimeout(r, turbo ? 350 : 900));
+    await tween(this.app.ticker, turbo ? 120 : 240, (t) => (banner.alpha = 1 - t));
+    banner.destroy();
   }
 
   /**

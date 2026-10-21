@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   const module = await loadSlotModule(resolve(dir));
   const { math, manifest } = module;
   const exact = exactRtp(math);
-  const script = module.script === null ? null : await ScriptRuntime.create(math, module.script);
+  const script = module.script === null ? null : await ScriptRuntime.create(math, module.script, { elements: module.ui.elements.map((e) => e.id), recordUi: false });
 
   if (values.exact) {
     if (values.json) return console.log(JSON.stringify(exact, null, 2));

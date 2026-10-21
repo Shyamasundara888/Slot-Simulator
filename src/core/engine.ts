@@ -11,6 +11,7 @@ import type {
   SlotMath,
   SpinResult,
   SymbolId,
+  UiEvent,
 } from "./types.js";
 
 /** Spin giocabili in un round tra tutte le sequenze richieste dagli script. */
@@ -110,8 +111,19 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
     if (req && req.spins > 0) queue.push(req);
   };
 
-  const base = spin(math, rng, "base");
+  /** Richieste all'interfaccia dell'ultimo hook, o undefined se non ce ne sono. */
+  const uiEvents = (): UiEvent[] | undefined => {
+    const events = hooks?.takeUiEvents?.();
+    return events && events.length > 0 ? events : undefined;
+  };
+  const withUi = (result: SpinResult): SpinResult => {
+    const ui = uiEvents();
+    return ui ? { ...result, ui } : result;
+  };
+
+  let base = spin(math, rng, "base");
   request(hooks?.onSpin(base, 0));
+  base = withUi(base);
   let total = base.win;
   let freeSpins: FreeSpinsResult | null = null;
   const fs = math.freeSpins;
@@ -150,9 +162,10 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
       }
       awardedAfter.push(awarded);
       request(hooks?.onSpin(result, spins.length - 1));
+      spins[spins.length - 1] = withUi(result);
     }
-    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, multiplier, win };
     request(hooks?.onFeatureEnd({ mode: "free", spins: spins.length, win, upgradeLevel: level, multiplier }));
+    freeSpins = { initial, awarded, spins, awardedAfter, upgradeLevel: level, multiplier, win, endUi: uiEvents() };
   }
 
   const extra: ExtraSpinsResult[] = [];
@@ -172,9 +185,10 @@ export function playRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): RoundRe
       win += result.win;
       total += result.win;
       request(hooks?.onSpin(result, spins.length - 1));
+      spins[spins.length - 1] = withUi(result);
     }
-    extra.push({ mode, multiplier, spins, win });
     request(hooks?.onFeatureEnd({ mode, spins: spins.length, win, upgradeLevel: 0, multiplier }));
+    extra.push({ mode, multiplier, spins, win, endUi: uiEvents() });
   }
 
   const capped = total >= math.maxWin;

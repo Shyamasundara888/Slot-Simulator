@@ -49,6 +49,19 @@
       "visibleIn": ["free", "gold"]
     },
     {
+      "id": "oro",
+      "type": "meter",
+      "x": 12, "y": 334, "width": 120, "height": 206,
+      "label": "Gold Spin",
+      "value": "script.gold",
+      "max": 10, "style": "segments", "direction": "up",
+      "fillColor": "#ffd43b",
+      "color": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free"],
+      "onChange": "pulse"
+    },
+    {
       "id": "vincita-bonus",
       "type": "counter",
       "x": 928, "y": 92, "width": 120, "height": 110,
