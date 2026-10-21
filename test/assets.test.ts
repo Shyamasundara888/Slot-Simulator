@@ -54,6 +54,74 @@ describe("pipeline degli asset", () => {
     expect(new TextDecoder().decode(files.get("assets/symbols/b.svg"))).toContain("data:image/png;base64,iVBORw==");
   });
 
+  it("usa i fotogrammi raster di animation al posto di quelli illuminati, avanti e indietro", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      symbols: {
+        A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a-##.webp", count: 3 } },
+        B: { tile: "#336699", image: "art/b.png", animation: { frames: "art/anim/b-#.png", count: 3, fps: 20, loop: "loop" } },
+      },
+      win: { frames: 2 },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.symbols.A!.winFrames).toEqual(["a-anim-1", "a-anim-2", "a-anim-3", "a-anim-2"].map((n) => `assets/symbols/${n}.svg`));
+    expect(scene.symbols.A!.fps).toBe(12);
+    expect(scene.symbols.B).toMatchObject({ winFrames: ["b-anim-1", "b-anim-2", "b-anim-3"].map((n) => `assets/symbols/${n}.svg`), fps: 20 });
+    expect(files.has("assets/symbols/a-win-1.svg")).toBe(false);
+    const frame = new TextDecoder().decode(files.get("assets/symbols/a-anim-3.svg"));
+    expect(frame).toContain(`data:image/webp;base64,${btoa("art/anim/a-02.webp")}`);
+    expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a.webp", count: 3 } } } })).toThrow(/#/);
+  });
+
+  it("con motion separa disegno e tessera e i fotogrammi di vincita restano senza disegno", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      look: "smooth",
+      symbols: { A: { tile: "#336699", image: "art/a.png", motion: { win: "pop", land: true } } },
+      win: { frames: 2, fps: 5 },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.symbols.A).toEqual({
+      color: "#336699",
+      image: "assets/symbols/a.svg",
+      art: "assets/symbols/a-disegno.svg",
+      tile: "assets/symbols/a-tessera.svg",
+      winFrames: ["assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg", "assets/symbols/a-tessera.svg"],
+      fps: 5,
+      motion: { win: "pop", shine: true, land: true, strength: 1 },
+    });
+    const text = (path: string) => new TextDecoder().decode(files.get(path));
+    const drawing = `data:image/png;base64,${btoa("art/a.png")}`;
+    expect(text("assets/symbols/a.svg")).toContain(drawing);
+    expect(text("assets/symbols/a-disegno.svg")).toContain(drawing);
+    expect(text("assets/symbols/a-disegno.svg")).not.toContain("cornice");
+    for (const path of ["assets/symbols/a-tessera.svg", "assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg"]) {
+      expect(text(path)).not.toContain(drawing);
+      expect(text(path)).toContain("cornice");
+    }
+    expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", motion: {}, animation: { frames: "art/a-#.png", count: 2 } } } })).toThrow(/alternativi/);
+  });
+
+  it("con look smooth disegna la tessera con la cornice del colore scelto", () => {
+    const art = spec({ look: "smooth", frame: "#b0b0b0", symbols: { A: { tile: "#336699", pixels: { palette: { X: "#ffffff" }, rows: ["X"] } } } });
+    const svg = new TextDecoder().decode(buildAssets(art, noFiles).files.get("assets/symbols/a.svg"));
+    expect(svg).toContain('stop-color="#b0b0b0"');
+    expect(svg).toContain('fill="url(#cornice)"');
+    expect(svg).toContain("feTurbulence");
+  });
+
+  it("copia i suoni già pronti, musiche comprese, con la loro estensione", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      symbols: {},
+      sounds: { music: { file: "art/audio/musica.ogg" }, bonusMusic: { file: "art/audio/bonus.mp3" }, stop: { notes: [[200, 0.04]] } },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.sounds).toEqual({ music: "assets/sounds/music.ogg", bonusMusic: "assets/sounds/bonus-music.mp3", stop: "assets/sounds/stop.wav" });
+    expect(new TextDecoder().decode(files.get("assets/sounds/music.ogg"))).toBe("art/audio/musica.ogg");
+    expect(() => spec({ symbols: {}, sounds: { music: { file: "suoni/musica.ogg" } } })).toThrow();
+  });
+
   it("segnala sorgenti incomplete", () => {
     expect(() => spec({ symbols: { A: { tile: "#000000" } } })).toThrow(/serve almeno uno tra pixels, svg e image/);
     expect(() => spec({ symbols: { A: { tile: "#000000", pixels: { palette: {}, rows: ["X"] } } } })).toThrow(/carattere X senza colore/);

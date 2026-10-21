@@ -5,3 +5,4 @@ coverage/
 dist-app/
 mods/
 slots/*/art/raw/varianti/
+__pycache__/

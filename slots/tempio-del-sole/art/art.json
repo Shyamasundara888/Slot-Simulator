@@ -2,26 +2,28 @@
   "prompt": "Premium casino slot symbol, polished 3D render, ancient Egyptian temple theme, rich gold and deep lapis lazuli blue with turquoise inlays, glossy materials, soft studio lighting with a warm rim light",
   "look": "smooth",
   "symbols": {
-    "SOLE": { "tile": "#8a5a00", "generate": false, "svg": "art/symbols/sole.svg", "prompt": "a radiant golden sun disc with sharp straight rays and a calm carved face, glowing warm light, the wild symbol" },
-    "PORTALE": { "tile": "#5c1a3a", "seed": 778, "image": "art/raw/portale.webp", "svg": "art/symbols/portale.svg", "prompt": "a sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol" },
-    "FARAONE": { "tile": "#7a1f1f", "seed": 777, "image": "art/raw/faraone.webp", "svg": "art/symbols/faraone.svg", "prompt": "a golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead" },
-    "ANKH": { "tile": "#7a3300", "generate": false, "svg": "art/symbols/ankh.svg", "prompt": "an ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion" },
-    "SCARABEO": { "tile": "#1f5c32", "seed": 783, "image": "art/raw/scarabeo.webp", "svg": "art/symbols/scarabeo.svg", "prompt": "a complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame" },
-    "GATTO": { "tile": "#1c4f8a", "seed": 791, "reference": false, "image": "art/raw/gatto.webp", "svg": "art/symbols/gatto.svg", "prompt": "a sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame" },
-    "A": { "tile": "#3b2a7a", "generate": false, "svg": "art/symbols/a.svg", "prompt": "the letter A carved in purple stone with gold trim" },
-    "K": { "tile": "#4f1f5c", "generate": false, "svg": "art/symbols/k.svg", "prompt": "the letter K carved in violet stone with gold trim" },
-    "Q": { "tile": "#0b4f5c", "generate": false, "svg": "art/symbols/q.svg", "prompt": "the letter Q carved in turquoise stone with gold trim" },
-    "J": { "tile": "#3b5c1a", "generate": false, "svg": "art/symbols/j.svg", "prompt": "the letter J carved in green stone with gold trim" },
-    "10": { "tile": "#343a40", "generate": false, "svg": "art/symbols/10.svg", "prompt": "the number 10 carved in grey stone with gold trim" }
+    "SOLE": { "tile": "#8a5a00", "seed": 777, "image": "art/raw/sole.webp", "shape": "art/forme/sole.svg", "svg": "art/symbols/sole.svg", "prompt": "a radiant golden sun disc with sharp alternating rays, engraved concentric rings, a red sun gem in the center, a small golden plaque with the word WILD below, the wild symbol", "motion": { "win": "pop", "land": true } },
+    "PORTALE": { "tile": "#5c1a3a", "seed": 778, "image": "art/raw/portale.webp", "svg": "art/symbols/portale.svg", "prompt": "a sandstone temple doorway between two carved pillars, bright magenta light glowing from inside, the scatter symbol", "motion": { "win": "pulse", "land": true } },
+    "FARAONE": { "tile": "#7a1f1f", "seed": 777, "image": "art/raw/faraone.webp", "svg": "art/symbols/faraone.svg", "prompt": "a golden pharaoh death mask seen from the front, blue and gold striped nemes headdress, a cobra on the forehead", "motion": { "win": "pop" } },
+    "ANKH": { "tile": "#7a3300", "seed": 778, "image": "art/raw/ankh.webp", "shape": "art/symbols/ankh.svg", "svg": "art/symbols/ankh.svg", "prompt": "an ankh amulet: a golden cross whose upper arm is a closed oval loop, with a straight horizontal crossbar just below the loop, turquoise inlays, single object, no medallion", "motion": { "win": "swing" } },
+    "SCARABEO": { "tile": "#1f5c32", "seed": 783, "image": "art/raw/scarabeo.webp", "svg": "art/symbols/scarabeo.svg", "prompt": "a complete turquoise scarab beetle seen from above, symmetrical, six legs and two antennae, spread golden wings, holding a red sun gem above its head, single object, no medallion, no coin, no frame", "motion": { "win": "flutter" } },
+    "GATTO": { "tile": "#1c4f8a", "seed": 791, "reference": false, "image": "art/raw/gatto.webp", "svg": "art/symbols/gatto.svg", "prompt": "a sleek jet-black Egyptian cat statue sitting upright, glossy black obsidian body, gold collar and gold earring, single object, no frame", "motion": { "win": "swing", "strength": 0.6 } },
+    "A": { "tile": "#3b2a7a", "seed": 802, "image": "art/raw/a.webp", "shape": "art/symbols/a.svg", "shapeStrength": 0.95, "svg": "art/symbols/a.svg", "prompt": "the capital letter A made entirely of (deep red ruby gemstone:1.5), (red:1.3) polished crystal with a thin gold rim, two thin gold bars below the letter", "motion": { "win": "pulse" } },
+    "K": { "tile": "#4f1f5c", "seed": 801, "image": "art/raw/k.webp", "shape": "art/symbols/k.svg", "shapeStrength": 0.95, "svg": "art/symbols/k.svg", "prompt": "the capital letter K made entirely of (violet amethyst gemstone:1.5), (purple:1.3) polished crystal with a thin gold rim, two thin gold bars below the letter", "motion": { "win": "pulse" } },
+    "Q": { "tile": "#0b4f5c", "seed": 802, "image": "art/raw/q.webp", "shape": "art/symbols/q.svg", "shapeStrength": 0.95, "svg": "art/symbols/q.svg", "prompt": "the capital letter Q made entirely of (turquoise gemstone:1.5), (turquoise:1.3) polished stone with a thin gold rim, two thin gold bars below the letter", "motion": { "win": "pulse" } },
+    "J": { "tile": "#3b5c1a", "seed": 792, "image": "art/raw/j.webp", "shape": "art/symbols/j.svg", "shapeStrength": 0.95, "svg": "art/symbols/j.svg", "prompt": "the capital letter J carved from polished emerald green malachite, a vivid emerald green letter, green surface with a thin gold rim, two thin gold bars below the letter, green letter", "motion": { "win": "pulse" } },
+    "10": { "tile": "#343a40", "seed": 802, "image": "art/raw/10.webp", "shape": "art/symbols/10.svg", "shapeStrength": 0.95, "svg": "art/symbols/10.svg", "prompt": "the number 10 made entirely of (orange carnelian gemstone:1.5), (orange:1.3) polished stone with a thin gold rim, two thin gold bars below the number", "motion": { "win": "pulse" } }
   },
   "win": { "frames": 3, "fps": 8 },
   "generate": { "reference": "art/raw/scarabeo.webp", "referenceWeight": 0.5 },
   "background": { "seed": 777, "svg": "art/background.svg", "image": "art/raw/background.webp", "prompt": "desert at dusk with three pyramids, dunes, a large pale moon and stars" },
   "sounds": {
-    "spin": { "wave": "triangle", "notes": [[[330, 660], 0.2]], "volume": 0.4 },
-    "stop": { "wave": "noise", "notes": [[200, 0.04]], "volume": 0.3 },
-    "win": { "wave": "triangle", "notes": [[659.25, 0.08], [698.46, 0.08], [830.61, 0.18]], "volume": 0.55 },
-    "bigWin": { "wave": "triangle", "notes": [[659.25, 0.09], [698.46, 0.09], [830.61, 0.09], [880, 0.09], [987.77, 0.09], [1046.5, 0.09], [1174.66, 0.09], [1318.51, 0.35]], "volume": 0.55 },
-    "feature": { "wave": "square", "notes": [[329.63, 0.08], [415.3, 0.08], [493.88, 0.08], [659.25, 0.08], [493.88, 0.08], [659.25, 0.3]], "volume": 0.35 }
+    "spin": { "file": "art/audio/giro.ogg" },
+    "stop": { "file": "art/audio/arresto.ogg" },
+    "win": { "file": "art/audio/vincita.ogg" },
+    "bigWin": { "file": "art/audio/grande-vincita.ogg" },
+    "feature": { "file": "art/audio/bonus.ogg" },
+    "music": { "file": "art/audio/musica.ogg" },
+    "bonusMusic": { "file": "art/audio/musica-bonus.ogg" }
   }
 }

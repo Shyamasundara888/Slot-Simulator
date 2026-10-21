@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SOUND_EVENTS } from "../module/schema.js";
+import { motionSchema, SOUND_EVENTS } from "../module/schema.js";
 
 /**
  * Sorgente degli asset di un modulo: `art/art.json`. Descrive come disegnare
@@ -21,6 +21,19 @@ export const RASTER_EXTENSIONS = ["png", "jpg", "jpeg", "webp"] as const;
 const svgFile = artFile(["svg"]);
 const rasterFile = artFile(RASTER_EXTENSIONS);
 const jsonFile = artFile(["json"]);
+/** Fotogrammi numerati dentro art/: i # stanno per il numero del fotogramma, da 0 e con gli zeri davanti. */
+const framePattern = z
+  .string()
+  .regex(
+    new RegExp(`^art/([A-Za-z0-9_-]+/)*[A-Za-z0-9_.-]*#+[A-Za-z0-9_.-]*\\.(${RASTER_EXTENSIONS.join("|")})$`, "i"),
+    "serve un percorso dentro art/ con # al posto del numero, per esempio art/raw/anim/drago-##.webp",
+  );
+
+/** Percorsi dei fotogrammi di un'animazione: art/raw/anim/drago-##.webp diventa drago-00.webp, drago-01.webp... */
+export function framePaths(pattern: string, count: number): string[] {
+  const run = /#+/.exec(pattern)!;
+  return Array.from({ length: count }, (_, k) => pattern.replace(run[0], String(k).padStart(run[0].length, "0")));
+}
 
 const seed = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 
@@ -55,17 +68,49 @@ const symbolArt = z
     reference: z.literal(false).optional(),
     /** Peso del riferimento di stile per questo simbolo, al posto di generate.referenceWeight. */
     referenceWeight: z.number().min(0).max(2).optional(),
+    /**
+     * Disegno (SVG o immagine in art/) che impone la forma al generatore con ControlNet: il simbolo
+     * si genera col workflow simbolo-forma.json, utile per lettere e forme che SDXL sbaglia.
+     */
+    shape: artFile(["svg", ...RASTER_EXTENSIONS]).optional(),
+    /** Forza della forma per questo simbolo, al posto di generate.shapeStrength. */
+    shapeStrength: z.number().min(0).max(2).optional(),
     /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
     seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */
     glow: color.optional(),
+    /**
+     * Animazione di vincita fatta di immagini, per esempio una clip image-to-video scontornata:
+     * prende il posto dei fotogrammi illuminati di win.frames per questo simbolo.
+     */
+    animation: z
+      .object({
+        frames: framePattern,
+        count: z.number().int().min(2).max(120),
+        fps: z.number().positive().max(60).default(12),
+        /** "pingpong": avanti e poi indietro, così il loop non salta; "loop": ricomincia dal primo. */
+        loop: z.enum(["pingpong", "loop"]).default("pingpong"),
+      })
+      .strict()
+      .optional(),
+    /**
+     * Movimento del disegno nel client, sopra la tessera: nelle vincite (e con land quando il rullo
+     * si ferma) il soggetto si anima da solo, senza fotogrammi. Vedi MOTIONS in src/module/schema.ts.
+     */
+    motion: motionSchema.optional(),
   })
   .strict()
-  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image");
+  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image")
+  .refine((s) => !(s.motion && s.animation), "motion e animation sono alternativi: tieni uno dei due");
 
 const note = z.tuple([z.union([z.number().positive(), z.tuple([z.number().positive(), z.number().positive()])]), z.number().positive().max(5)]);
 
-const soundArt = z
+/** Suono già pronto in art/, per esempio composto con tools/audio: viene copiato in assets/sounds/. */
+const soundFile = z
+  .object({ file: artFile(["ogg", "mp3", "wav"]) })
+  .strict();
+
+const synthSound = z
   .object({
     wave: z.enum(["square", "triangle", "sine", "noise"]).default("square"),
     /** Note in sequenza: [frequenza in Hz oppure [inizio, fine] per una glissata, durata in secondi]. */
@@ -74,12 +119,17 @@ const soundArt = z
   })
   .strict();
 
+/** Suono di un evento: sintetizzato a 8 bit dalle note, oppure un file. */
+const soundArt = z.union([synthSound, soundFile]);
+
 export const artSchema = z
   .object({
     /** Stile generale, ripreso in testa a ogni prompt per il generatore esterno. */
     prompt: z.string().optional(),
     /** "pixel": pixel netti e tessera quadrata; "smooth": bordi arrotondati e sfumature. */
     look: z.enum(["pixel", "smooth"]).default("pixel"),
+    /** Colore della cornice in rilievo attorno alle tessere con look "smooth" (predefinito: oro). */
+    frame: color.default("#c9a227"),
     symbols: z.record(z.string(), symbolArt),
     win: z
       .object({
@@ -110,6 +160,11 @@ export const artSchema = z
         referenceWeight: z.number().min(0).max(2).optional(),
         /** Modo dell'IP-Adapter, per esempio "style transfer" o "strong style transfer". */
         referenceMode: z.string().optional(),
+        /** Workflow per i simboli con shape (ControlNet); predefinito tools/comfyui/workflows/simbolo-forma.json. */
+        shapeWorkflow: jsonFile.optional(),
+        /** Quanto la forma guida il generatore (0-2) e fino a che punto della generazione (0-1). */
+        shapeStrength: z.number().min(0).max(2).optional(),
+        shapeEnd: z.number().min(0).max(1).optional(),
         /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
         cleanup: z.boolean().default(true),
         /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */
@@ -129,3 +184,4 @@ export const artSchema = z
 export type ArtSpec = z.infer<typeof artSchema>;
 export type SymbolArt = z.infer<typeof symbolArt>;
 export type SoundArt = z.infer<typeof soundArt>;
+export type SynthSound = z.infer<typeof synthSound>;

@@ -4,11 +4,12 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ComfyClient, ComfyError, pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
-import { fitSymbol, generate } from "../src/assets/generate.js";
+import { fitFrames, fitSymbol, generate, shapeImage } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
 const sfondo = JSON.parse(readFileSync("tools/comfyui/workflows/sfondo.json", "utf8")) as Workflow;
 const stile = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo-stile.json", "utf8")) as Workflow;
+const forma = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo-forma.json", "utf8")) as Workflow;
 
 /** PNG minimo con le misure scritte nell'intestazione IHDR. */
 function fakePng(width: number, height: number): Uint8Array<ArrayBuffer> {
@@ -113,6 +114,28 @@ describe("workflow di ComfyUI", () => {
     expect(() => prepareWorkflow(simbolo, { prompt: "x", seed: 1, filenamePrefix: "x", reference: "r.png" })).toThrow(/LoadImage/);
   });
 
+  it("passa la forma a ControlNet e trova il prompt dietro ControlNetApplyAdvanced", () => {
+    const flow = prepareWorkflow(forma, { prompt: "un sole", seed: 9, filenamePrefix: "x", shape: "slot/forma.png", shapeStrength: 0.95, shapeEnd: 0.6 });
+    expect(flow["2"]!.inputs.text).toBe("un sole");
+    expect(flow["12"]!.inputs.image).toBe("slot/forma.png");
+    expect(flow["16"]!.inputs).toMatchObject({ strength: 0.95, end_percent: 0.6 });
+    // Senza valori restano quelli del workflow.
+    const plain = prepareWorkflow(forma, { prompt: "x", seed: 1, filenamePrefix: "x", shape: "f.png" });
+    expect(plain["16"]!.inputs).toMatchObject({ strength: forma["16"]!.inputs.strength, end_percent: forma["16"]!.inputs.end_percent });
+    expect(() => prepareWorkflow(forma, { prompt: "x", seed: 1, filenamePrefix: "x" })).toThrow(/symbols.<ID>.shape/);
+    expect(() => prepareWorkflow(simbolo, { prompt: "x", seed: 1, filenamePrefix: "x", shape: "f.png" })).toThrow(/"forma"/);
+  });
+
+  it("mette il disegno della forma al centro di un quadrato grigio", async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#000"/></svg>';
+    const png = await shapeImage(new TextEncoder().encode(svg));
+    const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+    expect(info).toMatchObject({ width: 1024, height: 1024 });
+    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
+    expect(at(10, 10)).toBe(208);
+    expect(at(512, 512)).toBe(0);
+  });
+
   it("toglie i frammenti staccati dal soggetto e ne lascia il bordo morbido", () => {
     const w = 20;
     const rgba = new Uint8Array(w * w * 4);
@@ -156,7 +179,7 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     // Si parte da una slot senza immagini generate né impostazioni di generazione.
     delete art.generate;
     for (const symbol of [...Object.values(art.symbols), art.background] as Record<string, unknown>[]) {
-      for (const key of ["generate", "seed", "reference", "referenceWeight", "image"]) delete symbol[key];
+      for (const key of ["generate", "seed", "reference", "referenceWeight", "shape", "shapeStrength", "image", "animation"]) delete symbol[key];
     }
     writeFileSync(artPath, JSON.stringify(art));
     rmSync(join(dir, "art/raw"), { recursive: true, force: true });
@@ -242,6 +265,36 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     expect(sent).toHaveLength(7);
   });
 
+  it("con symbols.<ID>.shape usa il workflow della forma e non il riferimento", async () => {
+    copy();
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    art.generate = { reference: "art/raw/scarabeo.webp", shapeStrength: 0.7 };
+    art.symbols.ANKH.shape = "art/symbols/ankh.svg";
+    art.symbols.A.shape = "art/symbols/a.svg";
+    art.symbols.A.shapeStrength = 0.95;
+    art.symbols.A.seed = 40;
+    art.symbols.K.shape = "art/forme/manca.svg";
+    writeFileSync(artPath, JSON.stringify(art));
+    const { sent, uploads, client } = fakeComfy();
+    // Lo scarabeo di riferimento non c'è, ma con la forma non serve.
+    await generate(dir, { only: ["ANKH", "A"], force: false, variants: 2, client, log: () => {} });
+    expect(uploads).toEqual(["slot/tempio-del-sole-forma-ankh.png", "slot/tempio-del-sole-forma-a.png"]);
+    const [ankh, , a] = sent.map((s) => s.workflow);
+    const node = (w: Workflow, type: string) => Object.values(w).find((n) => n.class_type === type);
+    expect(node(ankh!, "IPAdapterAdvanced")).toBeUndefined();
+    expect(node(ankh!, "LoadImage")!.inputs.image).toBe("slot/tempio-del-sole-forma-ankh.png");
+    expect(node(ankh!, "ControlNetApplyAdvanced")!.inputs.strength).toBe(0.7);
+    expect(node(a!, "ControlNetApplyAdvanced")!.inputs.strength).toBe(0.95);
+    const records = JSON.parse(readFileSync(join(dir, "art/raw/generated.json"), "utf8"));
+    expect(records["art/raw/varianti/a-41.webp"]).toMatchObject({
+      workflow: "tools/comfyui/workflows/simbolo-forma.json",
+      shape: "art/symbols/a.svg",
+      shapeStrength: 0.95,
+    });
+    await expect(generate(dir, { only: ["K"], force: false, variants: 1, client, log: () => {} })).rejects.toThrow(/symbols.K.shape: manca/);
+  });
+
   it("per simbolo si può togliere il riferimento o cambiarne il peso", async () => {
     copy();
     const artPath = join(dir, "art/art.json");
@@ -269,6 +322,24 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     const alpha = (x: number, y: number) => fitted.data[(y * 512 + x) * 4 + 3];
     expect(alpha(256, 30)).toBe(255);
     expect(alpha(256, 5)).toBe(0);
+  });
+
+  it("ritaglia tutti i fotogrammi di un'animazione allo stesso modo", async () => {
+    // Due fotogrammi 100x100: un quadrato di 20 px che si sposta da sinistra a destra.
+    const square = (x: number) =>
+      sharp({ create: { width: 100, height: 100, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+        .composite([{ input: { create: { width: 20, height: 20, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } } }, left: x, top: 40 }])
+        .png()
+        .toBuffer();
+    const frames = await fitFrames([await square(10), await square(70)], 100, 0);
+    const alpha = async (frame: Buffer, x: number, y: number) => {
+      const { data } = await sharp(frame).raw().toBuffer({ resolveWithObject: true });
+      return data[(y * 100 + x) * 4 + 3];
+    };
+    // Il ritaglio comune va da x=10 a x=90: il primo quadrato resta a sinistra, il secondo a destra.
+    expect(await alpha(frames[0]!, 5, 50)).toBeGreaterThan(200);
+    expect(await alpha(frames[0]!, 95, 50)).toBe(0);
+    expect(await alpha(frames[1]!, 95, 50)).toBeGreaterThan(200);
   });
 
   it("rifiuta simboli sconosciuti", async () => {

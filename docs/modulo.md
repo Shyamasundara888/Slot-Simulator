@@ -180,7 +180,8 @@ La scena cambia solo l'aspetto: non tocca mai l'esito. Ogni campo è facoltativo
 | `symbols.<ID>.image` | immagine del simbolo, al centro della tessera |
 | `symbols.<ID>.winFrames` | fotogrammi mostrati in ciclo quando il simbolo vince; senza, il simbolo pulsa |
 | `symbols.<ID>.fps` (`8`) | fotogrammi al secondo, al massimo 60 |
-| `sounds` | `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20× la puntata), `feature` (free spin e sequenze degli script) |
+| `symbols.<ID>.art`, `symbols.<ID>.tile`, `symbols.<ID>.motion` | disegno su fondo trasparente, tessera senza disegno e movimento del disegno (vedi [Disegni che si muovono](asset.md#disegni-che-si-muovono)); con `motion` servono `art` e `tile`, e `winFrames` sono tessere senza disegno |
+| `sounds` | `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20× la puntata), `feature` (free spin e sequenze degli script); musiche in loop `music` (gioco base, parte al primo giro) e `bonusMusic` (durante free spin e sequenze) |
 | `modes.<modo>.label` | nome di una modalità aggiunta, per esempio "Gold Spin" |
 | `modes.<modo>.description` | regola della modalità, mostrata nella paytable |
 

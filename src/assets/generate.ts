@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
@@ -7,7 +7,7 @@ import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 import { backgroundPrompt, symbolPrompt } from "./build.js";
 import { pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type ComfyClient, type Workflow } from "./comfyui.js";
-import { artSchema, type ArtSpec } from "./spec.js";
+import { artSchema, framePaths, type ArtSpec } from "./spec.js";
 
 export const ART_FILE = "art/art.json";
 
@@ -51,6 +51,8 @@ type GeneratedRecord = {
   reference?: string | undefined;
   referenceWeight?: number | undefined;
   referenceMode?: string | undefined;
+  shape?: string | undefined;
+  shapeStrength?: number | undefined;
   generator: "ComfyUI";
   date: string;
 };
@@ -90,6 +92,89 @@ export async function fitSymbol(png: Uint8Array, size: number, margin = 0.04): P
   );
 }
 
+/**
+ * Come fitSymbol, ma per i fotogrammi di un'animazione: il ritaglio è uno solo, quello che
+ * contiene il soggetto in tutti i fotogrammi, così il soggetto non balla da un fotogramma all'altro.
+ */
+export async function fitFrames(images: readonly Uint8Array[], size: number, margin = 0.04): Promise<Buffer[]> {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const image of images) {
+    const { info } = await sharp(image).trim({ threshold: 4 }).toBuffer({ resolveWithObject: true });
+    const x = -(info.trimOffsetLeft ?? 0);
+    const y = -(info.trimOffsetTop ?? 0);
+    left = Math.min(left, x);
+    top = Math.min(top, y);
+    right = Math.max(right, x + info.width);
+    bottom = Math.max(bottom, y + info.height);
+  }
+  const inner = Math.round(size * (1 - 2 * margin));
+  const pad = Math.floor((size - inner) / 2);
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+  return Promise.all(
+    images.map(async (image) =>
+      sharp(
+        await sharp(image)
+          .ensureAlpha()
+          .extract({ left, top, width: right - left, height: bottom - top })
+          .resize(inner, inner, { fit: "contain", background: transparent, kernel: "lanczos3" })
+          .extend({ top: pad, bottom: size - inner - pad, left: pad, right: size - inner - pad, background: transparent })
+          .png()
+          .toBuffer(),
+      )
+        .webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 })
+        .toBuffer(),
+    ),
+  );
+}
+
+const FRAME_FILE = /\.(png|webp)$/i;
+
+/**
+ * Porta nel modulo i fotogrammi già scontornati di un'animazione (per esempio da una clip
+ * image-to-video): li ritaglia tutti allo stesso modo, li salva in art/raw/anim/<id>-NN.webp
+ * e restituisce il campo animation da mettere nel simbolo in art.json.
+ */
+export async function importFrames(dir: string, id: string, from: string): Promise<{ files: string[]; animation: { frames: string; count: number } }> {
+  const spec = await readSpec(dir);
+  if (!spec.symbols[id]) throw new ModuleError([`${ART_FILE}: il simbolo ${id} non c'è`]);
+  const sources = existsSync(from) ? (await readdir(from)).filter((f) => FRAME_FILE.test(f)).sort() : [];
+  if (sources.length < 2) throw new ModuleError([`${from}: servono almeno 2 fotogrammi PNG o WebP`]);
+  if (sources.length > 120) throw new ModuleError([`${from}: al massimo 120 fotogrammi, ce ne sono ${sources.length}`]);
+  const images = await Promise.all(sources.map((f) => readFile(join(from, f))));
+  const fitted = await fitFrames(images, spec.generate.size);
+  const digits = String(fitted.length - 1).length;
+  const pattern = `art/raw/anim/${id.toLowerCase()}-${"#".repeat(Math.max(2, digits))}.webp`;
+  const files = framePaths(pattern, fitted.length);
+  await mkdir(join(dir, "art/raw/anim"), { recursive: true });
+  await Promise.all(files.map((file, k) => writeFile(join(dir, file), fitted[k]!)));
+  return { files, animation: { frames: pattern, count: files.length } };
+}
+
+/** Lato dell'immagine della forma passata a ControlNet, come le immagini dei simboli di SDXL. */
+const SHAPE_SIZE = 1024;
+
+/**
+ * Immagine della forma per ControlNet: il disegno (anche SVG) centrato su un quadrato grigio chiaro,
+ * con un margine come quello che SDXL lascia attorno ai simboli.
+ */
+export async function shapeImage(source: Uint8Array): Promise<Buffer> {
+  const inner = Math.round(SHAPE_SIZE * 0.8);
+  const pad = Math.floor((SHAPE_SIZE - inner) / 2);
+  const grey = { r: 208, g: 208, b: 208, alpha: 1 };
+  const drawing = await sharp(source, { density: 300 })
+    .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  return sharp({ create: { width: SHAPE_SIZE, height: SHAPE_SIZE, channels: 4, background: grey } })
+    .composite([{ input: drawing, left: pad, top: pad }])
+    .flatten({ background: grey })
+    .png()
+    .toBuffer();
+}
+
 /** Genera con ComfyUI le immagini di simboli e sfondo in art/raw/ e restituisce i file scritti. */
 export async function generate(dir: string, options: GenerateOptions): Promise<string[]> {
   const log = options.log ?? console.log;
@@ -115,13 +200,14 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   const reference = settings.reference;
   // Il riferimento può mancare solo se si genera proprio lui (il primo passo della serie).
   const needsReference = chosen.some(
-    (id) => id !== "background" && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
+    (id) => id !== "background" && !spec.symbols[id]!.shape && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
   );
   if (reference && needsReference && !existsSync(join(dir, reference))) {
     throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference} (generalo prima con --only)`]);
   }
   const symbolFlow = await readWorkflow(dir, settings.workflow, reference ? "simbolo-stile.json" : "simbolo.json");
   const plainFlow = reference && !settings.workflow ? await readWorkflow(dir, undefined, "simbolo.json") : symbolFlow;
+  const shapeFlow = chosen.some((id) => spec.symbols[id]?.shape) ? await readWorkflow(dir, settings.shapeWorkflow, "simbolo-forma.json") : undefined;
   const backgroundFlow = spec.background ? await readWorkflow(dir, settings.backgroundWorkflow, "sfondo.json") : undefined;
 
   const recordPath = join(dir, "art/raw/generated.json");
@@ -136,9 +222,13 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
     // Il simbolo che fa da riferimento non si rigenera guardando se stesso.
     const ownFile = `art/raw/${name}.webp`;
     const art = isBackground ? undefined : spec.symbols[id];
-    const styled = !isBackground && reference !== undefined && reference !== ownFile && art?.reference !== false;
+    // Con una forma il simbolo segue il disegno (ControlNet) e non usa il riferimento di stile.
+    const shape = art?.shape;
+    const styled = !isBackground && !shape && reference !== undefined && reference !== ownFile && art?.reference !== false;
     const referenceWeight = art?.referenceWeight ?? settings.referenceWeight;
-    const flow = isBackground ? backgroundFlow! : styled ? symbolFlow : plainFlow;
+    const shapeStrength = art?.shapeStrength ?? settings.shapeStrength;
+    const flow = isBackground ? backgroundFlow! : shape ? shapeFlow! : styled ? symbolFlow : plainFlow;
+    let shapeName: string | undefined;
     const prompt = isBackground ? backgroundPrompt(spec) : symbolPrompt(spec, id, labels, "plain light grey background");
     const ownSeed = isBackground ? spec.background?.seed : spec.symbols[id]?.seed;
     const firstSeed = options.seed ?? ownSeed ?? settings.seed;
@@ -156,12 +246,17 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
       if (styled && uploaded === undefined) {
         uploaded = await options.client.upload(await readFile(join(dir, reference)), `${slot}-${basename(reference)}`, "slot");
       }
+      if (shape && shapeName === undefined) {
+        if (!existsSync(join(dir, shape))) throw new ModuleError([`${ART_FILE}: symbols.${id}.shape: manca ${shape}`]);
+        shapeName = await options.client.upload(await shapeImage(await readFile(join(dir, shape))), `${slot}-forma-${name}.png`, "slot");
+      }
       const workflow = prepareWorkflow(flow.workflow, {
         prompt,
         seed,
         filenamePrefix: `slot/${slot}/${name}`,
         size,
         ...(styled && { reference: uploaded, referenceWeight, referenceMode: settings.referenceMode }),
+        ...(shape && { shape: shapeName, shapeStrength, shapeEnd: settings.shapeEnd }),
       });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
@@ -186,6 +281,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         workflow: flow.name,
         checkpoint: workflowCheckpoint(flow.workflow),
         ...(styled && { reference, referenceWeight, referenceMode: settings.referenceMode }),
+        ...(shape && { shape, shapeStrength }),
         generator: "ComfyUI",
         date: new Date().toISOString(),
       };

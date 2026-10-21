@@ -35,6 +35,11 @@ export type PrepareOptions = {
   /** Peso e modo del riferimento nei nodi IPAdapter; se mancano restano quelli del workflow. */
   referenceWeight?: number | undefined;
   referenceMode?: string | undefined;
+  /** Nome dell'immagine della forma già caricata, per il nodo LoadImage intitolato "forma" (ControlNet). */
+  shape?: string | undefined;
+  /** Forza del ControlNet e punto (0-1) in cui smette di guidare; se mancano restano quelli del workflow. */
+  shapeStrength?: number | undefined;
+  shapeEnd?: number | undefined;
   /** Se c'è, l'immagine viene ridimensionata a questa misura prima di salvarla. */
   size?: { width: number; height: number } | undefined;
 };
@@ -46,8 +51,12 @@ export function prepareWorkflow(source: Workflow, options: PrepareOptions): Work
   if (samplers.length !== 1) throw new ComfyError(`il workflow deve avere un solo campionatore (${SAMPLERS.join(" o ")}), ne ha ${samplers.length}`);
   const [, sampler] = samplers[0]!;
 
-  const positive = sampler.inputs.positive;
-  const encoder = isLink(positive) ? workflow[positive[0]] : undefined;
+  // Il prompt positivo può passare da nodi intermedi con un ingresso positive, come ControlNetApplyAdvanced.
+  let encoder: WorkflowNode | undefined = sampler;
+  for (let hops = 0; encoder && encoder.class_type !== "CLIPTextEncode" && hops < 16; hops++) {
+    const positive: unknown = encoder.inputs.positive ?? encoder.inputs.conditioning;
+    encoder = isLink(positive) ? workflow[positive[0]] : undefined;
+  }
   if (!encoder || encoder.class_type !== "CLIPTextEncode") throw new ComfyError("l'ingresso positive del campionatore deve venire da un nodo CLIPTextEncode");
   encoder.inputs.text = options.prompt;
 
@@ -55,7 +64,21 @@ export function prepareWorkflow(source: Workflow, options: PrepareOptions): Work
   if (!seedKey) throw new ComfyError("il campionatore non ha un ingresso seed");
   sampler.inputs[seedKey] = options.seed;
 
-  const loads = Object.values(workflow).filter((n) => n.class_type === "LoadImage");
+  const isShape = (n: WorkflowNode) => (n._meta as { title?: string } | undefined)?.title === "forma";
+  const shapes = Object.values(workflow).filter((n) => n.class_type === "LoadImage" && isShape(n));
+  if (options.shape !== undefined) {
+    if (shapes.length !== 1) throw new ComfyError(`per usare una forma il workflow deve avere un solo nodo LoadImage intitolato "forma", ne ha ${shapes.length}`);
+    shapes[0]!.inputs.image = options.shape;
+    for (const node of Object.values(workflow)) {
+      if (!node.class_type.startsWith("ControlNetApply")) continue;
+      if (options.shapeStrength !== undefined) node.inputs.strength = options.shapeStrength;
+      if (options.shapeEnd !== undefined && "end_percent" in node.inputs) node.inputs.end_percent = options.shapeEnd;
+    }
+  } else if (shapes.length > 0) {
+    throw new ComfyError('il workflow carica una forma (LoadImage "forma"): indica symbols.<ID>.shape in art.json');
+  }
+
+  const loads = Object.values(workflow).filter((n) => n.class_type === "LoadImage" && !isShape(n));
   if (options.reference !== undefined) {
     if (loads.length !== 1) throw new ComfyError(`per usare un riferimento il workflow deve avere un solo nodo LoadImage, ne ha ${loads.length}`);
     loads[0]!.inputs.image = options.reference;

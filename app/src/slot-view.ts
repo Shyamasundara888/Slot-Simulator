@@ -1,10 +1,12 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from "pixi.js";
 import type { Cell, Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
+import type { Motion } from "../../src/module/schema.js";
 import { centeredReels, REEL_GAP, uiImages } from "../../src/module/ui.js";
 import { easeOutBack, tween } from "./anim.js";
-import { lighten, WinEffects, type WinCell } from "./effects.js";
+import { lighten, reducedMotion, WinEffects, type WinCell } from "./effects.js";
 import { Hud } from "./hud.js";
+import { SymbolMotion } from "./motion.js";
 const GAP = REEL_GAP;
 const LINE_COLORS = [0xffd43b, 0x69db7c, 0x4dabf7, 0xff8787, 0xda77f2, 0x63e6be, 0xffa94d, 0x74c0fc, 0xa9e34b, 0xf783ac];
 /** Tinta delle celle che non fanno parte di una vincita. */
@@ -24,6 +26,20 @@ async function loadTexture(url: string): Promise<Texture> {
 interface WinAnimation {
   frames: Texture[];
   fps: number;
+}
+
+/** Disegno e tessera vuota di un simbolo che si muove (motion). */
+interface MotionArt {
+  art: Texture;
+  tile: Texture;
+  motion: Motion;
+}
+
+/** Disegno in movimento sopra una cella, con la cella a cui rimettere la tessera piena alla fine. */
+interface ActiveMotion {
+  view: SymbolMotion;
+  sprite: Sprite;
+  full: Texture;
 }
 
 /** Un rullo: rows + 2 sprite (uno sopra e uno sotto l'area visibile) che scorrono verso il basso. */
@@ -142,6 +158,13 @@ export class SlotView {
   private readonly cellH: number;
   private speed = 2.2;
   private readonly animations = new Map<SymbolId, WinAnimation>();
+  private readonly motions = new Map<SymbolId, MotionArt>();
+  private readonly symbolTextures: ReadonlyMap<SymbolId, Texture>;
+  /** Disegni in movimento sopra i rulli: fuori dalla maschera dei rulli, così possono uscire dalla cella. */
+  private readonly motionLayer = new Container();
+  private readonly winMotions: ActiveMotion[] = [];
+  private readonly landings: ActiveMotion[] = [];
+  private readonly calm = reducedMotion();
 
   private winAnimation: ((ticker: Ticker) => void) | null = null;
   private readonly effects: WinEffects;
@@ -183,6 +206,7 @@ export class SlotView {
       .stroke({ width: 3, color: 0xf5b301, alpha: 0.6 });
     // Gli elementi "below" stanno fra lo sfondo e i rulli, quelli "above" sopra le linee vincenti.
     const textures = this.buildTextures(scene.symbols, images);
+    this.symbolTextures = textures;
     const symbolImages = new Map(
       [...scene.symbols].map(([id, style]) => [id, (style.image && images.get(style.image)) || textures.get(id)!] as const),
     );
@@ -198,6 +222,10 @@ export class SlotView {
       const frames = style.winFrames.map((path) => this.imageTile(id, images.get(path)!));
       this.animations.set(id, { frames, fps: style.fps });
     }
+    for (const [id, style] of scene.symbols) {
+      if (!style.motion || !style.art || !style.tile) continue;
+      this.motions.set(id, { art: images.get(style.art)!, tile: this.imageTile(id, images.get(style.tile)!), motion: style.motion });
+    }
     math.reels.base.forEach((strip, i) => {
       const reel = new ReelView(strip, textures, math.rows, this.cellW, this.cellH);
       reel.container.x = this.gridX + i * (this.cellW + GAP);
@@ -206,6 +234,7 @@ export class SlotView {
       app.stage.addChild(reel.container);
     });
 
+    app.stage.addChild(this.motionLayer);
     app.stage.addChild(this.effects.over);
     app.stage.addChild(this.winLayer);
     app.stage.addChild(this.hud.above);
@@ -220,6 +249,7 @@ export class SlotView {
 
     app.ticker.add((ticker) => {
       for (const reel of this.reels) reel.update(ticker.deltaMS, this.speed);
+      this.updateLandings(ticker.deltaMS / 1000);
     });
   }
 
@@ -238,7 +268,9 @@ export class SlotView {
     const { scene } = module;
     const paths = new Set<string>();
     if (scene.backgroundImage) paths.add(scene.backgroundImage);
-    for (const style of scene.symbols.values()) for (const p of [style.image, ...(style.winFrames ?? [])]) if (p) paths.add(p);
+    for (const style of scene.symbols.values()) {
+      for (const p of [style.image, style.art, style.tile, ...(style.winFrames ?? [])]) if (p) paths.add(p);
+    }
     for (const p of uiImages(module.ui)) paths.add(p);
     await Promise.all(
       [...paths].map(async (path) => {
@@ -341,10 +373,56 @@ export class SlotView {
     for (const reel of this.reels) reel.start();
     await new Promise((r) => setTimeout(r, turbo ? 120 : 380));
     for (let i = 0; i < this.reels.length; i++) {
-      const done = this.reels[i]!.stop(this.app, reelGrid[i]!, turbo ? 160 : 320).then(this.onReelStop);
+      const done = this.reels[i]!.stop(this.app, reelGrid[i]!, turbo ? 160 : 320).then(() => {
+        this.onReelStop();
+        this.land(i);
+      });
       if (i === this.reels.length - 1) await done;
       else await new Promise((r) => setTimeout(r, turbo ? 60 : 170));
     }
+  }
+
+  /** Salto all'arresto del rullo per i simboli con motion.land (di solito wild e scatter). */
+  private land(reel: number): void {
+    if (this.calm) return;
+    const view = this.reels[reel]!;
+    for (let row = 0; row < this.module.math.rows; row++) {
+      const symbol = view.symbolAt(row);
+      const art = this.motions.get(symbol);
+      if (!art?.motion.land) continue;
+      this.landings.push(this.startMotion(reel, row, art, "land"));
+    }
+  }
+
+  private updateLandings(seconds: number): void {
+    for (let i = this.landings.length - 1; i >= 0; i--) {
+      const landing = this.landings[i]!;
+      if (landing.view.update(seconds)) continue;
+      this.endMotion(landing);
+      this.landings.splice(i, 1);
+    }
+  }
+
+  /** Mette il disegno in movimento sopra la cella, che intanto mostra la tessera vuota. */
+  private startMotion(reel: number, row: number, art: MotionArt, mode: "win" | "land"): ActiveMotion {
+    const sprite = this.reels[reel]!.cell(row);
+    const full = this.symbolTextures.get(this.reels[reel]!.symbolAt(row))!;
+    sprite.texture = art.tile;
+    const view = new SymbolMotion(this.app.renderer, art.art, art.motion, this.cellW, this.cellH, mode);
+    const { x, y } = this.cellCenter(reel, row);
+    view.container.position.set(x, y);
+    this.motionLayer.addChild(view.container);
+    return { view, sprite, full };
+  }
+
+  private endMotion(active: ActiveMotion): void {
+    active.view.destroy();
+    if (!active.sprite.destroyed) active.sprite.texture = active.full;
+  }
+
+  /** Ferma subito i salti all'arresto ancora in corso. */
+  private finishLandings(): void {
+    for (const landing of this.landings.splice(0)) this.endMotion(landing);
   }
 
   /** Anima le celle che upgrade ed espansioni hanno cambiato. */
@@ -396,24 +474,36 @@ export class SlotView {
       const cells: WinCell[] = [...winning].map((key) => {
         const [reel, row] = key.split(":").map(Number) as [number, number];
         const { x, y } = center(reel, row);
-        const color = this.module.scene.symbols.get(this.reels[reel]!.symbolAt(row))?.color ?? "#ffd43b";
-        return { x: x - this.cellW / 2, y: y - this.cellH / 2, w: this.cellW, h: this.cellH, color: lighten(toHex(color), 0.65) };
+        const symbol = this.reels[reel]!.symbolAt(row);
+        const color = this.module.scene.symbols.get(symbol)?.color ?? "#ffd43b";
+        // Il riflesso dei disegni che si muovono lo fa SymbolMotion, seguendo la sagoma.
+        const shine = !(this.motions.get(symbol)?.motion.shine && !this.calm);
+        return { x: x - this.cellW / 2, y: y - this.cellH / 2, w: this.cellW, h: this.cellH, color: lighten(toHex(color), 0.65), shine };
       });
       this.effects.highlight(cells);
     }
     this.winText.text = amount ?? "";
   }
 
-  /** Anima le celle vincenti: i fotogrammi della scena se ci sono, altrimenti una pulsazione. */
+  /**
+   * Anima le celle vincenti: il disegno che si muove (motion) sopra i fotogrammi della tessera,
+   * oppure i fotogrammi della scena, oppure una pulsazione.
+   */
   private animateWins(winning: ReadonlySet<string>): void {
+    this.finishLandings();
     const cells = [...winning].map((key) => {
       const [reel, row] = key.split(":").map(Number) as [number, number];
       const view = this.reels[reel]!;
-      return { sprite: view.cell(row), animation: this.animations.get(view.symbolAt(row)) };
+      const art = this.calm ? undefined : this.motions.get(view.symbolAt(row));
+      if (art) this.winMotions.push(this.startMotion(reel, row, art, "win"));
+      const animation = this.animations.get(view.symbolAt(row));
+      // Con il disegno in movimento i fotogrammi sono tessere vuote: senza motion servono quelli completi.
+      return { sprite: view.cell(row), animation: art || !this.motions.has(view.symbolAt(row)) ? animation : undefined };
     });
     let elapsed = 0;
     this.winAnimation = (ticker) => {
       elapsed += ticker.deltaMS / 1000;
+      for (const { view } of this.winMotions) view.update(ticker.deltaMS / 1000);
       for (const { sprite, animation } of cells) {
         if (animation) sprite.texture = animation.frames[Math.floor(elapsed * animation.fps) % animation.frames.length]!;
         else sprite.scale.set(1 + 0.06 * Math.sin(elapsed * Math.PI * 3));
@@ -494,6 +584,8 @@ export class SlotView {
 
   clearWins(): void {
     this.effects.clear();
+    this.finishLandings();
+    for (const active of this.winMotions.splice(0)) this.endMotion(active);
     if (this.winAnimation) {
       this.app.ticker.remove(this.winAnimation);
       this.winAnimation = null;

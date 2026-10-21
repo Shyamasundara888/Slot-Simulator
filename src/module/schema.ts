@@ -95,8 +95,34 @@ const assetPath = (extensions: readonly string[], what: string) =>
 const image = assetPath(IMAGE_EXTENSIONS, "immagine");
 const sound = assetPath(SOUND_EXTENSIONS, "suono");
 
-/** Eventi del client che possono avere un suono: partenza dei rulli, arresto di un rullo, vincita, vincita grande, bonus. */
-export const SOUND_EVENTS = ["spin", "stop", "win", "bigWin", "feature"] as const;
+/**
+ * Eventi del client che possono avere un suono: partenza dei rulli, arresto di un rullo, vincita, vincita grande, bonus,
+ * più le due musiche in loop, del gioco base e dei bonus (free spin e sequenze degli script).
+ */
+export const SOUND_EVENTS = ["spin", "stop", "win", "bigWin", "feature", "music", "bonusMusic"] as const;
+/** Eventi che sono musiche di sottofondo, suonate in loop. */
+export const MUSIC_EVENTS = ["music", "bonusMusic"] as const;
+
+/** Movimenti del disegno di un simbolo, fatti dal client sopra la tessera senza fotogrammi. */
+export const MOTIONS = ["pulse", "pop", "swing", "spin", "wobble", "flutter"] as const;
+export type MotionKind = (typeof MOTIONS)[number];
+
+export const motionSchema = z
+  .object({
+    /**
+     * Movimento nelle vincite: "pulse" respira, "pop" esce dalla tessera e respira, "swing" oscilla,
+     * "spin" gira su se stesso, "wobble" ondeggia come gelatina, "flutter" batte come ali.
+     */
+    win: z.enum(MOTIONS).default("pop"),
+    /** Riflesso di luce che attraversa il disegno. */
+    shine: z.boolean().default(true),
+    /** Breve salto quando il rullo si ferma sul simbolo (di solito wild e scatter). */
+    land: z.boolean().default(false),
+    /** Ampiezza del movimento: 1 normale, meno di 1 più contenuto. */
+    strength: z.number().min(0.2).max(3).default(1),
+  })
+  .strict();
+export type Motion = z.infer<typeof motionSchema>;
 
 export const sceneSchema = z
   .object({
@@ -116,8 +142,15 @@ export const sceneSchema = z
             winFrames: z.array(image).min(1).optional(),
             /** Fotogrammi al secondo dell'animazione. */
             fps: z.number().positive().max(60).default(8),
+            /** Solo il disegno, su fondo trasparente e grande come la tessera: è quello che si muove con motion. */
+            art: image.optional(),
+            /** La tessera senza disegno, mostrata sotto il disegno che si muove. */
+            tile: image.optional(),
+            /** Movimento del disegno; con motion anche winFrames sono tessere senza disegno. */
+            motion: motionSchema.optional(),
           })
-          .strict(),
+          .strict()
+          .refine((s) => !s.motion || (s.art && s.tile), "motion richiede art e tile"),
       )
       .default({}),
     /** Suoni facoltativi per gli eventi del client. */
@@ -128,6 +161,8 @@ export const sceneSchema = z
         win: sound.optional(),
         bigWin: sound.optional(),
         feature: sound.optional(),
+        music: sound.optional(),
+        bonusMusic: sound.optional(),
       })
       .strict()
       .default({}),

@@ -1,0 +1,188 @@
+{
+  "3": {
+    "inputs": {
+      "denoise": 1,
+      "seed": 1,
+      "negative": [
+        "7",
+        0
+      ],
+      "cfg": 5,
+      "sampler_name": "uni_pc",
+      "latent_image": [
+        "55",
+        0
+      ],
+      "scheduler": "simple",
+      "model": [
+        "48",
+        0
+      ],
+      "steps": 30,
+      "positive": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "6": {
+    "inputs": {
+      "clip": [
+        "38",
+        0
+      ],
+      "text": "A golden Egyptian scarab beetle jewel with a lapis lazuli shell and a turquoise head, centered on a plain dark background, seen from above. Slow seamless looping motion: the golden wings open slightly and close again, soft gold reflections slide across the polished shell. Static camera, locked-off shot, no zoom, no camera movement, no change of framing, the beetle stays in place."
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "7": {
+    "inputs": {
+      "clip": [
+        "38",
+        0
+      ],
+      "text": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "39",
+        0
+      ]
+    },
+    "class_type": "VAEDecode"
+  },
+  "37": {
+    "inputs": {
+      "weight_dtype": "default",
+      "unet_name": "wan2.2_ti2v_5B_fp16.safetensors"
+    },
+    "class_type": "UNETLoader"
+  },
+  "38": {
+    "inputs": {
+      "device": "default",
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan"
+    },
+    "class_type": "CLIPLoader"
+  },
+  "39": {
+    "inputs": {
+      "vae_name": "wan2.2_vae.safetensors"
+    },
+    "class_type": "VAELoader"
+  },
+  "48": {
+    "inputs": {
+      "model": [
+        "37",
+        0
+      ],
+      "shift": 8
+    },
+    "class_type": "ModelSamplingSD3"
+  },
+  "55": {
+    "inputs": {
+      "batch_size": 1,
+      "width": 704,
+      "vae": [
+        "39",
+        0
+      ],
+      "length": 49,
+      "start_image": [
+        "56",
+        0
+      ],
+      "height": 704
+    },
+    "class_type": "Wan22ImageToVideoLatent"
+  },
+  "56": {
+    "inputs": {
+      "image": "scarabeo-anim-start.png"
+    },
+    "class_type": "LoadImage"
+  },
+  "57": {
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ],
+      "fps": 24
+    },
+    "class_type": "CreateVideo"
+  },
+  "58": {
+    "inputs": {
+      "format": "mp4",
+      "filename_prefix": "slot/animazione/scarabeo",
+      "video": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "SaveVideo"
+  },
+  "60": {
+    "inputs": {
+      "bg_removal_name": "birefnet.safetensors"
+    },
+    "class_type": "LoadBackgroundRemovalModel"
+  },
+  "61": {
+    "inputs": {
+      "bg_removal_model": [
+        "60",
+        0
+      ],
+      "image": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "RemoveBackground"
+  },
+  "62": {
+    "inputs": {
+      "mask": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "InvertMask"
+  },
+  "63": {
+    "inputs": {
+      "alpha": [
+        "62",
+        0
+      ],
+      "image": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "JoinImageWithAlpha"
+  },
+  "64": {
+    "inputs": {
+      "images": [
+        "63",
+        0
+      ],
+      "filename_prefix": "slot/animazione/scarabeo-frame"
+    },
+    "class_type": "SaveImage"
+  }
+}

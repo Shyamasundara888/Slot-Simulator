@@ -6,6 +6,7 @@ import {
   linesSchema,
   type Manifest,
   manifestSchema,
+  type Motion,
   paytableSchema,
   reelsSchema,
   sceneSchema,
@@ -37,6 +38,10 @@ export interface SymbolStyle {
   image?: string | undefined;
   winFrames?: readonly string[] | undefined;
   fps: number;
+  /** Disegno e tessera separati, per il movimento del disegno (motion). */
+  art?: string | undefined;
+  tile?: string | undefined;
+  motion?: Motion | undefined;
 }
 
 export interface ModeStyle {
@@ -85,7 +90,7 @@ export function sceneAssets(scene: Scene): string[] {
   const paths = new Set<string>();
   if (scene.backgroundImage) paths.add(scene.backgroundImage);
   for (const style of scene.symbols.values()) {
-    if (style.image) paths.add(style.image);
+    for (const path of [style.image, style.art, style.tile]) if (path) paths.add(path);
     for (const frame of style.winFrames ?? []) paths.add(frame);
   }
   for (const path of Object.values(scene.sounds)) if (path) paths.add(path);
@@ -141,6 +146,9 @@ export function parseSlotModule(files: Readonly<Record<string, unknown>>, assets
       image: style?.image,
       winFrames: style?.winFrames,
       fps: style?.fps ?? 8,
+      art: style?.art,
+      tile: style?.tile,
+      motion: style?.motion,
     });
   }
 

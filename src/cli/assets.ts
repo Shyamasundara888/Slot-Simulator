@@ -4,7 +4,8 @@ import { dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { buildAssets, promptsMarkdown } from "../assets/build.js";
 import { ComfyClient, ComfyError } from "../assets/comfyui.js";
-import { ART_FILE, generate, readSpec } from "../assets/generate.js";
+import { ART_FILE, generate, importFrames, readSpec } from "../assets/generate.js";
+import { framePaths } from "../assets/spec.js";
 import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 
@@ -15,13 +16,19 @@ const USAGE = `Uso: npm run assets -- <comando> <cartella-modulo>
   prompts   scrive art/prompts.md con un prompt per simbolo, da usare con un generatore di immagini esterno
   generate  genera con ComfyUI in locale le immagini dei simboli e dello sfondo in art/raw/
             (salta quelle già presenti; registra prompt, seed e modello in art/raw/generated.json)
+  frames    porta in art/raw/anim/ i fotogrammi scontornati di un'animazione di vincita, ritagliati
+            tutti allo stesso modo, e dice cosa mettere in art.json
 
 Opzioni di generate:
   --only <ID>       solo questo simbolo (ripetibile); "background" per lo sfondo
   --force           rigenera anche le immagini già presenti
   --variants <n>    n varianti per immagine, con seed consecutivi, in art/raw/varianti/
   --seed <n>        seed di partenza al posto di quello di art.json
-  --url <indirizzo> API di ComfyUI (predefinito: COMFYUI_URL oppure http://127.0.0.1:8188)`;
+  --url <indirizzo> API di ComfyUI (predefinito: COMFYUI_URL oppure http://127.0.0.1:8188)
+
+Opzioni di frames:
+  --symbol <ID>      simbolo da animare
+  --from <cartella>  cartella con i fotogrammi PNG o WebP, in ordine alfabetico`;
 
 
 
@@ -38,9 +45,13 @@ async function build(dir: string): Promise<void> {
     .filter((id) => !symbols.includes(id))
     .map((id) => `${ART_FILE}: symbols.${id}: simbolo non presente in math/paytable.json`);
   for (const [id, art] of Object.entries(spec.symbols)) {
-    for (const file of [art.svg, art.image]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: symbols.${id}: manca ${file}`);
+    const frames = art.animation ? framePaths(art.animation.frames, art.animation.count) : [];
+    for (const file of [art.svg, art.image, ...frames]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: symbols.${id}: manca ${file}`);
   }
   for (const file of [spec.background?.svg, spec.background?.image]) if (file && !existsSync(join(dir, file))) problems.push(`${ART_FILE}: background: manca ${file}`);
+  for (const [event, sound] of Object.entries(spec.sounds)) {
+    if ("file" in sound && !existsSync(join(dir, sound.file))) problems.push(`${ART_FILE}: sounds.${event}: manca ${sound.file}`);
+  }
   if (problems.length > 0) throw new ModuleError(problems);
 
   const { files, scene } = buildAssets(spec, (path) => readFileSync(join(dir, path)));
@@ -96,6 +107,16 @@ async function prompts(dir: string): Promise<void> {
   console.log(`Scritto ${path}`);
 }
 
+async function frames(dir: string, symbol: string | undefined, from: string | undefined): Promise<void> {
+  const swallowed = ["symbol", "from"].filter((name) => process.env[`npm_config_${name}`] !== undefined);
+  if (swallowed.length > 0) throw new ModuleError([`npm si è tenuto le opzioni ${swallowed.map((n) => `--${n}`).join(", ")}: in PowerShell usa npm.cmd`]);
+  if (!symbol || !from) throw new ModuleError(["frames: servono --symbol <ID> e --from <cartella>"]);
+  const { files, animation } = await importFrames(dir, symbol, resolve(from));
+  console.log(`${files.length} fotogrammi in ${join(dir, "art/raw/anim")}`);
+  console.log(`In ${ART_FILE}, nel simbolo ${symbol}: "animation": ${JSON.stringify({ ...animation, fps: 12, loop: "pingpong" }).replace(/":/g, '": ').replace(/,"/g, ', "')}`);
+  console.log("Poi npm run assets -- build per rifare gli asset.");
+}
+
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -106,10 +127,12 @@ async function main(): Promise<void> {
       variants: { type: "string", default: "1" },
       seed: { type: "string" },
       url: { type: "string", default: process.env.COMFYUI_URL ?? "http://127.0.0.1:8188" },
+      symbol: { type: "string" },
+      from: { type: "string" },
     },
   });
   const [command, target] = positionals;
-  if (values.help || target === undefined || !["build", "prompts", "generate"].includes(command ?? "")) {
+  if (values.help || target === undefined || !["build", "prompts", "generate", "frames"].includes(command ?? "")) {
     console.log(USAGE);
     process.exitCode = values.help ? 0 : 1;
     return;
@@ -118,6 +141,7 @@ async function main(): Promise<void> {
   try {
     if (command === "build") await build(dir);
     else if (command === "prompts") await prompts(dir);
+    else if (command === "frames") await frames(dir, values.symbol, values.from);
     else {
       // In PowerShell "npm run assets -- ..." perde il "--": npm si tiene le opzioni e le passa solo come
       // variabili npm_config_*. Meglio fermarsi che generare tutto con le impostazioni predefinite.

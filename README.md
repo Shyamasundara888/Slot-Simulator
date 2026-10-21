@@ -41,6 +41,7 @@ npm install
 | `npm run assets -- build slots/pixel-quest` | genera immagini, animazioni di vincita, sfondo e suoni da `art/art.json` e aggiorna la scena |
 | `npm run assets -- prompts slots/pixel-quest` | scrive `art/prompts.md`, i prompt per un generatore di immagini esterno |
 | `npm run assets -- generate slots/pixel-quest` | genera con ComfyUI in locale le immagini dei simboli e dello sfondo in `art/raw/` |
+| `npm run assets -- frames slots/pixel-quest --symbol DRAGO --from <cartella>` | porta in `art/raw/anim/` i fotogrammi scontornati di un'animazione generata, ritagliati tutti allo stesso modo |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi TypeScript |
 

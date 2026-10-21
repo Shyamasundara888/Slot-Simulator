@@ -1,17 +1,17 @@
 {
   "background": "#1b1430",
   "symbols": {
-    "SOLE": {"label": "Sole", "color": "#8a5a00", "image": "assets/symbols/sole.svg", "winFrames": ["assets/symbols/sole-win-1.svg", "assets/symbols/sole-win-2.svg", "assets/symbols/sole-win-3.svg", "assets/symbols/sole.svg"], "fps": 8},
-    "PORTALE": {"label": "Portale", "color": "#5c1a3a", "image": "assets/symbols/portale.svg", "winFrames": ["assets/symbols/portale-win-1.svg", "assets/symbols/portale-win-2.svg", "assets/symbols/portale-win-3.svg", "assets/symbols/portale.svg"], "fps": 8},
-    "FARAONE": {"label": "Faraone", "color": "#7a1f1f", "image": "assets/symbols/faraone.svg", "winFrames": ["assets/symbols/faraone-win-1.svg", "assets/symbols/faraone-win-2.svg", "assets/symbols/faraone-win-3.svg", "assets/symbols/faraone.svg"], "fps": 8},
-    "ANKH": {"label": "Ankh", "color": "#7a3300", "image": "assets/symbols/ankh.svg", "winFrames": ["assets/symbols/ankh-win-1.svg", "assets/symbols/ankh-win-2.svg", "assets/symbols/ankh-win-3.svg", "assets/symbols/ankh.svg"], "fps": 8},
-    "SCARABEO": {"label": "Scarabeo", "color": "#1f5c32", "image": "assets/symbols/scarabeo.svg", "winFrames": ["assets/symbols/scarabeo-win-1.svg", "assets/symbols/scarabeo-win-2.svg", "assets/symbols/scarabeo-win-3.svg", "assets/symbols/scarabeo.svg"], "fps": 8},
-    "GATTO": {"label": "Gatto", "color": "#1c4f8a", "image": "assets/symbols/gatto.svg", "winFrames": ["assets/symbols/gatto-win-1.svg", "assets/symbols/gatto-win-2.svg", "assets/symbols/gatto-win-3.svg", "assets/symbols/gatto.svg"], "fps": 8},
-    "A": {"label": "A", "color": "#3b2a7a", "image": "assets/symbols/a.svg", "winFrames": ["assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg", "assets/symbols/a-win-3.svg", "assets/symbols/a.svg"], "fps": 8},
-    "K": {"label": "K", "color": "#4f1f5c", "image": "assets/symbols/k.svg", "winFrames": ["assets/symbols/k-win-1.svg", "assets/symbols/k-win-2.svg", "assets/symbols/k-win-3.svg", "assets/symbols/k.svg"], "fps": 8},
-    "Q": {"label": "Q", "color": "#0b4f5c", "image": "assets/symbols/q.svg", "winFrames": ["assets/symbols/q-win-1.svg", "assets/symbols/q-win-2.svg", "assets/symbols/q-win-3.svg", "assets/symbols/q.svg"], "fps": 8},
-    "J": {"label": "J", "color": "#3b5c1a", "image": "assets/symbols/j.svg", "winFrames": ["assets/symbols/j-win-1.svg", "assets/symbols/j-win-2.svg", "assets/symbols/j-win-3.svg", "assets/symbols/j.svg"], "fps": 8},
-    "10": {"label": "10", "color": "#343a40", "image": "assets/symbols/10.svg", "winFrames": ["assets/symbols/10-win-1.svg", "assets/symbols/10-win-2.svg", "assets/symbols/10-win-3.svg", "assets/symbols/10.svg"], "fps": 8}
+    "SOLE": {"label": "Sole", "color": "#8a5a00", "image": "assets/symbols/sole.svg", "winFrames": ["assets/symbols/sole-win-1.svg", "assets/symbols/sole-win-2.svg", "assets/symbols/sole-win-3.svg", "assets/symbols/sole-tessera.svg"], "fps": 8, "art": "assets/symbols/sole-disegno.svg", "tile": "assets/symbols/sole-tessera.svg", "motion": {"win": "pop", "shine": true, "land": true, "strength": 1}},
+    "PORTALE": {"label": "Portale", "color": "#5c1a3a", "image": "assets/symbols/portale.svg", "winFrames": ["assets/symbols/portale-win-1.svg", "assets/symbols/portale-win-2.svg", "assets/symbols/portale-win-3.svg", "assets/symbols/portale-tessera.svg"], "fps": 8, "art": "assets/symbols/portale-disegno.svg", "tile": "assets/symbols/portale-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": true, "strength": 1}},
+    "FARAONE": {"label": "Faraone", "color": "#7a1f1f", "image": "assets/symbols/faraone.svg", "winFrames": ["assets/symbols/faraone-win-1.svg", "assets/symbols/faraone-win-2.svg", "assets/symbols/faraone-win-3.svg", "assets/symbols/faraone-tessera.svg"], "fps": 8, "art": "assets/symbols/faraone-disegno.svg", "tile": "assets/symbols/faraone-tessera.svg", "motion": {"win": "pop", "shine": true, "land": false, "strength": 1}},
+    "ANKH": {"label": "Ankh", "color": "#7a3300", "image": "assets/symbols/ankh.svg", "winFrames": ["assets/symbols/ankh-win-1.svg", "assets/symbols/ankh-win-2.svg", "assets/symbols/ankh-win-3.svg", "assets/symbols/ankh-tessera.svg"], "fps": 8, "art": "assets/symbols/ankh-disegno.svg", "tile": "assets/symbols/ankh-tessera.svg", "motion": {"win": "swing", "shine": true, "land": false, "strength": 1}},
+    "SCARABEO": {"label": "Scarabeo", "color": "#1f5c32", "image": "assets/symbols/scarabeo.svg", "winFrames": ["assets/symbols/scarabeo-win-1.svg", "assets/symbols/scarabeo-win-2.svg", "assets/symbols/scarabeo-win-3.svg", "assets/symbols/scarabeo-tessera.svg"], "fps": 8, "art": "assets/symbols/scarabeo-disegno.svg", "tile": "assets/symbols/scarabeo-tessera.svg", "motion": {"win": "flutter", "shine": true, "land": false, "strength": 1}},
+    "GATTO": {"label": "Gatto", "color": "#1c4f8a", "image": "assets/symbols/gatto.svg", "winFrames": ["assets/symbols/gatto-win-1.svg", "assets/symbols/gatto-win-2.svg", "assets/symbols/gatto-win-3.svg", "assets/symbols/gatto-tessera.svg"], "fps": 8, "art": "assets/symbols/gatto-disegno.svg", "tile": "assets/symbols/gatto-tessera.svg", "motion": {"win": "swing", "shine": true, "land": false, "strength": 0.6}},
+    "A": {"label": "A", "color": "#3b2a7a", "image": "assets/symbols/a.svg", "winFrames": ["assets/symbols/a-win-1.svg", "assets/symbols/a-win-2.svg", "assets/symbols/a-win-3.svg", "assets/symbols/a-tessera.svg"], "fps": 8, "art": "assets/symbols/a-disegno.svg", "tile": "assets/symbols/a-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": false, "strength": 1}},
+    "K": {"label": "K", "color": "#4f1f5c", "image": "assets/symbols/k.svg", "winFrames": ["assets/symbols/k-win-1.svg", "assets/symbols/k-win-2.svg", "assets/symbols/k-win-3.svg", "assets/symbols/k-tessera.svg"], "fps": 8, "art": "assets/symbols/k-disegno.svg", "tile": "assets/symbols/k-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": false, "strength": 1}},
+    "Q": {"label": "Q", "color": "#0b4f5c", "image": "assets/symbols/q.svg", "winFrames": ["assets/symbols/q-win-1.svg", "assets/symbols/q-win-2.svg", "assets/symbols/q-win-3.svg", "assets/symbols/q-tessera.svg"], "fps": 8, "art": "assets/symbols/q-disegno.svg", "tile": "assets/symbols/q-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": false, "strength": 1}},
+    "J": {"label": "J", "color": "#3b5c1a", "image": "assets/symbols/j.svg", "winFrames": ["assets/symbols/j-win-1.svg", "assets/symbols/j-win-2.svg", "assets/symbols/j-win-3.svg", "assets/symbols/j-tessera.svg"], "fps": 8, "art": "assets/symbols/j-disegno.svg", "tile": "assets/symbols/j-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": false, "strength": 1}},
+    "10": {"label": "10", "color": "#343a40", "image": "assets/symbols/10.svg", "winFrames": ["assets/symbols/10-win-1.svg", "assets/symbols/10-win-2.svg", "assets/symbols/10-win-3.svg", "assets/symbols/10-tessera.svg"], "fps": 8, "art": "assets/symbols/10-disegno.svg", "tile": "assets/symbols/10-tessera.svg", "motion": {"win": "pulse", "shine": true, "land": false, "strength": 1}}
   },
   "modes": {
     "gold": {
@@ -20,11 +20,13 @@
     }
   },
   "sounds": {
-    "spin": "assets/sounds/spin.wav",
-    "stop": "assets/sounds/stop.wav",
-    "win": "assets/sounds/win.wav",
-    "bigWin": "assets/sounds/big-win.wav",
-    "feature": "assets/sounds/feature.wav"
+    "spin": "assets/sounds/spin.ogg",
+    "stop": "assets/sounds/stop.ogg",
+    "win": "assets/sounds/win.ogg",
+    "bigWin": "assets/sounds/big-win.ogg",
+    "feature": "assets/sounds/feature.ogg",
+    "music": "assets/sounds/music.ogg",
+    "bonusMusic": "assets/sounds/bonus-music.ogg"
   },
   "backgroundImage": "assets/background.svg"
 }
