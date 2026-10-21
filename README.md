@@ -2,7 +2,7 @@
 
 Motore per creare slot machine moddabili: ogni slot è un **modulo** con regole, matematica, grafica e script separati, caricato da un motore comune.
 
-Stato attuale: **fasi 1-6** e prime due parti della **fase 7** (editor visuale). Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli, moltiplicatori e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot, con immagini, animazioni e suoni presi dal modulo. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, moltiplicatore nei free spin e Gold Spins, volatilità alta) e Pixel Quest (5x4, Combo e Boss Spin, volatilità medio-alta). La bozza di architettura completa è nel documento di progetto.
+Stato attuale: **fasi 1-6** e prime tre parti della **fase 7** (editor visuale). Il nucleo matematico gestisce linee, wild, scatter, wild espandenti, free spin con riattivazione, upgrade dei simboli, moltiplicatori e tetto di vincita, con un simulatore da riga di comando e il calcolo esatto dell'RTP dello spin base. Un client PixiJS nel browser fa giocare le slot, con immagini, animazioni e suoni presi dal modulo. I moduli possono aggiungere regole proprie con uno script Lua e si installano da uno zip, sia da riga di comando sia dal browser. Ci sono due slot di esempio: il Tempio del Sole (5x3, moltiplicatore nei free spin e Gold Spins, volatilità alta) e Pixel Quest (5x4, Combo e Boss Spin, volatilità medio-alta). La bozza di architettura completa è nel documento di progetto.
 
 ![Il client con il Tempio del Sole: tre scatter attivano i free spin](docs/client.png)
 
@@ -145,6 +145,9 @@ end
 - `math.random` usa l'RNG del motore: con lo stesso seed lo script fa sempre le stesse scelte. Si può usare solo dentro gli hook.
 - Lo script gira isolato (Lua 5.4 in WebAssembly, con wasmoon): niente `io`, `os`, `require`, `load`, `debug` né coroutine, al massimo 1.000.000 di istruzioni per chiamata e 16 MB di memoria. Un errore annulla il round e indica la riga dello script.
 - In un round si giocano al massimo 1.000 spin richiesti dagli script, e il tetto di vincita vale anche per loro.
+- La tabella `ui` pilota gli elementi di `scenes/ui.json`: `ui.set("gold", 3)` e `ui.add("gold", 1, { from = cella })` pubblicano il valore `script.gold` (con l'icona che vola dalla cella), `ui.show`, `ui.hide`, `ui.fx` e `ui.message` fanno comparire, sparire o animare gli elementi. Il client le mette in scena, il simulatore le ignora.
+- `choose("scelta")` chiede al giocatore di scegliere tra le opzioni di un pannello e `ui.pick("forzieri", premi)` fa scoprire premi già estratti in un pick-em. Il round si ferma sulla scelta e si rigioca dallo stesso stato dell'RNG con la risposta; il simulatore sceglie con `--choice random|N|each`.
+- La tabella `session` resta tra un round e l'altro, salvata per slot e per puntata: serve alle raccolte lunghe, come la barra del Tesoro di Pixel Quest. Il simulatore la porta avanti per tutti i round (o la azzera ogni N con `--session-reset N`). Dettagli in [docs/script-lua.md](docs/script-lua.md#interfaccia).
 - Per dare un nome a una modalità nel client: `"modes": { "gold": { "label": "Gold Spin", "description": "..." } }` in `scenes/main.json`; la descrizione compare nella paytable.
 
 ### Scena e asset (`scenes/main.json`, `assets/`)
@@ -173,6 +176,10 @@ La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. 
 - `sounds` collega un suono a un evento: `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20 volte la puntata) e `feature` (free spin e sequenze degli script).
 - Formati: PNG, JPG, WebP, GIF e SVG per le immagini; MP3, OGG e WAV per i suoni. I percorsi partono da `assets/` e usano solo lettere, cifre, `-`, `_` e `.`.
 - Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella.
+
+### Elementi di interfaccia (`scenes/ui.json`)
+
+Un modulo può fissare la misura dello stage, il riquadro dei rulli e una serie di elementi attorno ai rulli: contatori (free spin rimasti, moltiplicatore, vincita del bonus), barre che si riempiono, scale di livelli (anche fatte di simboli), immagini, testi, pannelli (avvisi e menu di scelta) e pick-em. Ogni elemento ha posizione, aspetto, modalità in cui si vede, animazione e suono quando cambia, e mostra i valori del round deciso dal motore (`free.remaining`, `multiplier`, `level`, `win.feature`...). Il Tempio del Sole li usa per free spin, Gold Spin raccolti, moltiplicatore, vincita del bonus e livello dei simboli; Pixel Quest per la barra della combo, i Boss Spin e la scelta prima dei Boss Spin (giocarli o tentare la Sfida, un forziere su due che li raddoppia) e la barra del Tesoro, che raccoglie i forzieri di round in round. Formato completo in [docs/modulo.md](docs/modulo.md#scenesuijson).
 
 ### Creare gli asset (`art/`, `npm run assets`)
 
@@ -224,7 +231,8 @@ L'editor sta nella stessa pagina: a sinistra le schede, a destra l'anteprima gio
 
 ![L'editor sul Tempio del Sole: simboli, numeri della simulazione e anteprima con un free spin](docs/editor.png)
 
-- Schede **Generale** (id, nome, versione, autore, descrizione, griglia, colore di sfondo), **Simboli** (id, tipo, etichetta, colore, ordine; rinominare un id aggiorna tutti i file) e **Paytable** (pagamenti su linea e scatter), **Linee** (una mini griglia per linea, avviso sulle linee doppie), **Rulli** (quante volte compare ogni simbolo su ogni rullo, per ogni modalità, oppure le strisce a mano) e **Funzioni** (wild espandenti, free spin, upgrade, vincita massima).
+- Schede **Generale** (id, nome, versione, autore, descrizione, griglia, colore di sfondo), **Simboli** (id, tipo, etichetta, colore, ordine; rinominare un id aggiorna tutti i file), **Paytable** (pagamenti su linea e scatter), **Linee** (una mini griglia per linea, avviso sulle linee doppie), **Rulli** (quante volte compare ogni simbolo su ogni rullo, per ogni modalità, oppure le strisce a mano) **Funzioni** (wild espandenti, free spin, upgrade, vincita massima) e **Script** (lo script Lua con colori, numeri di riga ed errori alla riga giusta).
+- Lo script si prova da solo a ogni modifica: il motore lo carica e gioca 3.000 round in un worker. Un errore durante un round indica la riga e il seed del round, che si rigioca nell'anteprima con un clic.
 - Ogni modifica passa dalla validazione del motore: i problemi compaiono in alto con i messaggi di `docs/errori.md` e il campo sbagliato si colora.
 - L'RTP esatto dello spin base si aggiorna a ogni modifica. **Simula** gioca da 100.000 a 5 milioni di round in un worker e mostra RTP totale, quote di base, free spin e sequenze degli script, deviazione standard e vincita massima.
 - L'anteprima riparte a ogni modifica valida, con un saldo e statistiche a parte. **Trova un seed** cerca un seed il cui primo round attiva i free spin o le sequenze dello script.
@@ -232,7 +240,7 @@ L'editor sta nella stessa pagina: a sinistra le schede, a destra l'anteprima gio
 - **Scarica zip** crea lo stesso zip di `npm run mod -- pack`, **Aggiungi al menu come mod** lo installa nel browser. Una slot inclusa nel sito si modifica come copia: per aggiungerla al menu va cambiato l'id.
 - `?edit=<id>` apre l'editor su una slot, `?edit=new` su una slot nuova.
 
-Le prossime parti aggiungono lo script Lua, poi grafica e suoni.
+L'ultima parte aggiunge grafica e suoni.
 
 ## Come funziona
 
@@ -242,10 +250,12 @@ Le prossime parti aggiungono lo script Lua, poi grafica e suoni.
 - `src/module/`: schema dei file e validazione (`parse.ts`, usato anche dal browser), lettura e scrittura degli zip (`zip.ts`, anche nel browser), lettura da disco (`load.ts`).
 - `src/cli/mod.ts`: installazione, creazione e controllo dei mod.
 - `src/script/runtime.ts`: esecuzione isolata degli script Lua e collegamento agli hook del motore.
+- `src/script/trial.ts`: prova di uno script su qualche migliaio di round, con il seed del primo round che sbaglia (la usa l'editor).
 - `src/sim/exact.ts`: RTP esatto dello spin base. Su una linea i rulli sono indipendenti, quindi basta enumerare le combinazioni di simboli invece di tutte le posizioni di arresto; con i wild espandenti la distribuzione di ogni cella tiene conto della finestra del suo rullo. I free spin dipendono dallo stato del round e si misurano con la simulazione.
 - `src/sim/simulate.ts`: simulazione Monte Carlo per round con intervallo di confidenza, RTP diviso tra spin base, free spin e modalità degli script, frequenza vincite, deviazione standard, fasce di vincita e statistiche dei free spin.
 
 ## Prossime fasi
 
-7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli e Funzioni; mancano script, grafica e suoni.
-8. API per integrare le slot in un gioco più grande.
+7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli, Funzioni e Script; mancano grafica e suoni.
+8. Elementi di interfaccia: fatti `scenes/ui.json`, i valori del motore e l'API Lua (`ui.set`, `ui.show`...), pannelli, scelte del giocatore (`choose`, `--choice`), pick-em (`ui.pick`) e valori che restano tra un round e l'altro (`session`); segue la scheda Interfaccia dell'editor.
+9. API per integrare le slot in un gioco più grande.

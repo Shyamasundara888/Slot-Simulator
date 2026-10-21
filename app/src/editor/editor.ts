@@ -1,6 +1,7 @@
 import { checkDraft, type DraftCheck, draftToFiles, draftZip, type ModuleDraft } from "../../../src/edit/draft.js";
 import type { SlotModule } from "../../../src/module/parse.js";
 import { exactRtp, type ExactResult } from "../../../src/sim/exact.js";
+import type { ScriptTrial } from "../../../src/script/trial.js";
 import type { SimulationResult } from "../../../src/sim/simulate.js";
 import { locale, t } from "../i18n/index.js";
 import { deleteDraft, loadDraft, saveDraft } from "../mod-store.js";
@@ -8,6 +9,9 @@ import { assetUrls, type ClientModule, errorText, releaseAssets } from "../modul
 import { h } from "./dom.js";
 import { generalTab, paytableTab, symbolsTab, type EditorView, type Tab, type TabContext, TABS } from "./tabs.js";
 import { featuresTab, linesTab, reelsTab } from "./tabs-math.js";
+import { scriptTab, type TrialState } from "./tabs-script.js";
+import { CodeEditor } from "./code.js";
+import { errorLines } from "./lua.js";
 import type { WorkerRequest, WorkerResponse } from "./worker.js";
 
 /** Quello che l'editor chiede alla pagina che lo ospita. */
@@ -36,6 +40,8 @@ const SIM_SPINS = [100_000, 1_000_000, 5_000_000] as const;
 const HISTORY_LIMIT = 200;
 /** Attesa dopo una modifica prima di riavviare l'anteprima, per non farlo a ogni tasto. */
 const PREVIEW_DELAY = 600;
+/** Round giocati dalla prova automatica dello script. */
+const TRIAL_ROUNDS = 3_000;
 
 const percent = (x: number, digits = 2) =>
   `${(x * 100).toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
@@ -56,6 +62,10 @@ export class Editor {
   private lastValid: SlotModule | null = null;
   private exact: ExactResult | null = null;
   private scriptError: string | null = null;
+  private trial: TrialState = { state: "idle" };
+  private trialWorker: Worker | null = null;
+  private trialTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly code = new CodeEditor({ label: t("editor.script.label"), onChange: (text) => this.apply((d) => (d.script = text)) });
   private simulation: Simulation = { state: "idle" };
   private simSpins: number = SIM_SPINS[1];
   private seed = "";
@@ -65,6 +75,7 @@ export class Editor {
   private previewTimer: ReturnType<typeof setTimeout> | undefined;
   private saveTimer: ReturnType<typeof setTimeout> | undefined;
   private renderQueued = false;
+  private disposed = false;
   private urls: Map<string, string>;
   private readonly onKey = (e: KeyboardEvent) => this.shortcut(e);
 
@@ -81,6 +92,7 @@ export class Editor {
     this.refresh();
     this.render();
     this.schedulePreview(0);
+    this.scheduleTrial(0);
   }
 
   /** Apre l'editor: riprende la bozza salvata per questa sorgente, se c'è. */
@@ -93,7 +105,11 @@ export class Editor {
 
   /** Chiude l'editor senza perdere la bozza, che resta salvata nel browser. */
   async dispose(): Promise<void> {
+    this.code.dispose();
+    this.disposed = true;
     clearTimeout(this.previewTimer);
+    clearTimeout(this.trialTimer);
+    this.trialWorker?.terminate();
     if (this.simulation.state === "running") this.simulation.worker.terminate();
     this.seedSearch?.terminate();
     if (this.saved !== "saved") await this.save();
@@ -144,6 +160,7 @@ export class Editor {
     clearTimeout(this.saveTimer);
     this.saveTimer = setTimeout(() => void this.save(), 400);
     this.schedulePreview(PREVIEW_DELAY);
+    this.scheduleTrial(PREVIEW_DELAY);
     this.queueRender();
   }
 
@@ -192,7 +209,44 @@ export class Editor {
     this.queueRender();
   }
 
+  /** Risultato dell'ultima prova finita dello script, anche mentre ne gira una nuova. */
+  private get lastTrial(): ScriptTrial | null {
+    return this.trial.state === "done" ? this.trial.trial : this.trial.state === "running" ? this.trial.previous : null;
+  }
+
+  /** Problemi dello script: dalla prova nel worker, oppure dall'anteprima finché la prova non c'è. */
+  private get scriptProblems(): string[] {
+    if (this.draft.script === null) return [];
+    const trial = this.lastTrial;
+    if (trial) return trial.failure ? [...trial.problems, trial.failure.message] : trial.problems;
+    return this.scriptError ? [this.scriptError] : [];
+  }
+
   // --- calcoli nel worker ---
+
+  /** Carica lo script e gioca qualche migliaio di round, per trovare gli errori con la loro riga. */
+  private scheduleTrial(delay: number): void {
+    clearTimeout(this.trialTimer);
+    this.trialWorker?.terminate();
+    this.trialWorker = null;
+    if (this.draft.script === null || !this.check.module) {
+      this.trial = { state: "idle" };
+      return;
+    }
+    this.trialTimer = setTimeout(() => {
+      this.trialWorker = this.runWorker({ kind: "checkScript", files: draftToFiles(this.draft), rounds: TRIAL_ROUNDS }, (response) => {
+        this.trialWorker = null;
+        this.trial =
+          response.kind === "scriptChecked"
+            ? { state: "done", trial: response.trial }
+            : { state: "error", message: response.kind === "error" ? response.message : "" };
+        this.queueRender();
+      });
+      this.trial = { state: "running", previous: this.lastTrial };
+      this.queueRender();
+    }, delay);
+  }
+
 
   private runWorker(request: WorkerRequest, onDone: (response: WorkerResponse) => void): Worker {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -288,6 +342,7 @@ export class Editor {
     this.notice = "";
     this.refresh();
     this.schedulePreview(0);
+    this.scheduleTrial(0);
     this.queueRender();
   }
 
@@ -311,7 +366,7 @@ export class Editor {
     // Dopo il cambio di focus: così il campo su cui si è spostato l'utente torna attivo.
     setTimeout(() => {
       this.renderQueued = false;
-      this.render();
+      if (!this.disposed) this.render();
     }, 0);
   }
 
@@ -333,7 +388,19 @@ export class Editor {
         this.queueRender();
       },
     };
-    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab };
+    const script = (c: TabContext) =>
+      scriptTab(c, {
+        code: this.code,
+        trial: this.trial,
+        problems: this.scriptProblems,
+        useSeed: (seed) => {
+          this.seed = seed;
+          this.notice = t("editor.script.seedSet", { seed });
+          this.schedulePreview(0);
+          this.queueRender();
+        },
+      });
+    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab, script };
     const body = tabs[this.tab](ctx);
     this.markProblems(body);
 
@@ -362,9 +429,14 @@ export class Editor {
       h("section", { class: "ed-body", role: "tabpanel" }, body),
       this.actionsView(),
     );
+    if (this.tab === "script" && this.draft.script !== null) {
+      this.code.setValue(this.draft.script);
+      this.code.setErrors(errorLines(this.scriptProblems));
+      this.code.attached();
+    }
     const body2 = this.root.querySelector(".ed-body");
     if (body2) body2.scrollTop = scroll;
-    if (active) this.root.querySelector<HTMLElement>(`[data-key="${CSS.escape(active)}"]`)?.focus();
+    if (active) this.root.querySelector<HTMLElement>(`[data-key="${CSS.escape(active)}"]`)?.focus({ preventScroll: true });
   }
 
   private header(): HTMLElement {
@@ -414,7 +486,7 @@ export class Editor {
   }
 
   private problemsView(): HTMLElement {
-    const problems = [...this.check.problems, ...(this.scriptError ? [this.scriptError] : [])];
+    const problems = [...this.check.problems, ...this.scriptProblems];
     if (problems.length === 0) return h("div", { class: "ed-problems ok", role: "status", id: "ed-problems" }, t("editor.valid"));
     const shown = problems.slice(0, 8);
     return h(

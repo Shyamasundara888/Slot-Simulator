@@ -81,6 +81,30 @@ export interface ScatterWin {
   pay: number;
 }
 
+/** Una cella della griglia, contando da 0. */
+export interface Cell {
+  reel: number;
+  row: number;
+}
+
+/** Effetti che uno script può chiedere a un elemento di interfaccia. */
+export const UI_EFFECTS = ["pop", "pulse", "shake"] as const;
+export type UiEffect = (typeof UI_EFFECTS)[number];
+
+/**
+ * Cosa uno script ha chiesto all'interfaccia durante uno hook. Il motore lo
+ * annota sullo spin o sulla feature; il client lo mette in scena, il
+ * simulatore lo ignora.
+ */
+export type UiEvent =
+  /** Nuovo valore di script.<name>; `from` è la cella da cui parte l'animazione di raccolta. */
+  | { kind: "set"; name: string; value: number; from: Cell | null }
+  | { kind: "show" | "hide"; id: string }
+  | { kind: "fx"; id: string; effect: UiEffect }
+  /** Pick-em: il giocatore tocca gli oggetti del picker e scopre i premi in quest'ordine. */
+  | { kind: "pick"; id: string; prizes: string[] }
+  | { kind: "message"; text: string };
+
 export interface SpinResult {
   mode: Mode;
   /** Livello di upgrade con cui è stato valutato lo spin. */
@@ -99,6 +123,8 @@ export interface SpinResult {
   multiplier: number;
   /** Vincita dello spin in multipli della puntata totale, moltiplicatore compreso. */
   win: number;
+  /** Richieste all'interfaccia fatte dallo script dopo questo spin. */
+  ui?: UiEvent[];
 }
 
 export interface FreeSpinsResult {
@@ -114,6 +140,8 @@ export interface FreeSpinsResult {
   /** Moltiplicatore raggiunto alla fine. */
   multiplier: number;
   win: number;
+  /** Richieste all'interfaccia fatte dallo script alla fine dei free spin. */
+  endUi?: UiEvent[] | undefined;
 }
 
 /** Sequenza di spin richiesta da uno script, giocata dopo i free spin. */
@@ -131,6 +159,8 @@ export interface ExtraSpinsResult {
   multiplier: number;
   spins: SpinResult[];
   win: number;
+  /** Richieste all'interfaccia fatte dallo script alla fine della sequenza. */
+  endUi?: UiEvent[] | undefined;
 }
 
 /** Riassunto di una feature appena finita, passato agli script. */
@@ -151,7 +181,18 @@ export interface RoundHooks {
   beginRound(rng: Rng): void;
   onSpin(spin: SpinResult, index: number): PlayRequest | null;
   onFeatureEnd(feature: FeatureSummary): PlayRequest | null;
+  /** Richieste all'interfaccia fatte nell'ultimo hook, se ce ne sono; le consegna una volta sola. */
+  takeUiEvents?(): UiEvent[];
+  /** Risposte del giocatore alle scelte (choose) del round, nell'ordine in cui le chiede: servono per rigiocarlo. */
+  setAnswers?(answers: readonly number[]): void;
+  /** Fine di un round completo: lo stato che resta per il round dopo (session degli script). */
+  endRound?(): SessionState | undefined;
+  /** Stato da cui ripartire, per esempio quello salvato per questa slot e questa puntata; null lo svuota. */
+  setSession?(state: SessionState | null): void;
 }
+
+/** Stato che resta tra un round e l'altro (la tabella session degli script): numeri, testi e true/false. */
+export type SessionState = Record<string, number | string | boolean>;
 
 export interface RoundResult {
   base: SpinResult;
@@ -162,4 +203,35 @@ export interface RoundResult {
   totalWin: number;
   /** Se il round si è fermato perché ha raggiunto maxWin. */
   capped: boolean;
+  /** Stato che resta per il round dopo, se il modulo ha uno script. */
+  session?: SessionState;
+}
+
+/**
+ * Sollevato da uno script che chiede una scelta al giocatore (choose) quando
+ * la risposta non c'è ancora: il motore ferma il round in quel punto.
+ */
+export class ChoiceNeeded extends Error {
+  constructor(
+    /** Id del pannello di scenes/ui.json con le opzioni. */
+    readonly id: string,
+    /** Numero di opzioni. */
+    readonly options: number,
+  ) {
+    super(`scelta del giocatore senza risposta: ${id}`);
+    this.name = "ChoiceNeeded";
+  }
+}
+
+/** Una scelta che aspetta il giocatore; `at` dice se è stata chiesta da onSpin o da onFeatureEnd. */
+export interface PendingChoice {
+  id: string;
+  options: number;
+  at: "spin" | "featureEnd";
+}
+
+/** Risultato di attemptRound: il round completo, oppure quello giocato fino alla scelta in attesa. */
+export interface RoundAttempt {
+  round: RoundResult;
+  choice: PendingChoice | null;
 }
