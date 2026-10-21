@@ -1,12 +1,13 @@
 # Workflow ComfyUI per gli asset delle slot
 
-Due workflow in formato API (quello che accetta `POST /prompt`) per generare in locale gli asset di una slot con SDXL. Le immagini generate sono materiale di partenza: per entrare in un modulo passano da `art/` e da `npm run assets -- build`, mai copiate a mano in `assets/` (vedi [docs/asset.md](../../docs/asset.md)).
+Workflow in formato API (quello che accetta `POST /prompt`) per generare in locale gli asset di una slot con SDXL. Le immagini generate sono materiale di partenza: per entrare in un modulo passano da `art/` e da `npm run assets -- build`, mai copiate a mano in `assets/` (vedi [docs/asset.md](../../docs/asset.md)).
 
 | File | Cosa fa | Uscita |
 | --- | --- | --- |
 | `workflows/simbolo.json` | SDXL txt2img 1024x1024, poi scontorno con BiRefNet | PNG RGBA con sfondo trasparente |
 | `workflows/simbolo-stile.json` | come `simbolo.json`, con IP-Adapter che copia lo stile di un'immagine di riferimento | PNG RGBA con sfondo trasparente |
 | `workflows/sfondo.json` | SDXL txt2img 1344x768, senza scontorno | PNG RGB |
+| `workflows/animazione.json` | Wan 2.2 TI2V 5B image-to-video 704x704, 49 fotogrammi a 24 fps, poi scontorno di ogni fotogramma con BiRefNet | MP4 senza alfa e PNG RGBA per fotogramma (prova bocciata: [prove/scarabeo/](prove/scarabeo/README.md)) |
 
 ## Requisiti
 

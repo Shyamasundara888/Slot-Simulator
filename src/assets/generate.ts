@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
@@ -7,7 +7,7 @@ import { ModuleError } from "../module/build.js";
 import { loadSlotModule } from "../module/load.js";
 import { backgroundPrompt, symbolPrompt } from "./build.js";
 import { pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type ComfyClient, type Workflow } from "./comfyui.js";
-import { artSchema, type ArtSpec } from "./spec.js";
+import { artSchema, framePaths, type ArtSpec } from "./spec.js";
 
 export const ART_FILE = "art/art.json";
 
@@ -88,6 +88,67 @@ export async function fitSymbol(png: Uint8Array, size: number, margin = 0.04): P
       .png()
       .toBuffer(),
   );
+}
+
+/**
+ * Come fitSymbol, ma per i fotogrammi di un'animazione: il ritaglio è uno solo, quello che
+ * contiene il soggetto in tutti i fotogrammi, così il soggetto non balla da un fotogramma all'altro.
+ */
+export async function fitFrames(images: readonly Uint8Array[], size: number, margin = 0.04): Promise<Buffer[]> {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const image of images) {
+    const { info } = await sharp(image).trim({ threshold: 4 }).toBuffer({ resolveWithObject: true });
+    const x = -(info.trimOffsetLeft ?? 0);
+    const y = -(info.trimOffsetTop ?? 0);
+    left = Math.min(left, x);
+    top = Math.min(top, y);
+    right = Math.max(right, x + info.width);
+    bottom = Math.max(bottom, y + info.height);
+  }
+  const inner = Math.round(size * (1 - 2 * margin));
+  const pad = Math.floor((size - inner) / 2);
+  const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+  return Promise.all(
+    images.map(async (image) =>
+      sharp(
+        await sharp(image)
+          .ensureAlpha()
+          .extract({ left, top, width: right - left, height: bottom - top })
+          .resize(inner, inner, { fit: "contain", background: transparent, kernel: "lanczos3" })
+          .extend({ top: pad, bottom: size - inner - pad, left: pad, right: size - inner - pad, background: transparent })
+          .png()
+          .toBuffer(),
+      )
+        .webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 })
+        .toBuffer(),
+    ),
+  );
+}
+
+const FRAME_FILE = /\.(png|webp)$/i;
+
+/**
+ * Porta nel modulo i fotogrammi già scontornati di un'animazione (per esempio da una clip
+ * image-to-video): li ritaglia tutti allo stesso modo, li salva in art/raw/anim/<id>-NN.webp
+ * e restituisce il campo animation da mettere nel simbolo in art.json.
+ */
+export async function importFrames(dir: string, id: string, from: string): Promise<{ files: string[]; animation: { frames: string; count: number } }> {
+  const spec = await readSpec(dir);
+  if (!spec.symbols[id]) throw new ModuleError([`${ART_FILE}: il simbolo ${id} non c'è`]);
+  const sources = existsSync(from) ? (await readdir(from)).filter((f) => FRAME_FILE.test(f)).sort() : [];
+  if (sources.length < 2) throw new ModuleError([`${from}: servono almeno 2 fotogrammi PNG o WebP`]);
+  if (sources.length > 120) throw new ModuleError([`${from}: al massimo 120 fotogrammi, ce ne sono ${sources.length}`]);
+  const images = await Promise.all(sources.map((f) => readFile(join(from, f))));
+  const fitted = await fitFrames(images, spec.generate.size);
+  const digits = String(fitted.length - 1).length;
+  const pattern = `art/raw/anim/${id.toLowerCase()}-${"#".repeat(Math.max(2, digits))}.webp`;
+  const files = framePaths(pattern, fitted.length);
+  await mkdir(join(dir, "art/raw/anim"), { recursive: true });
+  await Promise.all(files.map((file, k) => writeFile(join(dir, file), fitted[k]!)));
+  return { files, animation: { frames: pattern, count: files.length } };
 }
 
 /** Genera con ComfyUI le immagini di simboli e sfondo in art/raw/ e restituisce i file scritti. */
