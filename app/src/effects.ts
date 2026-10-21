@@ -262,6 +262,8 @@ export class WinEffects {
     await new Promise((r) => setTimeout(r, skip ? 150 : 700));
     this.app.ticker.remove(rain);
     await tween(this.app.ticker, 300, (t) => (this.top.alpha = 1 - t));
+    // Le monete ancora in volo stanno nel livello che sta per sparire: si tolgono dalla lista prima.
+    for (let i = this.particles.length - 1; i >= 0; i--) if (this.particles[i]!.sprite.parent === coins) this.particles.splice(i, 1);
     this.top.removeChildren().forEach((child) => child.destroy({ children: true }));
     this.top.alpha = 1;
   }

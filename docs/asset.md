@@ -108,6 +108,7 @@ Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scriv
 | --- | --- |
 | `generate.reference` | immagine guida dello stile in `art/`, di solito un simbolo già generato e scelto (`art/raw/faraone.webp`): i simboli si generano col workflow `simbolo-stile.json` (IP-Adapter) che ne copia lo stile |
 | `generate.referenceWeight`, `generate.referenceMode` | peso (0,8 nel workflow) e modo (`style transfer`) dell'IP-Adapter; se i simboli copiano anche la forma del riferimento, abbassa il peso a 0,4-0,55. Lascia `style transfer`: alla prova `strong style transfer` ha copiato anche il soggetto (2 ankh su 3 sono diventati scarabei) |
+| `generate.fit` (`true`) | ritaglia i bordi trasparenti dei simboli e ricentra il soggetto con un margine sottile, perché SDXL lascia molto spazio attorno all'oggetto |
 | `generate.cleanup` (`true`) | toglie dai simboli i frammenti staccati che lo scontorno lascia sui bordi, tenendo solo il soggetto |
 | `generate.seed` (`777`) | seed di tutta la serie |
 | `generate.size` (`512`) | lato in pixel dei simboli salvati (ComfyUI li rimpicciolisce prima di salvarli) |

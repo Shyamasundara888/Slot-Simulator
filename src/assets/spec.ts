@@ -112,6 +112,8 @@ export const artSchema = z
         referenceMode: z.string().optional(),
         /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
         cleanup: z.boolean().default(true),
+        /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */
+        fit: z.boolean().default(true),
         /** Seed comune a tutta la serie, per uno stile coerente. */
         seed: seed.default(777),
         /** Lato in pixel delle immagini dei simboli salvate in art/raw. */

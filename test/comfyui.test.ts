@@ -4,7 +4,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ComfyClient, ComfyError, pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
-import { generate } from "../src/assets/generate.js";
+import { fitSymbol, generate } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
 const sfondo = JSON.parse(readFileSync("tools/comfyui/workflows/sfondo.json", "utf8")) as Workflow;
@@ -153,8 +153,13 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     // Le impostazioni di generazione della slot (riferimento di stile) le provano i singoli test.
     const artPath = join(dir, "art/art.json");
     const art = JSON.parse(readFileSync(artPath, "utf8"));
+    // Si parte da una slot senza immagini generate né impostazioni di generazione.
     delete art.generate;
+    for (const symbol of [...Object.values(art.symbols), art.background] as Record<string, unknown>[]) {
+      for (const key of ["generate", "seed", "reference", "referenceWeight", "image"]) delete symbol[key];
+    }
     writeFileSync(artPath, JSON.stringify(art));
+    rmSync(join(dir, "art/raw"), { recursive: true, force: true });
     return dir;
   };
 
@@ -227,6 +232,10 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
 
   it("salta i simboli con generate: false", async () => {
     copy();
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    for (const id of ["A", "K", "Q", "J", "10"]) art.symbols[id].generate = false;
+    writeFileSync(artPath, JSON.stringify(art));
     const { sent, client } = fakeComfy();
     const files = await generate(dir, { only: [], force: false, variants: 1, client, log: () => {} });
     expect(files).toEqual(["SOLE", "PORTALE", "FARAONE", "ANKH", "SCARABEO", "GATTO"].map((id) => `art/raw/${id.toLowerCase()}.webp`).concat("art/raw/background.webp"));
@@ -251,6 +260,15 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     expect(ip(gatto!)).toBeUndefined();
     expect(ip(ankh!)!.inputs.weight).toBe(0.3);
     expect(ip(faraone!)!.inputs.weight).toBe(0.5);
+  });
+
+  it("ritaglia i bordi trasparenti e ricentra il soggetto", async () => {
+    // Il PNG di prova ha un quadrato di 256 px al centro di 512 px trasparenti.
+    const fitted = await (await fitSymbol(realPng, 512)).raw().toBuffer({ resolveWithObject: true });
+    expect(fitted.info).toMatchObject({ width: 512, height: 512, channels: 4 });
+    const alpha = (x: number, y: number) => fitted.data[(y * 512 + x) * 4 + 3];
+    expect(alpha(256, 30)).toBe(255);
+    expect(alpha(256, 5)).toBe(0);
   });
 
   it("rifiuta simboli sconosciuti", async () => {
