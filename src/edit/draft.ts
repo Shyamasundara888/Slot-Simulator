@@ -116,9 +116,13 @@ export function addSymbol(draft: ModuleDraft, id: string, kind: SymbolKind = "no
   draft.scene.symbols[id] = { label: id, color: NEW_COLORS[kind] };
 }
 
+/** Elementi "ladder" di scenes/ui.json: i loro gradini possono essere id di simboli. */
+const uiLadders = (draft: ModuleDraft) => (draft.ui?.elements ?? []).filter((e) => e.type === "ladder");
+
 /**
  * Cambia l'id di un simbolo in tutti i file: paytable, pagamenti, strisce dei
- * rulli, funzioni, scena e art/art.json. Lo script Lua non viene toccato.
+ * rulli, funzioni, scena, gradini delle scale in scenes/ui.json e
+ * art/art.json. Lo script Lua non viene toccato.
  */
 export function renameSymbol(draft: ModuleDraft, from: string, to: string): void {
   if (from === to) return;
@@ -132,11 +136,12 @@ export function renameSymbol(draft: ModuleDraft, from: string, to: string): void
   if (ladder) ladder.forEach((s, i) => s === from && (ladder[i] = to));
   const scene = renameKey(draft.scene.symbols, from, to);
   if (scene) draft.scene.symbols = scene;
+  for (const ladder of uiLadders(draft)) ladder.steps = ladder.steps.map((s) => (s === from ? to : s));
   const art = artSymbols(draft);
   if (art) (draft.extra["art/art.json"] as { symbols: Record<string, unknown> }).symbols = renameKey(art, from, to)!;
 }
 
-/** Toglie un simbolo da tutti i file, strisce dei rulli comprese. */
+/** Toglie un simbolo da tutti i file, strisce dei rulli e gradini delle scale compresi. */
 export function removeSymbol(draft: ModuleDraft, id: string): void {
   const kind = draft.paytable.symbols.find((s) => s.id === id)?.kind;
   draft.paytable.symbols = draft.paytable.symbols.filter((s) => s.id !== id);
@@ -148,6 +153,7 @@ export function removeSymbol(draft: ModuleDraft, id: string): void {
   const fs = draft.features.freeSpins;
   if (fs?.upgradeLadder) fs.upgradeLadder = fs.upgradeLadder.filter((s) => s !== id);
   if (draft.scene.symbols) delete draft.scene.symbols[id];
+  for (const ladder of uiLadders(draft)) ladder.steps = ladder.steps.filter((s) => s !== id);
   const art = artSymbols(draft);
   if (art) delete art[id];
 }

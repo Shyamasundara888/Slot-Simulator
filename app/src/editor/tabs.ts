@@ -22,6 +22,13 @@ export interface TabContext {
   /** L'ultima versione valida della bozza: dà i colori e le immagini effettivi dei simboli. */
   lastValid: SlotModule | null;
   assetUrls: ReadonlyMap<string, string>;
+  /** Percorsi degli asset del modulo, come "assets/ui/cornice.png". */
+  assets: readonly string[];
+  assetBytes(path: string): Uint8Array | undefined;
+  /** Aggiunge o sostituisce un asset; la bozza che lo usa va cambiata a parte con apply. */
+  addAsset(path: string, bytes: Uint8Array): void;
+  /** Problemi del modulo nel formato "file.json: percorso: messaggio". */
+  problems: readonly string[];
   /** Applica una modifica alla bozza, con annulla e ripeti. */
   apply(change: (draft: ModuleDraft) => void): void;
   /** Mostra un avviso sopra la scheda, per esempio un id già usato. */
@@ -36,9 +43,15 @@ export interface EditorView {
   mode: string;
   /** Vero se la scheda Rulli mostra le strisce simbolo per simbolo. */
   manualStrips: boolean;
+  /** Elemento di interfaccia aperto nella scheda Interfaccia, per posizione nell'elenco. */
+  uiElement: number | null;
+  /** Modalità di cui la scheda Interfaccia mostra gli elementi; "" li mostra tutti. */
+  uiMode: string;
+  /** Vero se cambiando lo stage anche rulli ed elementi cambiano misura. */
+  uiScale: boolean;
 }
 
-export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features", "script"] as const;
+export const TABS = ["general", "symbols", "paytable", "lines", "reels", "features", "script", "ui"] as const;
 export type Tab = (typeof TABS)[number];
 
 const SYMBOL_ID = /^[A-Z0-9_]+$/;

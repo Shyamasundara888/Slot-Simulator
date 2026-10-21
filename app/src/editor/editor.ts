@@ -10,6 +10,7 @@ import { h } from "./dom.js";
 import { generalTab, paytableTab, symbolsTab, type EditorView, type Tab, type TabContext, TABS } from "./tabs.js";
 import { featuresTab, linesTab, reelsTab } from "./tabs-math.js";
 import { scriptTab, type TrialState } from "./tabs-script.js";
+import { uiTab } from "./tabs-ui.js";
 import { CodeEditor } from "./code.js";
 import { errorLines } from "./lua.js";
 import type { WorkerRequest, WorkerResponse } from "./worker.js";
@@ -57,7 +58,7 @@ export class Editor {
   private past: ModuleDraft[] = [];
   private future: ModuleDraft[] = [];
   private tab: Tab = "general";
-  private view: EditorView = { mode: "base", manualStrips: false };
+  private view: EditorView = { mode: "base", manualStrips: false, uiElement: null, uiMode: "", uiScale: false };
   private check: DraftCheck = { module: null, problems: [] };
   private lastValid: SlotModule | null = null;
   private exact: ExactResult | null = null;
@@ -121,6 +122,15 @@ export class Editor {
 
   private get assetPaths(): string[] {
     return Object.keys(this.assets);
+  }
+
+  /** Aggiunge un file caricato dall'utente agli asset della bozza; finisce nello zip con gli altri. */
+  private addAsset(path: string, bytes: Uint8Array): void {
+    const old = this.urls.get(path);
+    if (old) URL.revokeObjectURL(old);
+    this.assets = { ...this.assets, [path]: bytes };
+    for (const [p, url] of assetUrls({ [path]: bytes })) this.urls.set(p, url);
+    this.changed();
   }
 
   // --- stato della bozza ---
@@ -366,7 +376,10 @@ export class Editor {
     // Dopo il cambio di focus: così il campo su cui si è spostato l'utente torna attivo.
     setTimeout(() => {
       this.renderQueued = false;
-      if (!this.disposed) this.render();
+      if (this.disposed) return;
+      // Durante un trascinamento sulla mappa dell'interfaccia il ridisegno aspetta il rilascio.
+      if (this.root.querySelector(".dragging")) return void setTimeout(() => this.queueRender(), 100);
+      this.render();
     }, 0);
   }
 
@@ -377,6 +390,10 @@ export class Editor {
       draft: this.draft,
       lastValid: this.lastValid,
       assetUrls: this.urls,
+      assets: this.assetPaths,
+      assetBytes: (path) => this.assets[path],
+      addAsset: (path, bytes) => this.addAsset(path, bytes),
+      problems: this.check.problems,
       apply: (change) => this.apply(change),
       notify: (text) => {
         this.notice = text;
@@ -400,7 +417,7 @@ export class Editor {
           this.queueRender();
         },
       });
-    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab, script };
+    const tabs = { general: generalTab, symbols: symbolsTab, paytable: paytableTab, lines: linesTab, reels: reelsTab, features: featuresTab, script, ui: uiTab };
     const body = tabs[this.tab](ctx);
     this.markProblems(body);
 

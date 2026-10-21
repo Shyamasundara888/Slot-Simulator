@@ -51,7 +51,7 @@ describe("bozza di un modulo", () => {
     const { draft, assets } = await open("slots/tempio-del-sole");
     renameSymbol(draft, "GATTO", "MICIO");
     expect(checkDraft(draft, assets).problems).toEqual([]);
-    const text = JSON.stringify([draft.paytable, draft.reels, draft.features, draft.scene, draft.extra]);
+    const text = JSON.stringify([draft.paytable, draft.reels, draft.features, draft.scene, draft.ui, draft.extra]);
     expect(text).not.toContain("GATTO");
     expect(Object.keys(draft.paytable.linePays)).toContain("MICIO");
     expect(Object.keys(draft.scene.symbols!).indexOf("MICIO")).toBeGreaterThan(0);

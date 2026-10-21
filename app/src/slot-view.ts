@@ -2,12 +2,12 @@ import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } 
 import type { Cell, Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import type { Motion } from "../../src/module/schema.js";
-import { uiImages } from "../../src/module/ui.js";
+import { centeredReels, REEL_GAP, uiImages } from "../../src/module/ui.js";
 import { easeOutBack, tween } from "./anim.js";
 import { lighten, reducedMotion, WinEffects, type WinCell } from "./effects.js";
 import { Hud } from "./hud.js";
 import { SymbolMotion } from "./motion.js";
-const GAP = 8;
+const GAP = REEL_GAP;
 const LINE_COLORS = [0xffd43b, 0x69db7c, 0x4dabf7, 0xff8787, 0xda77f2, 0x63e6be, 0xffa94d, 0x74c0fc, 0xa9e34b, 0xf783ac];
 /** Tinta delle celle che non fanno parte di una vincita. */
 const DIMMED = 0x5a5a5a;
@@ -191,19 +191,14 @@ export class SlotView {
       sprite.position.set(stageW / 2, stageH / 2);
       app.stage.addChild(sprite);
     }
-    const box = module.ui.reels;
-    if (box) {
-      // I rulli riempiono il riquadro scelto dal modulo.
-      this.cellW = (box.width - GAP * (math.reelCount - 1)) / math.reelCount;
-      this.cellH = (box.height - GAP * (math.rows - 1)) / math.rows;
-    } else {
-      this.cellW = Math.min(160, (stageW - 40 - GAP * (math.reelCount - 1)) / math.reelCount);
-      this.cellH = Math.min(140, (stageH - 80 - GAP * (math.rows - 1)) / math.rows);
-    }
-    const gridW = math.reelCount * this.cellW + (math.reelCount - 1) * GAP;
-    const gridH = math.rows * this.cellH + (math.rows - 1) * GAP;
-    this.gridX = box ? box.x : (stageW - gridW) / 2;
-    this.gridY = box ? box.y : (stageH - gridH) / 2;
+    // I rulli riempiono il riquadro scelto dal modulo, oppure stanno al centro.
+    const box = module.ui.reels ?? centeredReels(module.ui.stage, math.reelCount, math.rows);
+    this.cellW = (box.width - GAP * (math.reelCount - 1)) / math.reelCount;
+    this.cellH = (box.height - GAP * (math.rows - 1)) / math.rows;
+    const gridW = box.width;
+    const gridH = box.height;
+    this.gridX = box.x;
+    this.gridY = box.y;
 
     const frame = new Graphics()
       .roundRect(this.gridX - 16, this.gridY - 16, gridW + 32, gridH + 32, 20)
