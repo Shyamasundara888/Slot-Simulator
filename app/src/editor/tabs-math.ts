@@ -31,7 +31,7 @@ export function modeName(draft: ModuleDraft, mode: string): string {
   return draft.scene.modes?.[mode]?.label ?? mode;
 }
 
-const checkbox = (key: string, checked: boolean, label: string, onChange: (on: boolean) => void, disabled = false) =>
+export const checkbox = (key: string, checked: boolean, label: string, onChange: (on: boolean) => void, disabled = false) =>
   h(
     "label",
     { class: "ed-check" },

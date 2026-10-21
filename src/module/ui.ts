@@ -24,6 +24,21 @@ export interface UiLayout {
   elements: readonly UiElement[];
 }
 
+/** Spazio fra le celle dei rulli, in unità dello stage. */
+export const REEL_GAP = 8;
+
+/**
+ * Riquadro occupato dai rulli quando il modulo non lo dichiara: celle fino a
+ * 160x140, al centro dello stage, con un margine attorno.
+ */
+export function centeredReels(stage: { width: number; height: number }, reelCount: number, rows: number): UiBox {
+  const cellW = Math.min(160, (stage.width - 40 - REEL_GAP * (reelCount - 1)) / reelCount);
+  const cellH = Math.min(140, (stage.height - 80 - REEL_GAP * (rows - 1)) / rows);
+  const width = reelCount * cellW + (reelCount - 1) * REEL_GAP;
+  const height = rows * cellH + (rows - 1) * REEL_GAP;
+  return { x: (stage.width - width) / 2, y: (stage.height - height) / 2, width, height };
+}
+
 /** Tutti gli asset a cui fanno riferimento gli elementi. */
 export function uiAssets(ui: UiLayout): string[] {
   const paths = new Set<string>();

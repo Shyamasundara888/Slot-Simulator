@@ -35,19 +35,20 @@ L'editor è nel client: a sinistra le schede, a destra l'anteprima giocabile. La
 | Parte | Cosa fa |
 | --- | --- |
 | Generale | `manifest.json` (id, nome, versione, autore, descrizione), griglia, colore di sfondo della scena |
-| Simboli | simboli della paytable con tipo, etichetta e colore della scena, ordine; aggiunta e rimozione; rinominare un id aggiorna paytable, strisce, funzioni, scena e `art/art.json` (non lo script Lua: l'editor avvisa se lo script cita il vecchio id) |
+| Simboli | simboli della paytable con tipo, etichetta e colore della scena, ordine; aggiunta e rimozione; rinominare un id aggiorna paytable, strisce, funzioni, scena, gradini delle scale in `scenes/ui.json` e `art/art.json` (non lo script Lua: l'editor avvisa se lo script cita il vecchio id) |
 | Paytable | pagamenti su linea (per puntata di linea) e scatter (per puntata totale); vuoto vuol dire nessun pagamento |
 | Linee | una mini griglia per linea: si clicca la casella da cui passa la linea su ogni rullo; aggiunta e rimozione, avviso sulle linee doppie |
 | Rulli | una modalità alla volta (spin base, free spin, modalità degli script); per ogni rullo quante volte compare ogni simbolo, con la lunghezza del rullo; cambiare un conteggio ridistribuisce i simboli del rullo senza ammassarli. Da qui si aggiungono e tolgono modalità. **Modifica le strisce simbolo per simbolo** mostra le strisce come testo, per chi vuole l'ordine esatto |
 | Funzioni | `features.json`: wild espandenti e su quali rulli, free spin (scatter minimi, spin per numero di scatter, riattivazione, extra per wild espanso, scala degli upgrade), vincita massima |
 | Script | `scripts/main.lua` con colori, numeri di riga e righe sbagliate evidenziate; **Crea uno script** parte da uno script valido che non cambia l'RTP, **Togli lo script** lo toglie. **Inserisci un esempio** mette al cursore i pezzi più comuni (chiedere una sequenza, contatore del round, possibilità su N). A ogni modifica il motore carica lo script e gioca 3.000 round in un worker: un errore durante un round mostra la riga e il seed, e **Gioca questo round nell'anteprima** lo rigioca. La **Guida rapida** riassume gli hook e le modalità disponibili |
+| Interfaccia | `scenes/ui.json`: misura dello stage e riquadro dei rulli (oppure rulli al centro); una mappa dello stage su cui si trascinano gli elementi e, dall'angolo in basso a destra, si ridimensionano (frecce: sposta di 1, Maiusc di 10, Alt ridimensiona), filtrabile per modalità; elenco degli elementi con aggiunta di ogni tipo, duplica, ordine di disegno e rimozione; per l'elemento scelto contenuto (valore con i suggerimenti del round e di quelli pubblicati dallo script, formato, gradini, opzioni dei pannelli...), aspetto e comportamento (modalità in cui si vede, livello, animazione, suono). Immagini e suoni si scelgono fra gli asset del modulo o si caricano: i file caricati finiscono in `assets/ui/` e nello zip. Rinominare un elemento avvisa se lo script cita il vecchio id |
 | Problemi | gli errori del motore, come `npm run mod -- check` (script compreso), con il campo sbagliato evidenziato |
 | Numeri | RTP esatto dello spin base a ogni modifica; **Simula** con 100.000, 1 milione o 5 milioni di round in un worker |
 | Anteprima | si gioca la bozza, con saldo e statistiche separati da quelli veri; **Trova un seed** cerca un primo round con free spin o con le sequenze dello script |
 | Salvataggio | bozza automatica in IndexedDB, una per slot di partenza; annulla e ripeti; **Ricomincia dall'originale** |
 | Esportazione | **Scarica zip** (come `npm run mod -- pack`) e **Aggiungi al menu come mod** |
 
-Cambiare la griglia adatta linee, strisce e pagamenti perché il modulo resti valido, ma poi linee e strisce vanno riviste nelle schede Linee e Rulli. Grafica e suoni per ora si modificano nei file come descritto in [asset.md](asset.md).
+Cambiare la griglia adatta linee, strisce e pagamenti perché il modulo resti valido, ma poi linee e strisce vanno riviste nelle schede Linee e Rulli. Grafica e suoni dei simboli per ora si modificano nei file come descritto in [asset.md](asset.md).
 
 Nel campo dello script Tab rientra la riga e Maiusc+Tab la riporta indietro; Esc esce dal campo, così Tab torna a spostare il focus. Le modifiche valgono dopo una breve pausa nella scrittura o quando il campo perde il focus: Ctrl+Z annulla prima nel campo, poi nell'editor.
 
