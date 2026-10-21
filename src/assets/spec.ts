@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SOUND_EVENTS } from "../module/schema.js";
+import { motionSchema, SOUND_EVENTS } from "../module/schema.js";
 
 /**
  * Sorgente degli asset di un modulo: `art/art.json`. Descrive come disegnare
@@ -68,6 +68,13 @@ const symbolArt = z
     reference: z.literal(false).optional(),
     /** Peso del riferimento di stile per questo simbolo, al posto di generate.referenceWeight. */
     referenceWeight: z.number().min(0).max(2).optional(),
+    /**
+     * Disegno (SVG o immagine in art/) che impone la forma al generatore con ControlNet: il simbolo
+     * si genera col workflow simbolo-forma.json, utile per lettere e forme che SDXL sbaglia.
+     */
+    shape: artFile(["svg", ...RASTER_EXTENSIONS]).optional(),
+    /** Forza della forma per questo simbolo, al posto di generate.shapeStrength. */
+    shapeStrength: z.number().min(0).max(2).optional(),
     /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
     seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */
@@ -86,9 +93,15 @@ const symbolArt = z
       })
       .strict()
       .optional(),
+    /**
+     * Movimento del disegno nel client, sopra la tessera: nelle vincite (e con land quando il rullo
+     * si ferma) il soggetto si anima da solo, senza fotogrammi. Vedi MOTIONS in src/module/schema.ts.
+     */
+    motion: motionSchema.optional(),
   })
   .strict()
-  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image");
+  .refine((s) => s.pixels || s.svg || s.image, "serve almeno uno tra pixels, svg e image")
+  .refine((s) => !(s.motion && s.animation), "motion e animation sono alternativi: tieni uno dei due");
 
 const note = z.tuple([z.union([z.number().positive(), z.tuple([z.number().positive(), z.number().positive()])]), z.number().positive().max(5)]);
 
@@ -147,6 +160,11 @@ export const artSchema = z
         referenceWeight: z.number().min(0).max(2).optional(),
         /** Modo dell'IP-Adapter, per esempio "style transfer" o "strong style transfer". */
         referenceMode: z.string().optional(),
+        /** Workflow per i simboli con shape (ControlNet); predefinito tools/comfyui/workflows/simbolo-forma.json. */
+        shapeWorkflow: jsonFile.optional(),
+        /** Quanto la forma guida il generatore (0-2) e fino a che punto della generazione (0-1). */
+        shapeStrength: z.number().min(0).max(2).optional(),
+        shapeEnd: z.number().min(0).max(1).optional(),
         /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
         cleanup: z.boolean().default(true),
         /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */

@@ -51,6 +51,8 @@ type GeneratedRecord = {
   reference?: string | undefined;
   referenceWeight?: number | undefined;
   referenceMode?: string | undefined;
+  shape?: string | undefined;
+  shapeStrength?: number | undefined;
   generator: "ComfyUI";
   date: string;
 };
@@ -151,6 +153,28 @@ export async function importFrames(dir: string, id: string, from: string): Promi
   return { files, animation: { frames: pattern, count: files.length } };
 }
 
+/** Lato dell'immagine della forma passata a ControlNet, come le immagini dei simboli di SDXL. */
+const SHAPE_SIZE = 1024;
+
+/**
+ * Immagine della forma per ControlNet: il disegno (anche SVG) centrato su un quadrato grigio chiaro,
+ * con un margine come quello che SDXL lascia attorno ai simboli.
+ */
+export async function shapeImage(source: Uint8Array): Promise<Buffer> {
+  const inner = Math.round(SHAPE_SIZE * 0.8);
+  const pad = Math.floor((SHAPE_SIZE - inner) / 2);
+  const grey = { r: 208, g: 208, b: 208, alpha: 1 };
+  const drawing = await sharp(source, { density: 300 })
+    .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  return sharp({ create: { width: SHAPE_SIZE, height: SHAPE_SIZE, channels: 4, background: grey } })
+    .composite([{ input: drawing, left: pad, top: pad }])
+    .flatten({ background: grey })
+    .png()
+    .toBuffer();
+}
+
 /** Genera con ComfyUI le immagini di simboli e sfondo in art/raw/ e restituisce i file scritti. */
 export async function generate(dir: string, options: GenerateOptions): Promise<string[]> {
   const log = options.log ?? console.log;
@@ -176,13 +200,14 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   const reference = settings.reference;
   // Il riferimento può mancare solo se si genera proprio lui (il primo passo della serie).
   const needsReference = chosen.some(
-    (id) => id !== "background" && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
+    (id) => id !== "background" && !spec.symbols[id]!.shape && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
   );
   if (reference && needsReference && !existsSync(join(dir, reference))) {
     throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference} (generalo prima con --only)`]);
   }
   const symbolFlow = await readWorkflow(dir, settings.workflow, reference ? "simbolo-stile.json" : "simbolo.json");
   const plainFlow = reference && !settings.workflow ? await readWorkflow(dir, undefined, "simbolo.json") : symbolFlow;
+  const shapeFlow = chosen.some((id) => spec.symbols[id]?.shape) ? await readWorkflow(dir, settings.shapeWorkflow, "simbolo-forma.json") : undefined;
   const backgroundFlow = spec.background ? await readWorkflow(dir, settings.backgroundWorkflow, "sfondo.json") : undefined;
 
   const recordPath = join(dir, "art/raw/generated.json");
@@ -197,9 +222,13 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
     // Il simbolo che fa da riferimento non si rigenera guardando se stesso.
     const ownFile = `art/raw/${name}.webp`;
     const art = isBackground ? undefined : spec.symbols[id];
-    const styled = !isBackground && reference !== undefined && reference !== ownFile && art?.reference !== false;
+    // Con una forma il simbolo segue il disegno (ControlNet) e non usa il riferimento di stile.
+    const shape = art?.shape;
+    const styled = !isBackground && !shape && reference !== undefined && reference !== ownFile && art?.reference !== false;
     const referenceWeight = art?.referenceWeight ?? settings.referenceWeight;
-    const flow = isBackground ? backgroundFlow! : styled ? symbolFlow : plainFlow;
+    const shapeStrength = art?.shapeStrength ?? settings.shapeStrength;
+    const flow = isBackground ? backgroundFlow! : shape ? shapeFlow! : styled ? symbolFlow : plainFlow;
+    let shapeName: string | undefined;
     const prompt = isBackground ? backgroundPrompt(spec) : symbolPrompt(spec, id, labels, "plain light grey background");
     const ownSeed = isBackground ? spec.background?.seed : spec.symbols[id]?.seed;
     const firstSeed = options.seed ?? ownSeed ?? settings.seed;
@@ -217,12 +246,17 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
       if (styled && uploaded === undefined) {
         uploaded = await options.client.upload(await readFile(join(dir, reference)), `${slot}-${basename(reference)}`, "slot");
       }
+      if (shape && shapeName === undefined) {
+        if (!existsSync(join(dir, shape))) throw new ModuleError([`${ART_FILE}: symbols.${id}.shape: manca ${shape}`]);
+        shapeName = await options.client.upload(await shapeImage(await readFile(join(dir, shape))), `${slot}-forma-${name}.png`, "slot");
+      }
       const workflow = prepareWorkflow(flow.workflow, {
         prompt,
         seed,
         filenamePrefix: `slot/${slot}/${name}`,
         size,
         ...(styled && { reference: uploaded, referenceWeight, referenceMode: settings.referenceMode }),
+        ...(shape && { shape: shapeName, shapeStrength, shapeEnd: settings.shapeEnd }),
       });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
@@ -247,6 +281,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         workflow: flow.name,
         checkpoint: workflowCheckpoint(flow.workflow),
         ...(styled && { reference, referenceWeight, referenceMode: settings.referenceMode }),
+        ...(shape && { shape, shapeStrength }),
         generator: "ComfyUI",
         date: new Date().toISOString(),
       };

@@ -43,6 +43,7 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | `symbols.<ID>.prompt` | soggetto per il generatore esterno (in inglese) |
 | `symbols.<ID>.glow` | colore del bagliore nelle vincite (predefinito: la tessera schiarita) |
 | `symbols.<ID>.animation` | animazione di vincita fatta di immagini (vedi [Animazioni generate](#animazioni-generate)): `frames` percorso con `#` al posto del numero, `count`, `fps` (`12`), `loop` (`pingpong` o `loop`); prende il posto di `win.frames` per quel simbolo |
+| `symbols.<ID>.motion` | il disegno si muove da solo nel client sopra la tessera, senza fotogrammi (vedi [Disegni che si muovono](#disegni-che-si-muovono)): `win` (`pop`), `shine` (`true`), `land` (`false`), `strength` (`1`); alternativo a `animation` |
 | `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
 | `win.fps` (`6`) | velocità dell'animazione |
 | `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
@@ -54,7 +55,26 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 
 Ogni simbolo deve avere almeno uno tra `pixels`, `svg` e `image`; se ne ha più di uno vince `image`, poi `svg`, poi `pixels`. Così si parte da un disegno di Claude e lo si sostituisce più avanti con un'immagine esterna, senza perdere la riserva. I simboli che `art.json` non descrive restano tessere colorate. Gli id devono esistere in `math/paytable.json`.
 
-File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. I suoni vanno in `assets/sounds/<evento>.wav`, o con l'estensione del `file` (`bigWin` diventa `big-win`, `bonusMusic` diventa `bonus-music`).
+File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. Con `motion` ci sono anche `drago-disegno.svg` (solo il disegno, su fondo trasparente) e `drago-tessera.svg` (la tessera senza disegno), e i fotogrammi `drago-win-*` sono tessere illuminate senza disegno. I suoni vanno in `assets/sounds/<evento>.wav`, o con l'estensione del `file` (`bigWin` diventa `big-win`, `bonusMusic` diventa `bonus-music`).
+
+### Disegni che si muovono
+
+Con `motion` il client separa il disegno dalla tessera e lo anima con PixiJS nelle vincite: la tessera si illumina coi fotogrammi di `win.frames` e il disegno ci si muove sopra, anche oltre il bordo della cella. Funziona con qualsiasi disegno (immagine generata, SVG o pixel art) e non serve rigenerare nulla.
+
+| `motion.win` | Movimento | Adatto a |
+| --- | --- | --- |
+| `pop` | esce dalla tessera con un rimbalzo e poi respira, un po' più grande | wild, simboli alti |
+| `pulse` | respira | lettere e simboli bassi, scatter |
+| `swing` | oscilla a destra e sinistra | statue, amuleti, oggetti appesi |
+| `spin` | gira come una ruota | monete, dischi, gemme rotonde |
+| `wobble` | ondeggia come una gelatina, ferma alla base | creature morbide, fiamme, pozioni |
+| `flutter` | si stringe e si allarga in fretta, come ali che battono | insetti, uccelli, pipistrelli |
+
+`shine` fa passare un riflesso di luce che segue la sagoma del disegno (al posto del riflesso sulla cella intera). `land: true` fa fare al disegno un breve salto quando il rullo si ferma su di lui, di solito per wild e scatter. `strength` scala l'ampiezza: 0,6 per un movimento più contenuto, 1,5 per uno più vistoso. Con l'impostazione di sistema "riduci movimento" il client torna alla pulsazione semplice e non fa i salti.
+
+```json
+"SOLE": { "tile": "#8a5a00", "image": "art/raw/sole.webp", "motion": { "win": "pop", "land": true } }
+```
 
 ## Linee guida per disegnare
 
@@ -107,6 +127,8 @@ Il comando non cambia `art/art.json`: alla fine stampa le righe `"image": ...` d
 
 **Uno stile per tutta la serie.** Scrivi in `generate.reference` il file del simbolo guida (per esempio `art/raw/scarabeo.webp`), generalo per primo con `--only SCARABEO --variants 3`, copia la variante migliore in `art/raw/scarabeo.webp` e poi genera gli altri. Finché il riferimento manca si può generare solo lui. Il comando carica il riferimento in ComfyUI una volta sola, lo passa al nodo `LoadImage` del workflow e lo annota in `generated.json`. Il simbolo di riferimento stesso e lo sfondo si generano senza riferimento. Il riferimento passa anche un po' di composizione (alla prima prova un ankh è venuto dentro lo stesso medaglione dello scarabeo). Descrivi la forma nel `prompt` del simbolo invece di nominarla soltanto: SDXL non sa cos'è un ankh, ma capisce "una croce col braccio superiore ad anello". Scrivi anche "single object, no medallion" nel simbolo guida, abbassa `referenceWeight` e genera 2-3 varianti. Serve IP-Adapter installato in ComfyUI (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
 
+**Una forma imposta da un disegno.** Le forme che SDXL non conosce o disegna male (lettere, numeri, un sole con raggi alternati, un ankh) si danno con un disegno: `symbols.<ID>.shape` indica un SVG o un'immagine in `art/` (l'SVG del simbolo stesso, `art/symbols/a.svg`, oppure una sagoma fatta apposta in `art/forme/`). Il comando lo mette al centro di un quadrato grigio chiaro da 1024 px, lo carica in ComfyUI e usa il workflow `simbolo-forma.json`: ControlNet ricava i contorni del disegno (Canny) e li impone a SDXL per il primo 70% dei passi, poi lascia libero il modello di rifinire materiali e luce. Il prompt descrive il materiale e ripete la forma ("the capital letter A carved from polished purple amethyst"). Un simbolo con la forma non usa il riferimento di stile, che porterebbe con sé la forma del simbolo guida. Per le lettere conviene una forza alta (0,95), per le figure basta 0,8. Serve il modello ControlNet (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
+
 Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
 
 | Campo di `art.json` | Significato |
@@ -118,12 +140,14 @@ Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scriv
 | `generate.seed` (`777`) | seed di tutta la serie |
 | `generate.size` (`512`) | lato in pixel dei simboli salvati (ComfyUI li rimpicciolisce prima di salvarli) |
 | `generate.backgroundSize` | `[larghezza, altezza]` dello sfondo; se manca resta quella del workflow (1344x768) |
-| `generate.workflow`, `generate.backgroundWorkflow` | workflow propri in `art/` (formato API); predefiniti quelli di [tools/comfyui/workflows](../tools/comfyui/workflows/) |
-| `symbols.<ID>.generate` (`true`) | `false` per saltare il simbolo, per esempio le lettere A K Q J 10, che SDXL disegna male: restano SVG |
+| `generate.workflow`, `generate.backgroundWorkflow`, `generate.shapeWorkflow` | workflow propri in `art/` (formato API); predefiniti quelli di [tools/comfyui/workflows](../tools/comfyui/workflows/) |
+| `generate.shapeStrength`, `generate.shapeEnd` | forza del ControlNet (0,8 nel workflow) e punto, da 0 a 1, in cui smette di guidare (0,7) |
+| `symbols.<ID>.generate` (`true`) | `false` per saltare il simbolo, che resta SVG |
+| `symbols.<ID>.shape`, `symbols.<ID>.shapeStrength` | disegno (SVG, PNG, WebP o JPG in `art/`) che impone la forma del simbolo con ControlNet, e forza propria al posto di `generate.shapeStrength` |
 | `symbols.<ID>.reference: false`, `symbols.<ID>.referenceWeight` | genera quel simbolo senza riferimento di stile (per esempio se il riferimento ne cambia i colori), oppure con un peso diverso da `generate.referenceWeight` |
 | `symbols.<ID>.seed`, `background.seed` | seed di un'immagine, al posto di `generate.seed` |
 
-L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` e un solo `SaveImage`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).
+L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` (anche passando da nodi come `ControlNetApplyAdvanced`) e un solo `SaveImage`; per la forma serve un `LoadImage` intitolato `forma`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).
 
 Il comando gira solo dove ComfyUI è raggiungibile, di solito il PC su cui è installato: un assistente in un ambiente cloud non lo raggiunge e deve chiedere alla persona di lanciarlo.
 
