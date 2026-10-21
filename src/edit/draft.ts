@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { SymbolKind } from "../core/types.js";
 import { ModuleError } from "../module/build.js";
 import { MODULE_FILES, parseSlotModule, type SlotModule } from "../module/parse.js";
-import type { featuresSchema, LinesFile, Manifest, PaytableFile, ReelsFile, sceneSchema } from "../module/schema.js";
+import type { featuresSchema, LinesFile, Manifest, PaytableFile, ReelsFile, sceneSchema, UiFile } from "../module/schema.js";
 import { writeModuleZip } from "../module/zip.js";
 
 /**
@@ -18,6 +18,8 @@ export interface ModuleDraft {
   paytable: PaytableFile;
   features: z.input<typeof featuresSchema>;
   scene: z.input<typeof sceneSchema>;
+  /** Layout ed elementi di interfaccia; null se il modulo non ha scenes/ui.json. */
+  ui: UiFile | null;
   script: string | null;
   /** Altri file del modulo che la bozza conserva senza modificarli, come art/art.json. */
   extra: Record<string, unknown>;
@@ -36,6 +38,7 @@ export function draftFromFiles(files: Readonly<Record<string, unknown>>): Module
     paytable: copy[MODULE_FILES.paytable] as PaytableFile,
     features: (copy[MODULE_FILES.features] ?? {}) as ModuleDraft["features"],
     scene: (copy[MODULE_FILES.scene] ?? {}) as ModuleDraft["scene"],
+    ui: (copy[MODULE_FILES.ui] ?? null) as UiFile | null,
     script: typeof copy[MODULE_FILES.script] === "string" ? (copy[MODULE_FILES.script] as string) : null,
     extra,
   };
@@ -52,6 +55,7 @@ export function draftToFiles(draft: ModuleDraft): Record<string, unknown> {
     [MODULE_FILES.features]: draft.features,
     [MODULE_FILES.scene]: draft.scene,
   };
+  if (draft.ui !== null) files[MODULE_FILES.ui] = draft.ui;
   if (draft.script !== null) files[MODULE_FILES.script] = draft.script;
   return structuredClone(files);
 }

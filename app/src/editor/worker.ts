@@ -24,7 +24,7 @@ export type WorkerResponse =
 async function prepare(files: Record<string, unknown>) {
   const module = parseSlotModule(files);
   const hooks: RoundHooks | undefined =
-    module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
+    module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri, elements: module.ui.elements, recordUi: false, choice: "random" });
   return { math: module.math, hooks };
 }
 
@@ -32,7 +32,7 @@ async function handle(request: WorkerRequest): Promise<WorkerResponse> {
   if (request.kind === "checkScript") {
     const module = parseSlotModule(request.files);
     if (module.script === null) return { kind: "scriptChecked", trial: { problems: [], hooks: [], rounds: 0, extraRounds: 0, failure: null } };
-    return { kind: "scriptChecked", trial: await trialScript(module.math, module.script, request.rounds, { wasmUri }) };
+    return { kind: "scriptChecked", trial: await trialScript(module.math, module.script, request.rounds, { wasmUri, elements: module.ui.elements, recordUi: false }) };
   }
   const { math, hooks } = await prepare(request.files);
   if (request.kind === "simulate") {

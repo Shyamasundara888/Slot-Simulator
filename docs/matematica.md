@@ -22,7 +22,7 @@ Riferimenti per una slot online tipica:
 | media | 94-96% | 5-9x | 500-2000x | 1 su 150-250 |
 | alta | 94-96% | 9-20x | 2000-10000x | 1 su 250-500 |
 
-Le slot di esempio: `templates/slot-base` ≈ 94%, bassa (dev. 3,5x); Pixel Quest ≈ 94,7%, medio-alta (dev. 8,2x, max visto 2068x); Tempio del Sole ≈ 94,9%, alta (dev. 11,4x, max visto 4921x).
+Le slot di esempio: `templates/slot-base` ≈ 94%, bassa (dev. 3,5x); Pixel Quest ≈ 95,5%, medio-alta (dev. 9,1x, max visto 2124x); Tempio del Sole ≈ 94,9%, alta (dev. 11,4x, max visto 4921x).
 
 ## Misurare
 

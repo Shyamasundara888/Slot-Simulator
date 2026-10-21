@@ -49,7 +49,7 @@ describe("evidenziazione del Lua", () => {
 describe("prova di uno script", () => {
   it("gioca i round di Pixel Quest e conta le sequenze dello script", async () => {
     const module = await loadSlotModule("slots/pixel-quest");
-    const trial = await trialScript(module.math, module.script!, 3000);
+    const trial = await trialScript(module.math, module.script!, 3000, { elements: module.ui.elements });
     expect(trial.problems).toEqual([]);
     expect(trial.failure).toBeNull();
     expect(trial.hooks).toEqual(["onSpin", "onFeatureEnd"]);

@@ -40,6 +40,7 @@ npm install
 | `npm run mod -- check mio-mod.zip` | controlla un mod (zip o cartella) senza installarlo |
 | `npm run assets -- build slots/pixel-quest` | genera immagini, animazioni di vincita, sfondo e suoni da `art/art.json` e aggiorna la scena |
 | `npm run assets -- prompts slots/pixel-quest` | scrive `art/prompts.md`, i prompt per un generatore di immagini esterno |
+| `npm run assets -- generate slots/pixel-quest` | genera con ComfyUI in locale le immagini dei simboli e dello sfondo in `art/raw/` |
 | `npm test` | test automatici |
 | `npm run typecheck` | controllo dei tipi TypeScript |
 
@@ -143,6 +144,9 @@ end
 - `math.random` usa l'RNG del motore: con lo stesso seed lo script fa sempre le stesse scelte. Si può usare solo dentro gli hook.
 - Lo script gira isolato (Lua 5.4 in WebAssembly, con wasmoon): niente `io`, `os`, `require`, `load`, `debug` né coroutine, al massimo 1.000.000 di istruzioni per chiamata e 16 MB di memoria. Un errore annulla il round e indica la riga dello script.
 - In un round si giocano al massimo 1.000 spin richiesti dagli script, e il tetto di vincita vale anche per loro.
+- La tabella `ui` pilota gli elementi di `scenes/ui.json`: `ui.set("gold", 3)` e `ui.add("gold", 1, { from = cella })` pubblicano il valore `script.gold` (con l'icona che vola dalla cella), `ui.show`, `ui.hide`, `ui.fx` e `ui.message` fanno comparire, sparire o animare gli elementi. Il client le mette in scena, il simulatore le ignora.
+- `choose("scelta")` chiede al giocatore di scegliere tra le opzioni di un pannello e `ui.pick("forzieri", premi)` fa scoprire premi già estratti in un pick-em. Il round si ferma sulla scelta e si rigioca dallo stesso stato dell'RNG con la risposta; il simulatore sceglie con `--choice random|N|each`.
+- La tabella `session` resta tra un round e l'altro, salvata per slot e per puntata: serve alle raccolte lunghe, come la barra del Tesoro di Pixel Quest. Il simulatore la porta avanti per tutti i round (o la azzera ogni N con `--session-reset N`). Dettagli in [docs/script-lua.md](docs/script-lua.md#interfaccia).
 - Per dare un nome a una modalità nel client: `"modes": { "gold": { "label": "Gold Spin", "description": "..." } }` in `scenes/main.json`; la descrizione compare nella paytable.
 
 ### Scena e asset (`scenes/main.json`, `assets/`)
@@ -171,6 +175,10 @@ La scena decide solo l'aspetto: la matematica e l'esito dei round non cambiano. 
 - `sounds` collega un suono a un evento: `spin` (partenza), `stop` (ogni rullo che si ferma), `win`, `bigWin` (da 20 volte la puntata) e `feature` (free spin e sequenze degli script).
 - Formati: PNG, JPG, WebP, GIF e SVG per le immagini; MP3, OGG e WAV per i suoni. I percorsi partono da `assets/` e usano solo lettere, cifre, `-`, `_` e `.`.
 - Il caricatore e `npm run mod -- check` segnalano ogni asset citato dalla scena e assente dalla cartella.
+
+### Elementi di interfaccia (`scenes/ui.json`)
+
+Un modulo può fissare la misura dello stage, il riquadro dei rulli e una serie di elementi attorno ai rulli: contatori (free spin rimasti, moltiplicatore, vincita del bonus), barre che si riempiono, scale di livelli (anche fatte di simboli), immagini, testi, pannelli (avvisi e menu di scelta) e pick-em. Ogni elemento ha posizione, aspetto, modalità in cui si vede, animazione e suono quando cambia, e mostra i valori del round deciso dal motore (`free.remaining`, `multiplier`, `level`, `win.feature`...). Il Tempio del Sole li usa per free spin, Gold Spin raccolti, moltiplicatore, vincita del bonus e livello dei simboli; Pixel Quest per la barra della combo, i Boss Spin e la scelta prima dei Boss Spin (giocarli o tentare la Sfida, un forziere su due che li raddoppia) e la barra del Tesoro, che raccoglie i forzieri di round in round. Formato completo in [docs/modulo.md](docs/modulo.md#scenesuijson).
 
 ### Creare gli asset (`art/`, `npm run assets`)
 
@@ -248,4 +256,5 @@ L'ultima parte aggiunge grafica e suoni.
 ## Prossime fasi
 
 7. Editor visuale: fatte le schede Generale, Simboli, Paytable, Linee, Rulli, Funzioni e Script; mancano grafica e suoni.
-8. API per integrare le slot in un gioco più grande.
+8. Elementi di interfaccia: fatti `scenes/ui.json`, i valori del motore e l'API Lua (`ui.set`, `ui.show`...), pannelli, scelte del giocatore (`choose`, `--choice`), pick-em (`ui.pick`) e valori che restano tra un round e l'altro (`session`); segue la scheda Interfaccia dell'editor.
+9. API per integrare le slot in un gioco più grande.

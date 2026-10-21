@@ -21,12 +21,14 @@ export interface ScriptTrial {
 /**
  * Carica lo script e gioca i round con i seed "e0", "e1"...: gli errori che
  * dipendono dai dati del round emergono solo giocando. Il round con seed "eN"
- * è il primo che il client gioca con ?seed=eN.
+ * è il primo che il client gioca con ?seed=eN: per questo ogni round parte
+ * da una session vuota. Alle scelte (choose) risponde la regola `choice`
+ * delle opzioni; senza, sceglie a caso.
  */
 export async function trialScript(math: SlotMath, source: string, rounds: number, options: ScriptOptions = {}): Promise<ScriptTrial> {
   let runtime: ScriptRuntime;
   try {
-    runtime = await ScriptRuntime.create(math, source, options);
+    runtime = await ScriptRuntime.create(math, source, { choice: "random", ...options });
   } catch (err) {
     if (!(err instanceof ModuleError)) throw err;
     return { problems: err.problems, hooks: [], rounds: 0, extraRounds: 0, failure: null };
@@ -35,6 +37,7 @@ export async function trialScript(math: SlotMath, source: string, rounds: number
   for (let i = 0; i < rounds; i++) {
     const seed = `e${i}`;
     try {
+      runtime.setSession(null);
       if (playRound(math, createRng(seed), runtime).extra.length > 0) extraRounds++;
     } catch (err) {
       return { problems: [], hooks: runtime.hooks, rounds: i, extraRounds, failure: { message: (err as Error).message, seed } };

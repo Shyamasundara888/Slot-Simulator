@@ -1,7 +1,7 @@
 {
   "id": "pixel-quest",
   "name": "Pixel Quest",
-  "version": "0.3.0",
+  "version": "0.6.0",
   "author": "Slot Simulator",
   "description": "Slot di esempio 5x4 a 20 linee a tema videogioco fantasy. Spada wild, forzieri che attivano i free spin con riattivazione e, scritta in Lua, la Combo: le vincite consecutive nei free spin sbloccano i Boss Spin.",
   "engineApi": 1

@@ -79,7 +79,8 @@ describe("pipeline degli asset", () => {
       const dir = join("slots", slot);
       const art = artSchema.parse(JSON.parse(readFileSync(join(dir, "art/art.json"), "utf8")));
       const { files } = buildAssets(art, (path) => readFileSync(join(dir, path)));
-      for (const [path, bytes] of files) expect(new Uint8Array(readFileSync(join(dir, path))), path).toEqual(bytes);
+      // Buffer.equals e non toEqual: con le immagini incorporate gli SVG pesano centinaia di KB.
+      for (const [path, bytes] of files) expect(readFileSync(join(dir, path)).equals(bytes), path).toBe(true);
     });
   }
 });

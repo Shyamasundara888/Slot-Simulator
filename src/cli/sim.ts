@@ -7,11 +7,14 @@ import { ScriptError, ScriptRuntime } from "../script/runtime.js";
 import { exactRtp } from "../sim/exact.js";
 import { simulate, WIN_BUCKETS } from "../sim/simulate.js";
 
-const USAGE = `Uso: npm run sim -- <cartella-modulo> [--spins N] [--seed S] [--exact] [--json]
+const USAGE = `Uso: npm run sim -- <cartella-modulo> [--spins N] [--seed S] [--exact] [--choice C] [--session-reset N] [--json]
 
   --spins N   numero di round da simulare (predefinito 1000000)
   --seed S    seed dell'RNG, numero o testo (predefinito 1)
   --exact     calcola solo l'RTP esatto dello spin base, senza simulare e senza script
+  --choice C  come rispondono le scelte del giocatore (choose): random (predefinito),
+              un numero (sempre quell'opzione) oppure each (una simulazione per opzione)
+  --session-reset N  la session degli script riparte da zero ogni N round (predefinito: mai)
   --json      stampa il risultato in JSON`;
 
 const pct = (x: number, digits = 2) => `${(x * 100).toFixed(digits)}%`;
@@ -25,6 +28,8 @@ async function main(): Promise<void> {
       seed: { type: "string", default: "1" },
       exact: { type: "boolean", default: false },
       json: { type: "boolean", default: false },
+      choice: { type: "string", default: "random" },
+      "session-reset": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -39,7 +44,23 @@ async function main(): Promise<void> {
   const module = await loadSlotModule(resolve(dir));
   const { math, manifest } = module;
   const exact = exactRtp(math);
-  const script = module.script === null ? null : await ScriptRuntime.create(math, module.script);
+  const choice = values.choice;
+  if (!/^(random|each|[1-9]\d*)$/.test(choice)) {
+    console.log(USAGE);
+    process.exitCode = 1;
+    return;
+  }
+  const reset = values["session-reset"];
+  if (reset !== undefined && !/^[1-9]\d*$/.test(reset)) {
+    console.log(USAGE);
+    process.exitCode = 1;
+    return;
+  }
+  const sessionReset = reset === undefined ? undefined : Number(reset);
+  const policy = (c: string) => (c === "random" ? "random" : Number(c));
+  const makeScript = (c: "random" | number) =>
+    module.script === null ? null : ScriptRuntime.create(math, module.script, { elements: module.ui.elements, recordUi: false, choice: c });
+  const script = await makeScript(choice === "each" ? "random" : policy(choice));
 
   if (values.exact) {
     if (values.json) return console.log(JSON.stringify(exact, null, 2));
@@ -54,14 +75,36 @@ async function main(): Promise<void> {
 
   const spins = Number(values.spins);
   const seed = /^\d+$/.test(values.seed) ? Number(values.seed) : values.seed;
+
+  if (choice === "each") {
+    // Una simulazione per opzione: nelle slot vere le opzioni di un menu hanno RTP quasi uguale e cambiano la volatilità.
+    const counts = module.ui.elements.flatMap((e) => (e.type === "panel" && e.options ? [e.options.length] : []));
+    if (counts.length === 0) throw new ModuleError([`${MODULE_FILES.ui}: nessun pannello con options, non ci sono scelte da confrontare`]);
+    const results = [];
+    for (let option = 1; option <= Math.max(...counts); option++) {
+      const result = simulate(math, { spins, seed, sessionReset, hooks: (await makeScript(option)) ?? undefined });
+      results.push({ option, result });
+    }
+    if (values.json) return console.log(JSON.stringify(results, null, 2));
+    console.log(`${manifest.name} ${manifest.version}: ${spins.toLocaleString("it-IT")} round per opzione, seed ${seed}`);
+    for (const { option, result } of results) {
+      console.log(
+        `  opzione ${option}: RTP ${pct(result.rtp)} ± ${pct(result.rtpConfidence95)}, deviazione std ${result.stdDev.toFixed(2)}x, vincita massima ${result.maxWin.toFixed(2)}x`,
+      );
+    }
+    return;
+  }
   const started = performance.now();
-  const result = simulate(math, { spins, seed, hooks: script ?? undefined });
+  const result = simulate(math, { spins, seed, sessionReset, hooks: script ?? undefined });
   const seconds = (performance.now() - started) / 1000;
 
   if (values.json) return console.log(JSON.stringify({ exact, simulation: result }, null, 2));
 
   console.log(`${manifest.name} ${manifest.version}: ${spins.toLocaleString("it-IT")} round, seed ${seed}, ${seconds.toFixed(1)} s`);
-  if (script) console.log(`  script ${MODULE_FILES.script} con hook ${script.hooks.join(", ")}`);
+  if (script) {
+    const session = sessionReset ? `riparte da zero ogni ${sessionReset.toLocaleString("it-IT")} round` : "prosegue tra i round";
+    console.log(`  script ${MODULE_FILES.script} con hook ${script.hooks.join(", ")}, scelte: ${choice}, session ${session}`);
+  }
   console.log(`  RTP simulato        ${pct(result.rtp)} ± ${pct(result.rtpConfidence95)} (95%)`);
   console.log(`    spin base         ${pct(result.baseRtp)}  (esatto ${pct(exact.baseRtp)})`);
   if (result.freeSpins) console.log(`    free spin         ${pct(result.freeSpinsRtp)}`);

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { ModuleError } from "../src/module/build.js";
@@ -21,9 +22,12 @@ describe("mod in zip", () => {
     // readFile restituisce Buffer: per il confronto servono Uint8Array semplici.
     const raw = Object.fromEntries(Object.entries(fromDisk).map(([name, bytes]) => [name, new Uint8Array(bytes)]));
     const zip = writeModuleZip(raw);
-    expect(unpackModuleZip(zip)).toEqual(raw);
+    // Confronto per impronta: un toEqual byte per byte sulle immagini è molto lento.
+    const digest = (files: Record<string, Uint8Array>) =>
+      Object.fromEntries(Object.entries(files).map(([name, bytes]) => [name, createHash("sha256").update(bytes).digest("hex")]));
+    expect(digest(unpackModuleZip(zip))).toEqual(digest(raw));
     // Stesso modulo, stesso zip byte per byte.
-    expect(writeModuleZip(raw)).toEqual(zip);
+    expect(Buffer.from(writeModuleZip(raw)).equals(zip)).toBe(true);
     const module = parseSlotModule(readModuleZip(zip));
     expect(module.manifest.id).toBe("tempio-del-sole");
     expect(module.script).toContain("onFeatureEnd");
@@ -55,7 +59,7 @@ describe("mod in zip", () => {
 
 describe("Pixel Quest", async () => {
   const module = await loadSlotModule("slots/pixel-quest");
-  const hooks = await ScriptRuntime.create(module.math, module.script!);
+  const hooks = await ScriptRuntime.create(module.math, module.script!, { elements: module.ui.elements, choice: "random" });
 
   it("è una 5x4 a 20 linee con modalità boss", () => {
     expect(module.math.reelCount).toBe(5);

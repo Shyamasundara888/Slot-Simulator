@@ -20,6 +20,9 @@ const artFile = (extensions: readonly string[]) =>
 export const RASTER_EXTENSIONS = ["png", "jpg", "jpeg", "webp"] as const;
 const svgFile = artFile(["svg"]);
 const rasterFile = artFile(RASTER_EXTENSIONS);
+const jsonFile = artFile(["json"]);
+
+const seed = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 
 /** Pixel art: una riga di caratteri per riga di pixel, '.' trasparente, gli altri caratteri dalla palette. */
 const pixels = z
@@ -46,6 +49,14 @@ const symbolArt = z
     image: rasterFile.optional(),
     /** Descrizione per il generatore esterno (npm run assets -- prompts). */
     prompt: z.string().optional(),
+    /** false: npm run assets -- generate salta il simbolo (per esempio le lettere, che SDXL disegna male). */
+    generate: z.boolean().default(true),
+    /** false: il simbolo si genera senza il riferimento di stile (generate.reference), col workflow semplice. */
+    reference: z.literal(false).optional(),
+    /** Peso del riferimento di stile per questo simbolo, al posto di generate.referenceWeight. */
+    referenceWeight: z.number().min(0).max(2).optional(),
+    /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
+    seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */
     glow: color.optional(),
   })
@@ -79,11 +90,39 @@ export const artSchema = z
       .strict()
       .default({}),
     background: z
-      .object({ svg: svgFile.optional(), image: rasterFile.optional(), prompt: z.string().optional() })
+      .object({ svg: svgFile.optional(), image: rasterFile.optional(), prompt: z.string().optional(), seed: seed.optional() })
       .strict()
       .refine((b) => b.svg || b.image, "serve svg o image")
       .optional(),
     sounds: z.record(z.enum(SOUND_EVENTS), soundArt).default({}),
+    /** Impostazioni di npm run assets -- generate (ComfyUI in locale). */
+    generate: z
+      .object({
+        /** Workflow in formato API per i simboli e per lo sfondo; predefiniti quelli di tools/comfyui/workflows. */
+        workflow: jsonFile.optional(),
+        backgroundWorkflow: jsonFile.optional(),
+        /**
+         * Immagine guida dello stile (di solito un simbolo già generato e scelto): se c'è, i simboli
+         * si generano col workflow simbolo-stile.json (IP-Adapter), che la passa come riferimento.
+         */
+        reference: rasterFile.optional(),
+        /** Quanto conta il riferimento (nodi IPAdapter): più basso passa meno la forma del riferimento. */
+        referenceWeight: z.number().min(0).max(2).optional(),
+        /** Modo dell'IP-Adapter, per esempio "style transfer" o "strong style transfer". */
+        referenceMode: z.string().optional(),
+        /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
+        cleanup: z.boolean().default(true),
+        /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */
+        fit: z.boolean().default(true),
+        /** Seed comune a tutta la serie, per uno stile coerente. */
+        seed: seed.default(777),
+        /** Lato in pixel delle immagini dei simboli salvate in art/raw. */
+        size: z.number().int().min(64).max(2048).default(512),
+        /** Misura dello sfondo salvato; se manca resta quella del workflow. */
+        backgroundSize: z.tuple([z.number().int().min(64).max(4096), z.number().int().min(64).max(4096)]).optional(),
+      })
+      .strict()
+      .default({}),
   })
   .strict();
 

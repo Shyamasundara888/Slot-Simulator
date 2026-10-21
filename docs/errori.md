@@ -47,6 +47,14 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `features.freeSpins.upgradeLadder: X non è un simbolo normale` / `simboli ripetuti` | la scala contiene solo simboli `normal`, una volta ciascuno |
 | `features.freeSpins.trigger.spins: nessun free spin assegnato` | tutti i valori sono 0 o sotto `minScatters` |
 | `scenes/main.json: asset mancante assets/...` | la scena cita un file che non c'è: rifai `npm run assets -- build` o correggi il percorso |
+| `scenes/ui.json: asset mancante assets/...` | un elemento cita un'immagine o un suono che non c'è |
+| `scenes/ui.json: elemento X: esce dallo stage LxA` / `reels: il riquadro dei rulli esce dallo stage` | riquadro oltre i bordi: correggi `x`, `y`, `width`, `height` o ingrandisci `stage` |
+| `scenes/ui.json: elemento X: id ripetuto` | due elementi con lo stesso `id` |
+| `scenes/ui.json: elemento X: visibleIn cita una modalità senza strisce dei rulli Y` | la modalità non esiste in `reels.json` |
+| `scenes/ui.json: elemento X: format usa un segnaposto sconosciuto {Y}` | segnaposto scritto male; i valori ammessi sono in [modulo.md](modulo.md#scenesuijson). In `text` non c'è `{value}` |
+| `scenes/ui.json: ...value: valore sconosciuto` | `value` non è tra i valori del round |
+| `scenes/ui.json: elemento X: serve image oppure frames` | un elemento `image` vuole uno solo dei due campi |
+| `scenes/ui.json: elemento X: un pannello ha options oppure button, non tutti e due` | un `panel` è un menu di scelta (`options`) oppure un avviso da chiudere (`button`) |
 
 ## Script Lua
 
@@ -63,6 +71,20 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `math.random si può usare solo durante un round` | `math.random` chiamato al caricamento dello script, fuori dagli hook |
 | `math.random: intervallo non valido` | argomenti non interi o `n < m` |
 | `attempt to perform arithmetic on a nil value (field 'x')` | contatore non inizializzato: usa `(round.x or 0) + 1` |
+| `ui.show: elemento sconosciuto X (non è in scenes/ui.json)` | anche per `ui.hide` e `ui.fx`: l'id non esiste in `scenes/ui.json` |
+| `ui.set: nome non valido X` | i nomi dei valori usano lettere minuscole, cifre e `_` (`Oro` → `oro`) |
+| `ui.set: from deve essere una cella { reel = 1..R, row = 1..N }` | la cella conta da 1; usa quelle di `spin.wildCells` e simili |
+| `ui.set si può usare solo dentro gli hook` | vale per tutte le funzioni `ui` tranne `ui.get` |
+| `ui.fx: effetto sconosciuto X` / `ui.message: serve un testo da 1 a 120 caratteri` | effetti ammessi: `pop`, `pulse`, `shake` |
+| `choose: X non è un pannello con options in scenes/ui.json` | `choose` vuole l'id di un `panel` con `options` |
+| `choose: risposta N fuori da 1..M` | il simulatore o l'editor hanno dato una risposta che il pannello non ha |
+| `ui.pick: X non è un elemento picker di scenes/ui.json` / `ui.pick: servono da 1 a N premi` | `ui.pick` vuole l'id di un `picker` e un premio per ogni oggetto da scoprire, al massimo `count` |
+| `scelta del giocatore senza risposta: X` | un programma ha giocato il round con `playRound` senza dire come rispondere alle scelte: usa `attemptRound`, oppure l'opzione `choice` dello script (`--choice` nel simulatore) |
+| `fine del round: session.X: vale table, ma session tiene solo numeri, testi e true/false` | in `session` vanno solo valori semplici: per un elenco usa voci separate (`pezzo_1`, `pezzo_2`) |
+| `fine del round: session: chiave non valida X` / `session: troppe voci` | nomi in minuscolo con cifre e `_`, al massimo 50 voci |
+| `fine del round: session.X: testo non valido` | testo oltre i 200 caratteri |
+| `fine del round: session deve restare una tabella` | lo script ha assegnato a `session` qualcosa che non è una tabella |
+| `--choice each`: `nessun pannello con options` | non ci sono scelte da confrontare: togli `--choice each` |
 
 Nel client un errore dello script annulla il round, restituisce la puntata e mostra il messaggio.
 
