@@ -1,0 +1,81 @@
+{
+  "stage": { "width": 1060, "height": 568 },
+  "reels": { "x": 150, "y": 92, "width": 760, "height": 448 },
+  "elements": [
+    {
+      "id": "upgrade",
+      "type": "ladder",
+      "x": 928, "y": 218, "width": 120, "height": 322,
+      "label": "Livello simboli",
+      "direction": "column",
+      "value": "level",
+      "steps": ["GATTO", "SCARABEO", "ANKH", "FARAONE"],
+      "highlight": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free"],
+      "onChange": "pulse"
+    },
+    {
+      "id": "giri",
+      "type": "counter",
+      "x": 12, "y": 92, "width": 120, "height": 110,
+      "label": "Free spin",
+      "value": "free.remaining",
+      "format": "{value} / {free.total}",
+      "color": "#ffffff", "labelColor": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free"]
+    },
+    {
+      "id": "gold-spin",
+      "type": "counter",
+      "x": 12, "y": 92, "width": 120, "height": 110,
+      "label": "Gold Spin",
+      "value": "sequence.remaining",
+      "format": "{value} / {sequence.total}",
+      "color": "#ffd43b", "labelColor": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["gold"]
+    },
+    {
+      "id": "moltiplicatore",
+      "type": "counter",
+      "x": 12, "y": 218, "width": 120, "height": 110,
+      "label": "Moltiplicatore",
+      "value": "multiplier",
+      "format": "×{value}",
+      "color": "#ffd43b", "labelColor": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free", "gold"]
+    },
+    {
+      "id": "vincita-bonus",
+      "type": "counter",
+      "x": 928, "y": 92, "width": 120, "height": 110,
+      "label": "Vincita bonus",
+      "value": "win.feature",
+      "color": "#69db7c", "labelColor": "#ffd43b",
+      "background": "#1b1430", "opacity": 0.75, "border": "#b8860b",
+      "visibleIn": ["free", "gold"],
+      "onChange": "count"
+    },
+    {
+      "id": "promessa",
+      "type": "text",
+      "x": 12, "y": 92, "width": 120, "height": 236,
+      "text": "Vinci fino a {maxWin}× la puntata",
+      "color": "#ffd43b", "fontSize": 22,
+      "background": "#1b1430", "opacity": 0.6, "border": "#b8860b",
+      "visibleIn": ["base"]
+    },
+    {
+      "id": "regola-free",
+      "type": "text",
+      "x": 928, "y": 92, "width": 120, "height": 236,
+      "text": "3 Portali: 10 free spin con wild espandenti e moltiplicatore fino a ×25",
+      "color": "#ffffff", "fontSize": 16,
+      "background": "#1b1430", "opacity": 0.6, "border": "#b8860b",
+      "visibleIn": ["base"]
+    }
+  ]
+}

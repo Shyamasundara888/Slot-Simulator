@@ -47,6 +47,13 @@ Ogni riga comincia con il file o la sezione, poi il percorso del campo (`symbols
 | `features.freeSpins.upgradeLadder: X non è un simbolo normale` / `simboli ripetuti` | la scala contiene solo simboli `normal`, una volta ciascuno |
 | `features.freeSpins.trigger.spins: nessun free spin assegnato` | tutti i valori sono 0 o sotto `minScatters` |
 | `scenes/main.json: asset mancante assets/...` | la scena cita un file che non c'è: rifai `npm run assets -- build` o correggi il percorso |
+| `scenes/ui.json: asset mancante assets/...` | un elemento cita un'immagine o un suono che non c'è |
+| `scenes/ui.json: elemento X: esce dallo stage LxA` / `reels: il riquadro dei rulli esce dallo stage` | riquadro oltre i bordi: correggi `x`, `y`, `width`, `height` o ingrandisci `stage` |
+| `scenes/ui.json: elemento X: id ripetuto` | due elementi con lo stesso `id` |
+| `scenes/ui.json: elemento X: visibleIn cita una modalità senza strisce dei rulli Y` | la modalità non esiste in `reels.json` |
+| `scenes/ui.json: elemento X: format usa un segnaposto sconosciuto {Y}` | segnaposto scritto male; i valori ammessi sono in [modulo.md](modulo.md#scenesuijson). In `text` non c'è `{value}` |
+| `scenes/ui.json: ...value: valore sconosciuto` | `value` non è tra i valori del round |
+| `scenes/ui.json: elemento X: serve image oppure frames` | un elemento `image` vuole uno solo dei due campi |
 
 ## Script Lua
 

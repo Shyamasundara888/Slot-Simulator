@@ -15,7 +15,7 @@ Prima di cominciare leggi `AGENTS.md`, poi `docs/ricette.md` (ricette 1 e 2) e `
 2. **Base.** Copia `templates/slot-base/` in `slots/<id>/`. Aggiorna `manifest.json`. Rinomina i simboli (`H1`, `L1`...) con id a tema in maiuscolo in tutti i file.
 3. **Matematica.** `math/paytable.json`, `math/lines.json`, `math/features.json`, `math/reels.json` secondo `docs/modulo.md`. Poi tara con la skill `slot-matematica` (o `docs/matematica.md`) fino al profilo del brief.
 4. **Regole extra.** Solo se `features.json` non basta: `scripts/main.lua` secondo `docs/script-lua.md`, con le modalità nuove in `reels.json` e in `scenes/main.json` (`modes.<modo>.label` e `description`).
-5. **Aspetto.** `scenes/main.json` con le etichette; `art/art.json` e i disegni con la skill `slot-asset-art`; `npm run assets -- build slots/<id>`.
+5. **Aspetto.** `scenes/main.json` con le etichette; `art/art.json` e i disegni con la skill `slot-asset-art`; `npm run assets -- build slots/<id>`. Se la slot ha bonus, aggiungi `scenes/ui.json` con contatore dei free spin, moltiplicatore e gli altri indicatori (vedi `docs/modulo.md`).
 6. **Verifiche finali** di `docs/ricette.md`: `npm run mod -- check`, simulazione da almeno 4 milioni di round, `npm test`, `npm run typecheck`, prova nel client con un seed che attiva il bonus.
 7. **Consegna.** Aggiungi la slot al README (elenco delle slot di esempio). Nella risposta o nella PR riporta i numeri misurati e il seed del bonus.
 

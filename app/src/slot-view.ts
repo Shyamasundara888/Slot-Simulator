@@ -1,12 +1,10 @@
 import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from "pixi.js";
 import type { Grid, LineWin, ScatterWin, SymbolId } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
+import { uiImages } from "../../src/module/ui.js";
 import { easeOutBack, tween } from "./anim.js";
 import { lighten, WinEffects, type WinCell } from "./effects.js";
-
-/** Dimensioni logiche dello stage: il canvas viene scalato per riempire il contenitore. */
-export const STAGE_WIDTH = 900;
-export const STAGE_HEIGHT = 520;
+import { Hud } from "./hud.js";
 const GAP = 8;
 const LINE_COLORS = [0xffd43b, 0x69db7c, 0x4dabf7, 0xff8787, 0xda77f2, 0x63e6be, 0xffa94d, 0x74c0fc, 0xa9e34b, 0xf783ac];
 /** Tinta delle celle che non fanno parte di una vincita. */
@@ -147,41 +145,59 @@ export class SlotView {
 
   private winAnimation: ((ticker: Ticker) => void) | null = null;
   private readonly effects: WinEffects;
+  /** Elementi di interfaccia del modulo (scenes/ui.json). */
+  readonly hud: Hud;
 
   private constructor(
     private readonly app: Application,
     private readonly module: SlotModule,
     images: ReadonlyMap<string, Texture>,
     private readonly onReelStop: () => void,
+    onUiSound: (path: string) => void,
   ) {
     const { math, scene } = module;
+    // Dimensioni logiche dello stage: il canvas viene scalato per riempire il contenitore.
+    const { width: stageW, height: stageH } = module.ui.stage;
     const background = scene.backgroundImage && images.get(scene.backgroundImage);
     if (background) {
       // Adatta l'immagine a tutto lo stage, tagliando i bordi che avanzano.
       const sprite = new Sprite(background);
-      const scale = Math.max(STAGE_WIDTH / background.width, STAGE_HEIGHT / background.height);
+      const scale = Math.max(stageW / background.width, stageH / background.height);
       sprite.scale.set(scale);
       sprite.anchor.set(0.5);
-      sprite.position.set(STAGE_WIDTH / 2, STAGE_HEIGHT / 2);
+      sprite.position.set(stageW / 2, stageH / 2);
       app.stage.addChild(sprite);
     }
-    this.cellW = Math.min(160, (STAGE_WIDTH - 40 - GAP * (math.reelCount - 1)) / math.reelCount);
-    this.cellH = Math.min(140, (STAGE_HEIGHT - 80 - GAP * (math.rows - 1)) / math.rows);
+    const box = module.ui.reels;
+    if (box) {
+      // I rulli riempiono il riquadro scelto dal modulo.
+      this.cellW = (box.width - GAP * (math.reelCount - 1)) / math.reelCount;
+      this.cellH = (box.height - GAP * (math.rows - 1)) / math.rows;
+    } else {
+      this.cellW = Math.min(160, (stageW - 40 - GAP * (math.reelCount - 1)) / math.reelCount);
+      this.cellH = Math.min(140, (stageH - 80 - GAP * (math.rows - 1)) / math.rows);
+    }
     const gridW = math.reelCount * this.cellW + (math.reelCount - 1) * GAP;
     const gridH = math.rows * this.cellH + (math.rows - 1) * GAP;
-    this.gridX = (STAGE_WIDTH - gridW) / 2;
-    this.gridY = (STAGE_HEIGHT - gridH) / 2;
+    this.gridX = box ? box.x : (stageW - gridW) / 2;
+    this.gridY = box ? box.y : (stageH - gridH) / 2;
 
     const frame = new Graphics()
       .roundRect(this.gridX - 16, this.gridY - 16, gridW + 32, gridH + 32, 20)
       .fill({ color: 0x000000, alpha: 0.35 })
       .stroke({ width: 3, color: 0xf5b301, alpha: 0.6 });
+    // Gli elementi "below" stanno fra lo sfondo e i rulli, quelli "above" sopra le linee vincenti.
+    const textures = this.buildTextures(scene.symbols, images);
+    const symbolImages = new Map(
+      [...scene.symbols].map(([id, style]) => [id, (style.image && images.get(style.image)) || textures.get(id)!] as const),
+    );
+    this.hud = new Hud(app, module, images, symbolImages, onUiSound);
+    app.stage.addChild(this.hud.below);
     app.stage.addChild(frame);
 
-    this.effects = new WinEffects(app, STAGE_WIDTH, STAGE_HEIGHT);
+    this.effects = new WinEffects(app, stageW, stageH);
     app.stage.addChild(this.effects.under);
 
-    const textures = this.buildTextures(scene.symbols, images);
     for (const [id, style] of scene.symbols) {
       if (!style.winFrames) continue;
       const frames = style.winFrames.map((path) => this.imageTile(id, images.get(path)!));
@@ -197,12 +213,13 @@ export class SlotView {
 
     app.stage.addChild(this.effects.over);
     app.stage.addChild(this.winLayer);
+    app.stage.addChild(this.hud.above);
     this.winText = new Text({
       text: "",
       style: { fill: 0xffffff, fontSize: 56, fontWeight: "800", stroke: { color: 0x1b1430, width: 8, join: "round" } },
     });
     this.winText.anchor.set(0.5);
-    this.winText.position.set(STAGE_WIDTH / 2, STAGE_HEIGHT / 2);
+    this.winText.position.set(stageW / 2, stageH / 2);
     app.stage.addChild(this.winText);
     app.stage.addChild(this.effects.top);
 
@@ -220,12 +237,14 @@ export class SlotView {
     module: SlotModule,
     assets: ReadonlyMap<string, string>,
     onReelStop: () => void = () => {},
+    onUiSound: (path: string) => void = () => {},
   ): Promise<SlotView> {
     const images = new Map<string, Texture>();
     const { scene } = module;
     const paths = new Set<string>();
     if (scene.backgroundImage) paths.add(scene.backgroundImage);
     for (const style of scene.symbols.values()) for (const p of [style.image, ...(style.winFrames ?? [])]) if (p) paths.add(p);
+    for (const p of uiImages(module.ui)) paths.add(p);
     await Promise.all(
       [...paths].map(async (path) => {
         const url = assets.get(path);
@@ -238,16 +257,18 @@ export class SlotView {
       }),
     );
     const app = new Application();
+    const { width, height } = module.ui.stage;
     await app.init({
-      width: STAGE_WIDTH,
-      height: STAGE_HEIGHT,
+      width,
+      height,
       background: module.scene.background,
       antialias: true,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
     });
     host.replaceChildren(app.canvas);
-    return new SlotView(app, module, images, onReelStop);
+    host.style.aspectRatio = `${width} / ${height}`;
+    return new SlotView(app, module, images, onReelStop, onUiSound);
   }
 
   /** Tessera della misura della cella con l'immagine centrata, sul colore del simbolo. */

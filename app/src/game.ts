@@ -1,8 +1,9 @@
 import { playRound } from "../../src/core/engine.js";
 import { createRng, type Rng } from "../../src/core/rng.js";
-import type { RoundHooks, RoundResult, SpinResult } from "../../src/core/types.js";
+import type { Mode, RoundHooks, RoundResult, SpinResult } from "../../src/core/types.js";
 import type { SlotModule } from "../../src/module/parse.js";
 import { ScriptRuntime } from "../../src/script/runtime.js";
+import { initialValues, type UiValues } from "../../src/ui/values.js";
 import wasmUri from "wasmoon/dist/glue.wasm?url";
 import { wait } from "./anim.js";
 import { money, signedMoney, trend } from "./format.js";
@@ -52,6 +53,9 @@ export class Game {
   private betIndex = BET_LEVELS.indexOf(1);
   private busy = false;
   private readonly rng: Rng;
+  /** Valori mostrati dagli elementi di interfaccia del modulo e modalità in corso. */
+  private values: UiValues;
+  private mode: Mode = "base";
   private readonly ui = {
     balance: $<HTMLElement>("balance"),
     bet: $<HTMLElement>("bet"),
@@ -79,6 +83,8 @@ export class Game {
   ) {
     this.balance = persist ? readBalance() : START_BALANCE;
     this.rng = createRng(seed);
+    this.values = initialValues(this.bet, module.math.maxWin);
+    view.hud.update(this.values, this.mode);
     this.ui.spin.onclick = () => void this.spin();
     this.ui.betDown.onclick = () => this.changeBet(-1);
     this.ui.betUp.onclick = () => this.changeBet(1);
@@ -102,8 +108,14 @@ export class Game {
   static async start(host: HTMLElement, { module, assets }: ClientModule, stats: StatsStore, seed?: number | string, persist = true): Promise<Game> {
     // Lo script si carica prima della vista: se non è valido il modulo non parte.
     const hooks = module.script === null ? undefined : await ScriptRuntime.create(module.math, module.script, { wasmUri });
-    const sounds = new Sounds(module.scene, assets);
-    const view = await SlotView.create(host, module, assets, () => sounds.play("stop"));
+    const sounds = new Sounds(module.scene, assets, module.ui.elements.flatMap((e) => (e.sound ? [e.sound] : [])));
+    const view = await SlotView.create(
+      host,
+      module,
+      assets,
+      () => sounds.play("stop"),
+      (path) => sounds.playAsset(path),
+    );
     return new Game(module, view, hooks, stats, sounds, seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!, persist);
   }
 
@@ -122,6 +134,7 @@ export class Game {
   private changeBet(delta: number): void {
     if (this.busy) return;
     this.betIndex = Math.max(0, Math.min(BET_LEVELS.length - 1, this.betIndex + delta));
+    this.showValues({ bet: this.bet });
     this.render();
   }
 
@@ -144,6 +157,13 @@ export class Game {
       el.textContent = signedMoney(net(s));
       el.className = `net ${trend(net(s))}`.trim();
     }
+  }
+
+  /** Aggiorna gli elementi di interfaccia con i valori cambiati e, se data, la modalità in corso. */
+  private showValues(patch: Partial<UiValues>, mode: Mode = this.mode, turbo = false): void {
+    Object.assign(this.values, patch);
+    this.mode = mode;
+    this.view.hud.update(this.values, mode, turbo);
   }
 
   private setStatus(text: string, tone: "" | "win" | "feature" = ""): void {
@@ -186,6 +206,8 @@ export class Game {
     this.ui.win.textContent = money(0);
     this.setStatus("");
     this.render();
+    this.values = initialValues(bet, this.module.math.maxWin);
+    this.showValues({}, "base", turbo);
 
     // L'esito dell'intero round è deciso qui; da ora in poi è solo presentazione.
     let round: RoundResult;
@@ -201,10 +223,23 @@ export class Game {
     }
     let shown = await this.present(round.base, turbo);
     this.ui.win.textContent = money(shown);
+    this.showValues({ "win.spin": shown, "win.round": shown }, "base", turbo);
+    /** Somma le vincite di uno spin del bonus ai contatori. */
+    const addWin = (credits: number) => {
+      shown += credits;
+      const total = Math.min(shown, round.totalWin * bet);
+      this.ui.win.textContent = money(total);
+      this.showValues({ "win.spin": credits, "win.feature": total - round.base.win * bet, "win.round": total }, this.mode, turbo);
+    };
 
     const free = round.freeSpins;
     if (free) {
       this.setStatus(t("game.freeStart", { n: free.initial }), "feature");
+      this.showValues(
+        { "free.total": free.initial, "free.played": 0, "free.remaining": free.initial, multiplier: 1, level: 0, "win.spin": 0 },
+        "free",
+        turbo,
+      );
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       const ladder = this.module.math.freeSpins?.upgradeLadder ?? [];
@@ -220,10 +255,15 @@ export class Game {
         const status = (m: number) => `${t("game.freeSpin", { i: i + 1, n: total })}${m > 1 ? t("game.multiplier", { m }) : ""}${level}`;
         const before = i === 0 ? 1 : free.spins[i - 1]!.multiplier;
         this.setStatus(status(before), "feature");
-        shown += await this.present(spin, turbo, () => {
+        this.showValues({ "free.total": total, "free.played": i + 1, "free.remaining": total - i - 1, multiplier: before, level: spin.upgradeLevel }, "free", turbo);
+        const credits = await this.present(spin, turbo, () => {
           if (spin.multiplier !== before) this.setStatus(status(spin.multiplier), "feature");
+          this.showValues({ multiplier: spin.multiplier }, "free", turbo);
         });
-        this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
+        // Riattivazioni e spin extra arrivano con lo spin che li assegna.
+        const after = free.awardedAfter[i]!;
+        this.showValues({ "free.total": after, "free.remaining": after - i - 1 }, "free", turbo);
+        addWin(credits);
       }
     }
 
@@ -231,13 +271,19 @@ export class Game {
       const label = this.module.scene.modes.get(sequence.mode)?.label ?? t("game.modeFallback", { mode: sequence.mode });
       const intro = sequence.multiplier > 1 ? t("game.withMultiplier", { m: sequence.multiplier }) : "";
       this.setStatus(t("game.sequenceStart", { n: sequence.spins.length, label, intro }), "feature");
+      const n = sequence.spins.length;
+      this.showValues(
+        { "sequence.total": n, "sequence.played": 0, "sequence.remaining": n, multiplier: sequence.multiplier, "win.spin": 0 },
+        sequence.mode,
+        turbo,
+      );
       this.sounds.play("feature");
       await wait(turbo ? 600 : 1500);
       for (let i = 0; i < sequence.spins.length; i++) {
         const multiplier = sequence.multiplier > 1 ? t("game.multiplier", { m: sequence.multiplier }) : "";
         this.setStatus(`${t("game.sequenceSpin", { label, i: i + 1, n: sequence.spins.length })}${multiplier}`, "feature");
-        shown += await this.present(sequence.spins[i]!, turbo);
-        this.ui.win.textContent = money(Math.min(shown, round.totalWin * bet));
+        this.showValues({ "sequence.played": i + 1, "sequence.remaining": n - i - 1 }, sequence.mode, turbo);
+        addWin(await this.present(sequence.spins[i]!, turbo));
       }
     }
 
@@ -248,6 +294,8 @@ export class Game {
     this.saveBalance();
     this.stats.record(this.module.manifest.id, bet, won, free !== null || round.extra.length > 0);
     this.ui.win.textContent = money(won);
+    // Finito il bonus si torna al gioco base: gli elementi dei bonus si nascondono.
+    this.showValues({ "win.round": won }, "base", turbo);
     if (round.capped) this.setStatus(t("game.capped", { money: money(won) }), "win");
     else if (free || round.extra.length > 0) this.setStatus(t("game.bonusEnd", { money: money(won - round.base.win * bet) }), "win");
     else if (won > 0) this.setStatus(t("game.won", { money: money(won) }), "win");

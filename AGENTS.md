@@ -56,13 +56,15 @@ npm run mod -- pack slots/<id>                # crea mods/<id>-<versione>.zip da
 | `slots/<id>/` | i moduli inclusi nel sito: ogni cartella è una slot |
 | `templates/slot-base/` | modello da copiare per una slot nuova |
 | `src/core/` | motore: RNG con seed, valutazione di linee e scatter, round completo con free spin e moltiplicatori |
-| `src/module/` | schema dei file (`schema.ts`), validazione e coerenza (`parse.ts`, `build.ts`), zip dei mod, lettura da disco |
+| `src/module/` | schema dei file (`schema.ts`), validazione e coerenza (`parse.ts`, `build.ts`, `ui.ts` per `scenes/ui.json`), zip dei mod, lettura da disco |
+| `src/ui/` | valori del round mostrati dagli elementi di interfaccia, segnaposto e scale |
 | `src/script/runtime.ts` | esecuzione isolata degli script Lua (wasmoon) |
 | `src/sim/` | RTP esatto dello spin base e simulazione Monte Carlo |
 | `src/assets/` | generatore degli asset da `art/art.json` |
 | `src/cli/` | comandi `sim`, `mod`, `assets` |
 | `src/edit/` | operazioni sui moduli usate dall'editor: bozza, rinomina e rimozione di simboli, pagamenti, griglia, zip |
 | `app/` | client Vite + PixiJS |
+| `app/src/hud.ts` | elementi di interfaccia del modulo disegnati con PixiJS |
 | `app/src/editor/` | editor visuale: stato e pannelli, schede, worker per simulazione e ricerca di seed |
 | `app/src/i18n/` | testi dell'interfaccia: `it.ts` di riferimento, `en.ts` con le stesse chiavi |
 | `test/` | test vitest |
