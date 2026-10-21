@@ -64,10 +64,10 @@ npm run mod -- pack slots/<id>                # crea mods/<id>-<versione>.zip da
 | `src/sim/` | RTP esatto dello spin base e simulazione Monte Carlo |
 | `src/assets/` | generatore degli asset da `art/art.json` |
 | `src/cli/` | comandi `sim`, `mod`, `assets` |
-| `src/edit/` | operazioni sui moduli usate dall'editor: bozza, simboli, pagamenti, griglia, linee, strisce e modalità dei rulli, funzioni, zip (`draft.ts`); stage, rulli ed elementi di `scenes/ui.json` (`ui.ts`) |
+| `src/edit/` | operazioni sui moduli usate dall'editor: bozza, simboli, pagamenti, griglia, linee, strisce e modalità dei rulli, funzioni, zip (`draft.ts`); stage, rulli ed elementi di `scenes/ui.json` (`ui.ts`); immagini, tessere create da un disegno, movimento, sfondo e suoni della scena (`art.ts`) |
 | `app/` | client Vite + PixiJS |
 | `app/src/hud.ts` | elementi di interfaccia del modulo disegnati con PixiJS |
-| `app/src/editor/` | editor visuale: stato e pannelli, schede, campo del codice Lua con evidenziazione (`code.ts`, `lua.ts`), scheda Interfaccia con la mappa dello stage (`tabs-ui.ts`), scelta e caricamento di immagini e suoni riusabile dalle altre schede (`assets.ts`), worker per simulazione, ricerca di seed e prova dello script |
+| `app/src/editor/` | editor visuale: stato e pannelli, schede, campo del codice Lua con evidenziazione (`code.ts`, `lua.ts`), scheda Interfaccia con la mappa dello stage (`tabs-ui.ts`), scelta e caricamento di immagini e suoni riusabile dalle altre schede (`assets.ts`), scheda Grafica e suoni con anteprima del movimento (`tabs-art.ts`), worker per simulazione, ricerca di seed e prova dello script |
 | `app/src/i18n/` | testi dell'interfaccia: `it.ts` di riferimento, `en.ts` con le stesse chiavi |
 | `test/` | test vitest |
 
