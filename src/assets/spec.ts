@@ -49,6 +49,12 @@ const symbolArt = z
     image: rasterFile.optional(),
     /** Descrizione per il generatore esterno (npm run assets -- prompts). */
     prompt: z.string().optional(),
+    /** false: npm run assets -- generate salta il simbolo (per esempio le lettere, che SDXL disegna male). */
+    generate: z.boolean().default(true),
+    /** false: il simbolo si genera senza il riferimento di stile (generate.reference), col workflow semplice. */
+    reference: z.literal(false).optional(),
+    /** Peso del riferimento di stile per questo simbolo, al posto di generate.referenceWeight. */
+    referenceWeight: z.number().min(0).max(2).optional(),
     /** Seed per npm run assets -- generate, se diverso da generate.seed (per esempio quello di una variante scelta). */
     seed: seed.optional(),
     /** Colore del bagliore nelle animazioni di vincita (predefinito: la tessera schiarita). */
@@ -106,6 +112,8 @@ export const artSchema = z
         referenceMode: z.string().optional(),
         /** Toglie dai simboli i frammenti staccati lasciati dallo scontorno. */
         cleanup: z.boolean().default(true),
+        /** Ritaglia i bordi trasparenti dei simboli e ricentra il soggetto, così riempie la tessera. */
+        fit: z.boolean().default(true),
         /** Seed comune a tutta la serie, per uno stile coerente. */
         seed: seed.default(777),
         /** Lato in pixel delle immagini dei simboli salvate in art/raw. */

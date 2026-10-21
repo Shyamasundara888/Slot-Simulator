@@ -4,7 +4,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ComfyClient, ComfyError, pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
-import { generate } from "../src/assets/generate.js";
+import { fitSymbol, generate } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
 const sfondo = JSON.parse(readFileSync("tools/comfyui/workflows/sfondo.json", "utf8")) as Workflow;
@@ -150,6 +150,16 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
   const copy = () => {
     dir = join(mkdtempSync(join(tmpdir(), "generate-")), "tempio-del-sole");
     cpSync("slots/tempio-del-sole", dir, { recursive: true });
+    // Le impostazioni di generazione della slot (riferimento di stile) le provano i singoli test.
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    // Si parte da una slot senza immagini generate né impostazioni di generazione.
+    delete art.generate;
+    for (const symbol of [...Object.values(art.symbols), art.background] as Record<string, unknown>[]) {
+      for (const key of ["generate", "seed", "reference", "referenceWeight", "image"]) delete symbol[key];
+    }
+    writeFileSync(artPath, JSON.stringify(art));
+    rmSync(join(dir, "art/raw"), { recursive: true, force: true });
     return dir;
   };
 
@@ -164,7 +174,7 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     expect(meta).toMatchObject({ format: "webp", width: 512, height: 512, hasAlpha: true });
 
     const [symbol, background] = sent.map((s) => s.workflow);
-    expect(symbol!["2"]!.inputs.text).toMatch(/^Ancient Egyptian temple theme.*A golden pharaoh mask.*plain light grey background/);
+    expect(symbol!["2"]!.inputs.text).toMatch(/^Premium casino slot symbol.*A golden pharaoh death mask.*plain light grey background/);
     expect(symbol!["11"]!.inputs.filename_prefix).toBe("slot/tempio-del-sole/faraone");
     expect(Object.values(symbol!).some((n) => n.class_type === "ImageScale")).toBe(true);
     // Lo sfondo resta alla misura del workflow se generate.backgroundSize non c'è.
@@ -198,11 +208,13 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
   it("con generate.reference usa IP-Adapter, ma non per il simbolo di riferimento", async () => {
     copy();
     const { sent, uploads, client } = fakeComfy();
-    await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} });
     const artPath = join(dir, "art/art.json");
     const art = JSON.parse(readFileSync(artPath, "utf8"));
     art.generate = { reference: "art/raw/faraone.webp" };
     writeFileSync(artPath, JSON.stringify(art));
+    // Il riferimento manca ancora: si può generare lui, non gli altri.
+    await expect(generate(dir, { only: ["ANKH"], force: false, variants: 1, client, log: () => {} })).rejects.toThrow(/generalo prima/);
+    await generate(dir, { only: ["FARAONE"], force: false, variants: 1, client, log: () => {} });
 
     await generate(dir, { only: ["FARAONE", "ANKH", "SCARABEO", "background"], force: true, variants: 1, client, log: () => {} });
     const [, faraone, ankh, scarabeo, background] = sent.map((s) => s.workflow);
@@ -216,6 +228,47 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     const records = JSON.parse(readFileSync(join(dir, "art/raw/generated.json"), "utf8"));
     expect(records["art/raw/ankh.webp"]).toMatchObject({ workflow: "tools/comfyui/workflows/simbolo-stile.json", reference: "art/raw/faraone.webp" });
     expect(records["art/raw/faraone.webp"].reference).toBeUndefined();
+  });
+
+  it("salta i simboli con generate: false", async () => {
+    copy();
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    for (const id of ["A", "K", "Q", "J", "10"]) art.symbols[id].generate = false;
+    writeFileSync(artPath, JSON.stringify(art));
+    const { sent, client } = fakeComfy();
+    const files = await generate(dir, { only: [], force: false, variants: 1, client, log: () => {} });
+    expect(files).toEqual(["SOLE", "PORTALE", "FARAONE", "ANKH", "SCARABEO", "GATTO"].map((id) => `art/raw/${id.toLowerCase()}.webp`).concat("art/raw/background.webp"));
+    expect(sent).toHaveLength(7);
+  });
+
+  it("per simbolo si può togliere il riferimento o cambiarne il peso", async () => {
+    copy();
+    const artPath = join(dir, "art/art.json");
+    const art = JSON.parse(readFileSync(artPath, "utf8"));
+    art.generate = { reference: "art/raw/scarabeo.webp", referenceWeight: 0.5 };
+    art.symbols.GATTO.reference = false;
+    art.symbols.ANKH.referenceWeight = 0.3;
+    writeFileSync(artPath, JSON.stringify(art));
+    const { sent, client } = fakeComfy();
+    // Il gatto non usa il riferimento, quindi si genera anche se lo scarabeo non c'è ancora.
+    await generate(dir, { only: ["GATTO"], force: false, variants: 1, client, log: () => {} });
+    await generate(dir, { only: ["SCARABEO"], force: false, variants: 1, client, log: () => {} });
+    await generate(dir, { only: ["ANKH", "FARAONE"], force: false, variants: 1, client, log: () => {} });
+    const [gatto, , faraone, ankh] = sent.map((s) => s.workflow);
+    const ip = (w: Workflow) => Object.values(w).find((n) => n.class_type === "IPAdapterAdvanced");
+    expect(ip(gatto!)).toBeUndefined();
+    expect(ip(ankh!)!.inputs.weight).toBe(0.3);
+    expect(ip(faraone!)!.inputs.weight).toBe(0.5);
+  });
+
+  it("ritaglia i bordi trasparenti e ricentra il soggetto", async () => {
+    // Il PNG di prova ha un quadrato di 256 px al centro di 512 px trasparenti.
+    const fitted = await (await fitSymbol(realPng, 512)).raw().toBuffer({ resolveWithObject: true });
+    expect(fitted.info).toMatchObject({ width: 512, height: 512, channels: 4 });
+    const alpha = (x: number, y: number) => fitted.data[(y * 512 + x) * 4 + 3];
+    expect(alpha(256, 30)).toBe(255);
+    expect(alpha(256, 5)).toBe(0);
   });
 
   it("rifiuta simboli sconosciuti", async () => {

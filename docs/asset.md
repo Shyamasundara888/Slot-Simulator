@@ -100,19 +100,22 @@ Per ogni simbolo il comando prende lo stesso prompt di `art/prompts.md` (con "pl
 
 Il comando non cambia `art/art.json`: alla fine stampa le righe `"image": ...` da aggiungere ai simboli. Poi `npm run assets -- build slots/<id>` come sempre.
 
-**Uno stile per tutta la serie.** Genera prima il simbolo più importante, scegli la variante migliore e mettila in `generate.reference`; poi rigenera gli altri con `--force`. Il comando carica il riferimento in ComfyUI una volta sola, lo passa al nodo `LoadImage` del workflow e lo annota in `generated.json`. Il simbolo di riferimento stesso e lo sfondo si generano senza riferimento. Il riferimento passa anche un po' di composizione (alla prima prova un ankh è venuto dentro lo stesso medaglione dello scarabeo): descrivi bene la forma nel `prompt` del simbolo, abbassa `referenceWeight` e genera 2-3 varianti. Serve IP-Adapter installato in ComfyUI (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
+**Uno stile per tutta la serie.** Scrivi in `generate.reference` il file del simbolo guida (per esempio `art/raw/scarabeo.webp`), generalo per primo con `--only SCARABEO --variants 3`, copia la variante migliore in `art/raw/scarabeo.webp` e poi genera gli altri. Finché il riferimento manca si può generare solo lui. Il comando carica il riferimento in ComfyUI una volta sola, lo passa al nodo `LoadImage` del workflow e lo annota in `generated.json`. Il simbolo di riferimento stesso e lo sfondo si generano senza riferimento. Il riferimento passa anche un po' di composizione (alla prima prova un ankh è venuto dentro lo stesso medaglione dello scarabeo). Descrivi la forma nel `prompt` del simbolo invece di nominarla soltanto: SDXL non sa cos'è un ankh, ma capisce "una croce col braccio superiore ad anello". Scrivi anche "single object, no medallion" nel simbolo guida, abbassa `referenceWeight` e genera 2-3 varianti. Serve IP-Adapter installato in ComfyUI (vedi [tools/comfyui/README.md](../tools/comfyui/README.md)).
 
 Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scrivi il suo seed nel simbolo (`"seed": 779`) e rilancia con `--only <ID> --force`: stesso seed, stesso modello e stesse impostazioni danno la stessa immagine.
 
 | Campo di `art.json` | Significato |
 | --- | --- |
 | `generate.reference` | immagine guida dello stile in `art/`, di solito un simbolo già generato e scelto (`art/raw/faraone.webp`): i simboli si generano col workflow `simbolo-stile.json` (IP-Adapter) che ne copia lo stile |
-| `generate.referenceWeight`, `generate.referenceMode` | peso (0,8 nel workflow) e modo (`style transfer`) dell'IP-Adapter; se i simboli copiano anche la forma del riferimento, prova 0,5-0,6 o `strong style transfer` |
+| `generate.referenceWeight`, `generate.referenceMode` | peso (0,8 nel workflow) e modo (`style transfer`) dell'IP-Adapter; se i simboli copiano anche la forma del riferimento, abbassa il peso a 0,4-0,55. Lascia `style transfer`: alla prova `strong style transfer` ha copiato anche il soggetto (2 ankh su 3 sono diventati scarabei) |
+| `generate.fit` (`true`) | ritaglia i bordi trasparenti dei simboli e ricentra il soggetto con un margine sottile, perché SDXL lascia molto spazio attorno all'oggetto |
 | `generate.cleanup` (`true`) | toglie dai simboli i frammenti staccati che lo scontorno lascia sui bordi, tenendo solo il soggetto |
 | `generate.seed` (`777`) | seed di tutta la serie |
 | `generate.size` (`512`) | lato in pixel dei simboli salvati (ComfyUI li rimpicciolisce prima di salvarli) |
 | `generate.backgroundSize` | `[larghezza, altezza]` dello sfondo; se manca resta quella del workflow (1344x768) |
 | `generate.workflow`, `generate.backgroundWorkflow` | workflow propri in `art/` (formato API); predefiniti quelli di [tools/comfyui/workflows](../tools/comfyui/workflows/) |
+| `symbols.<ID>.generate` (`true`) | `false` per saltare il simbolo, per esempio le lettere A K Q J 10, che SDXL disegna male: restano SVG |
+| `symbols.<ID>.reference: false`, `symbols.<ID>.referenceWeight` | genera quel simbolo senza riferimento di stile (per esempio se il riferimento ne cambia i colori), oppure con un peso diverso da `generate.referenceWeight` |
 | `symbols.<ID>.seed`, `background.seed` | seed di un'immagine, al posto di `generate.seed` |
 
 L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` e un solo `SaveImage`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).

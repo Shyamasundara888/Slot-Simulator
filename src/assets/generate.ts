@@ -66,6 +66,30 @@ async function readWorkflow(dir: string, path: string | undefined, fallback: str
   }
 }
 
+/**
+ * Ritaglia i bordi trasparenti e ricentra il soggetto in un quadrato `size`x`size`
+ * con un margine sottile: SDXL lascia molto spazio attorno all'oggetto, che nella
+ * tessera del rullo sembrerebbe piccolo.
+ */
+export async function fitSymbol(png: Uint8Array, size: number, margin = 0.04): Promise<sharp.Sharp> {
+  let trimmed: Buffer;
+  try {
+    trimmed = await sharp(png).trim({ threshold: 4 }).png().toBuffer();
+  } catch {
+    // Immagine tutta trasparente o tutta uguale: niente da ritagliare.
+    return sharp(png);
+  }
+  const inner = Math.round(size * (1 - 2 * margin));
+  const pad = Math.floor((size - inner) / 2);
+  return sharp(
+    await sharp(trimmed)
+      .resize(inner, inner, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: "lanczos3" })
+      .extend({ top: pad, bottom: size - inner - pad, left: pad, right: size - inner - pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png()
+      .toBuffer(),
+  );
+}
+
 /** Genera con ComfyUI le immagini di simboli e sfondo in art/raw/ e restituisce i file scritti. */
 export async function generate(dir: string, options: GenerateOptions): Promise<string[]> {
   const log = options.log ?? console.log;
@@ -74,14 +98,28 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
   const labels = new Map([...module.scene.symbols].map(([id, s]) => [id, s.label]));
   const settings = spec.generate;
 
-  const targets = [...Object.keys(spec.symbols), ...(spec.background ? ["background"] : [])];
+  const targets = [...Object.keys(spec.symbols).filter((id) => spec.symbols[id]!.generate), ...(spec.background ? ["background"] : [])];
   const unknown = options.only.filter((id) => !targets.includes(id));
-  if (unknown.length > 0) throw new ModuleError(unknown.map((id) => `--only ${id}: non è un simbolo di ${ART_FILE}${id === "background" ? " (manca background)" : ""}`));
+  if (unknown.length > 0) {
+    throw new ModuleError(
+      unknown.map((id) =>
+        spec.symbols[id]
+          ? `--only ${id}: in ${ART_FILE} ha "generate": false`
+          : `--only ${id}: non è un simbolo di ${ART_FILE}${id === "background" ? " (manca background)" : ""}`,
+      ),
+    );
+  }
   const chosen = options.only.length > 0 ? targets.filter((id) => options.only.includes(id)) : targets;
 
   // Con un riferimento di stile il workflow predefinito è quello con IP-Adapter.
   const reference = settings.reference;
-  if (reference && !existsSync(join(dir, reference))) throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference}`]);
+  // Il riferimento può mancare solo se si genera proprio lui (il primo passo della serie).
+  const needsReference = chosen.some(
+    (id) => id !== "background" && spec.symbols[id]!.reference !== false && `art/raw/${id.toLowerCase()}.webp` !== reference,
+  );
+  if (reference && needsReference && !existsSync(join(dir, reference))) {
+    throw new ModuleError([`${ART_FILE}: generate.reference: manca ${reference} (generalo prima con --only)`]);
+  }
   const symbolFlow = await readWorkflow(dir, settings.workflow, reference ? "simbolo-stile.json" : "simbolo.json");
   const plainFlow = reference && !settings.workflow ? await readWorkflow(dir, undefined, "simbolo.json") : symbolFlow;
   const backgroundFlow = spec.background ? await readWorkflow(dir, settings.backgroundWorkflow, "sfondo.json") : undefined;
@@ -97,7 +135,9 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
     const name = isBackground ? "background" : id.toLowerCase();
     // Il simbolo che fa da riferimento non si rigenera guardando se stesso.
     const ownFile = `art/raw/${name}.webp`;
-    const styled = !isBackground && reference !== undefined && reference !== ownFile;
+    const art = isBackground ? undefined : spec.symbols[id];
+    const styled = !isBackground && reference !== undefined && reference !== ownFile && art?.reference !== false;
+    const referenceWeight = art?.referenceWeight ?? settings.referenceWeight;
     const flow = isBackground ? backgroundFlow! : styled ? symbolFlow : plainFlow;
     const prompt = isBackground ? backgroundPrompt(spec) : symbolPrompt(spec, id, labels, "plain light grey background");
     const ownSeed = isBackground ? spec.background?.seed : spec.symbols[id]?.seed;
@@ -121,7 +161,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         seed,
         filenamePrefix: `slot/${slot}/${name}`,
         size,
-        ...(styled && { reference: uploaded, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
+        ...(styled && { reference: uploaded, referenceWeight, referenceMode: settings.referenceMode }),
       });
       const started = Date.now();
       const [png] = await options.client.run(workflow);
@@ -133,6 +173,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         cleaned = removeFragments(data, info.width, info.height);
         pixels = sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
       }
+      if (!isBackground && settings.fit) pixels = await fitSymbol(await pixels.png().toBuffer(), settings.size);
       const image = await pixels.webp({ quality: WEBP_QUALITY, alphaQuality: 100, effort: 6 }).toBuffer();
       await mkdir(dirname(join(dir, file)), { recursive: true });
       await writeFile(join(dir, file), image);
@@ -144,7 +185,7 @@ export async function generate(dir: string, options: GenerateOptions): Promise<s
         seed,
         workflow: flow.name,
         checkpoint: workflowCheckpoint(flow.workflow),
-        ...(styled && { reference, referenceWeight: settings.referenceWeight, referenceMode: settings.referenceMode }),
+        ...(styled && { reference, referenceWeight, referenceMode: settings.referenceMode }),
         generator: "ComfyUI",
         date: new Date().toISOString(),
       };

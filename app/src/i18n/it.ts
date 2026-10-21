@@ -48,6 +48,9 @@ export const it = {
   "game.bonusEnd": "Bonus finito: vinti {money}",
   "game.won": "Hai vinto {money}",
   "game.noWin": "Nessuna vincita",
+  "game.bigWin": "GRANDE VINCITA",
+  "game.megaWin": "MEGA VINCITA",
+  "game.epicWin": "VINCITA EPICA",
 
   "mod.suffix": "{name} (mod)",
   "mod.invalid": "{file} non è un mod valido:\n\n{error}",
