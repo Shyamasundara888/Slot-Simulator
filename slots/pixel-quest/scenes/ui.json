@@ -99,6 +99,28 @@
       "visibleIn": ["base"]
     },
     {
+      "id": "tesoro",
+      "type": "counter",
+      "x": 928, "y": 296, "width": 120, "height": 90,
+      "label": "Tesoro",
+      "value": "session.forzieri",
+      "format": "{value} / 300",
+      "color": "#ffd43b", "labelColor": "#63e6be",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["base"]
+    },
+    {
+      "id": "tesoro-barra",
+      "type": "meter",
+      "x": 928, "y": 398, "width": 120, "height": 126,
+      "value": "session.forzieri",
+      "max": 300, "style": "bar", "direction": "up",
+      "fillColor": "#ffd43b",
+      "background": "#0f1a2b", "opacity": 0.85, "border": "#63e6be",
+      "visibleIn": ["base"],
+      "onChange": "pulse"
+    },
+    {
       "id": "scelta",
       "type": "panel",
       "x": 280, "y": 124, "width": 500, "height": 320,

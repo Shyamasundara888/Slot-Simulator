@@ -185,7 +185,14 @@ export interface RoundHooks {
   takeUiEvents?(): UiEvent[];
   /** Risposte del giocatore alle scelte (choose) del round, nell'ordine in cui le chiede: servono per rigiocarlo. */
   setAnswers?(answers: readonly number[]): void;
+  /** Fine di un round completo: lo stato che resta per il round dopo (session degli script). */
+  endRound?(): SessionState | undefined;
+  /** Stato da cui ripartire, per esempio quello salvato per questa slot e questa puntata; null lo svuota. */
+  setSession?(state: SessionState | null): void;
 }
+
+/** Stato che resta tra un round e l'altro (la tabella session degli script): numeri, testi e true/false. */
+export type SessionState = Record<string, number | string | boolean>;
 
 export interface RoundResult {
   base: SpinResult;
@@ -196,6 +203,8 @@ export interface RoundResult {
   totalWin: number;
   /** Se il round si è fermato perché ha raggiunto maxWin. */
   capped: boolean;
+  /** Stato che resta per il round dopo, se il modulo ha uno script. */
+  session?: SessionState;
 }
 
 /**

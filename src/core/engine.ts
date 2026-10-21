@@ -229,7 +229,9 @@ export function attemptRound(math: SlotMath, rng: Rng, hooks?: RoundHooks): Roun
     if (err instanceof Interrupted) return { round: result(), choice: err.choice };
     throw err;
   }
-  return { round: result(), choice: null };
+  // Solo un round finito salva lo stato per il round dopo: uno fermato su una scelta si rigioca da capo.
+  const session = hooks?.endRound?.();
+  return { round: session ? { ...result(), session } : result(), choice: null };
 }
 
 /** Segnale interno: il round si è fermato su una scelta. */

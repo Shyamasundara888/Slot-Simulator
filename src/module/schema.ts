@@ -157,12 +157,12 @@ export const UI_VALUES = [
 /** Animazioni di un elemento quando il suo valore cambia. */
 export const UI_ANIMATIONS = ["none", "pop", "pulse", "shake", "count"] as const;
 
-/** Valori pubblicati dagli script con ui.set e ui.add. */
-export const SCRIPT_VALUE = /^script\.[a-z][a-z0-9_]*$/;
+/** Valori pubblicati dagli script: script.<nome> con ui.set e ui.add, session.<nome> dalla tabella session. */
+export const SCRIPT_VALUE = /^(script|session)\.[a-z][a-z0-9_]*$/;
 const uiValue = z
   .string()
   .refine((v): v is UiValue => (UI_VALUES as readonly string[]).includes(v) || SCRIPT_VALUE.test(v), {
-    message: `valore sconosciuto: usa script.<nome> oppure uno tra ${UI_VALUES.join(", ")}`,
+    message: `valore sconosciuto: usa script.<nome>, session.<nome> oppure uno tra ${UI_VALUES.join(", ")}`,
   });
 const uiId = z.string().regex(/^[a-z][a-z0-9_-]*$/, "usa lettere minuscole, cifre, - e _, iniziando con una lettera");
 const box = { x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive() };
@@ -346,4 +346,4 @@ export type FeaturesFile = z.input<typeof featuresSchema>;
 export type SceneFile = z.infer<typeof sceneSchema>;
 export type UiFile = z.input<typeof uiSchema>;
 export type UiElement = z.infer<typeof uiElementSchema>;
-export type UiValue = (typeof UI_VALUES)[number] | `script.${string}`;
+export type UiValue = (typeof UI_VALUES)[number] | `script.${string}` | `session.${string}`;
