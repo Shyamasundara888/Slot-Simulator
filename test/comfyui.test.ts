@@ -4,7 +4,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { ComfyClient, ComfyError, pngSize, prepareWorkflow, removeFragments, workflowCheckpoint, type Workflow } from "../src/assets/comfyui.js";
-import { fitSymbol, generate } from "../src/assets/generate.js";
+import { fitFrames, fitSymbol, generate } from "../src/assets/generate.js";
 
 const simbolo = JSON.parse(readFileSync("tools/comfyui/workflows/simbolo.json", "utf8")) as Workflow;
 const sfondo = JSON.parse(readFileSync("tools/comfyui/workflows/sfondo.json", "utf8")) as Workflow;
@@ -156,7 +156,7 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     // Si parte da una slot senza immagini generate né impostazioni di generazione.
     delete art.generate;
     for (const symbol of [...Object.values(art.symbols), art.background] as Record<string, unknown>[]) {
-      for (const key of ["generate", "seed", "reference", "referenceWeight", "image"]) delete symbol[key];
+      for (const key of ["generate", "seed", "reference", "referenceWeight", "image", "animation"]) delete symbol[key];
     }
     writeFileSync(artPath, JSON.stringify(art));
     rmSync(join(dir, "art/raw"), { recursive: true, force: true });
@@ -269,6 +269,24 @@ describe("npm run assets -- generate", { timeout: 30_000 }, () => {
     const alpha = (x: number, y: number) => fitted.data[(y * 512 + x) * 4 + 3];
     expect(alpha(256, 30)).toBe(255);
     expect(alpha(256, 5)).toBe(0);
+  });
+
+  it("ritaglia tutti i fotogrammi di un'animazione allo stesso modo", async () => {
+    // Due fotogrammi 100x100: un quadrato di 20 px che si sposta da sinistra a destra.
+    const square = (x: number) =>
+      sharp({ create: { width: 100, height: 100, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+        .composite([{ input: { create: { width: 20, height: 20, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } } }, left: x, top: 40 }])
+        .png()
+        .toBuffer();
+    const frames = await fitFrames([await square(10), await square(70)], 100, 0);
+    const alpha = async (frame: Buffer, x: number, y: number) => {
+      const { data } = await sharp(frame).raw().toBuffer({ resolveWithObject: true });
+      return data[(y * 100 + x) * 4 + 3];
+    };
+    // Il ritaglio comune va da x=10 a x=90: il primo quadrato resta a sinistra, il secondo a destra.
+    expect(await alpha(frames[0]!, 5, 50)).toBeGreaterThan(200);
+    expect(await alpha(frames[0]!, 95, 50)).toBe(0);
+    expect(await alpha(frames[1]!, 95, 50)).toBeGreaterThan(200);
   });
 
   it("rifiuta simboli sconosciuti", async () => {

@@ -41,6 +41,7 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | `symbols.<ID>.image` | PNG, JPG o WebP in `art/`, incorporato nell'immagine del simbolo |
 | `symbols.<ID>.prompt` | soggetto per il generatore esterno (in inglese) |
 | `symbols.<ID>.glow` | colore del bagliore nelle vincite (predefinito: la tessera schiarita) |
+| `symbols.<ID>.animation` | animazione di vincita fatta di immagini (vedi [Animazioni generate](#animazioni-generate)): `frames` percorso con `#` al posto del numero, `count`, `fps` (`12`), `loop` (`pingpong` o `loop`); prende il posto di `win.frames` per quel simbolo |
 | `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
 | `win.fps` (`6`) | velocità dell'animazione |
 | `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
@@ -121,6 +122,22 @@ Le varianti vanno in `art/raw/varianti/<id>-<seed>.webp`. Per tenerne una, scriv
 L'API predefinita è `http://127.0.0.1:8188`; un altro indirizzo si passa con `--url` o con la variabile `COMFYUI_URL`. Un workflow proprio va bene se ha un solo campionatore (`KSampler` o `KSamplerAdvanced`) col prompt positivo in un `CLIPTextEncode` e un solo `SaveImage`: il comando trova da solo i nodi, non conta sui loro numeri. Requisiti, modelli e tempi misurati in [tools/comfyui/README.md](../tools/comfyui/README.md).
 
 Il comando gira solo dove ComfyUI è raggiungibile, di solito il PC su cui è installato: un assistente in un ambiente cloud non lo raggiunge e deve chiedere alla persona di lanciarlo.
+
+### Animazioni generate
+
+Un simbolo già generato si anima con image-to-video: [`tools/comfyui/workflows/animazione.json`](../tools/comfyui/workflows/animazione.json) (Wan 2.2 TI2V 5B) parte dall'immagine del simbolo su fondo scuro e fa una clip di 2 s, poi lo scontorno di ogni fotogramma. Va lanciato a mano in ComfyUI. Sulla RTX 3080 una clip richiede circa 2 minuti e quasi tutta la RAM. Alla prova sullo scarabeo il seed 1 con 30 passi è rimasto fedele al simbolo; con 20 passi o altri seed il simbolo si è deformato o è rimasto fermo. Numeri in [tools/comfyui/prove/scarabeo/](../tools/comfyui/prove/scarabeo/README.md).
+
+```bash
+npm run assets -- frames slots/<id> --symbol SCARABEO --from <cartella-fotogrammi>
+```
+
+Il comando prende i fotogrammi PNG o WebP già scontornati, in ordine alfabetico, e li ritaglia tutti con lo stesso riquadro, quello che contiene il soggetto in ogni fotogramma: così il soggetto non balla e ha la stessa misura del simbolo fermo. Poi li salva in `art/raw/anim/<id>-NN.webp` e stampa il campo da mettere nel simbolo:
+
+```json
+"animation": { "frames": "art/raw/anim/scarabeo-##.webp", "count": 24, "fps": 12, "loop": "pingpong" }
+```
+
+Con `build` ogni fotogramma diventa `assets/symbols/<id>-anim-NN.svg`, sulla tessera del simbolo. `pingpong` va avanti e poi indietro: il workflow parte dal primo fotogramma ma non può imporre l'ultimo, quindi la clip non chiude il giro e un loop semplice salterebbe. Bastano 24 fotogrammi a 12 fps (uno su due di una clip a 24 fps). Ogni fotogramma pesa circa 60 KB, quindi conviene animare solo i simboli alti.
 
 ## Controllare il risultato
 

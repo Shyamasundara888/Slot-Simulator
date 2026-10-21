@@ -54,6 +54,25 @@ describe("pipeline degli asset", () => {
     expect(new TextDecoder().decode(files.get("assets/symbols/b.svg"))).toContain("data:image/png;base64,iVBORw==");
   });
 
+  it("usa i fotogrammi raster di animation al posto di quelli illuminati, avanti e indietro", () => {
+    const read = (path: string) => new TextEncoder().encode(path);
+    const art = spec({
+      symbols: {
+        A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a-##.webp", count: 3 } },
+        B: { tile: "#336699", image: "art/b.png", animation: { frames: "art/anim/b-#.png", count: 3, fps: 20, loop: "loop" } },
+      },
+      win: { frames: 2 },
+    });
+    const { files, scene } = buildAssets(art, read);
+    expect(scene.symbols.A!.winFrames).toEqual(["a-anim-1", "a-anim-2", "a-anim-3", "a-anim-2"].map((n) => `assets/symbols/${n}.svg`));
+    expect(scene.symbols.A!.fps).toBe(12);
+    expect(scene.symbols.B).toMatchObject({ winFrames: ["b-anim-1", "b-anim-2", "b-anim-3"].map((n) => `assets/symbols/${n}.svg`), fps: 20 });
+    expect(files.has("assets/symbols/a-win-1.svg")).toBe(false);
+    const frame = new TextDecoder().decode(files.get("assets/symbols/a-anim-3.svg"));
+    expect(frame).toContain(`data:image/webp;base64,${btoa("art/anim/a-02.webp")}`);
+    expect(() => spec({ symbols: { A: { tile: "#336699", image: "art/a.png", animation: { frames: "art/anim/a.webp", count: 3 } } } })).toThrow(/#/);
+  });
+
   it("segnala sorgenti incomplete", () => {
     expect(() => spec({ symbols: { A: { tile: "#000000" } } })).toThrow(/serve almeno uno tra pixels, svg e image/);
     expect(() => spec({ symbols: { A: { tile: "#000000", pixels: { palette: {}, rows: ["X"] } } } })).toThrow(/carattere X senza colore/);

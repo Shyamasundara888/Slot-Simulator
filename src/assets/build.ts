@@ -1,5 +1,5 @@
 import type { SoundEvent } from "../module/parse.js";
-import type { ArtSpec, SoundArt, SymbolArt } from "./spec.js";
+import { framePaths, type ArtSpec, type SoundArt, type SymbolArt } from "./spec.js";
 
 /** Lato di una tessera in unità SVG; il disegno occupa il riquadro interno. */
 const TILE = 100;
@@ -208,6 +208,18 @@ export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
     const name = id.toLowerCase();
     const image = `assets/symbols/${name}.svg`;
     files.set(image, encode(symbolSvg(id, art, spec.look, read)));
+    if (art.animation) {
+      const { count, fps: speed, loop } = art.animation;
+      const paths = framePaths(art.animation.frames, count).map((frame, k) => {
+        const path = `assets/symbols/${name}-anim-${String(k + 1).padStart(String(count).length, "0")}.svg`;
+        files.set(path, encode(symbolSvg(id, { ...art, image: frame }, spec.look, read)));
+        return path;
+      });
+      // Nel ping-pong il primo e l'ultimo fotogramma non si ripetono, così non resta fermo sui capi.
+      const winFrames = loop === "pingpong" ? [...paths, ...paths.slice(1, -1).reverse()] : paths;
+      scene.symbols[id] = { color: art.tile, image, winFrames, fps: speed };
+      continue;
+    }
     const winFrames: string[] = [];
     for (let k = 0; k < frames; k++) {
       // Il bagliore cresce fotogramma dopo fotogramma, poi si torna al simbolo normale.

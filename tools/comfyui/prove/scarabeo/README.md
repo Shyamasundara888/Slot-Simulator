@@ -1,8 +1,8 @@
 # Prova di animazione: scarabeo del Tempio del Sole
 
-24 fotogrammi WebP 512x512 con alfa (`scarabeo-00.webp` … `scarabeo-23.webp`), da riprodurre a 12 fps per un loop di 2 s. Sono un fotogramma su due dei 49 generati con [`workflows/animazione.json`](../../workflows/animazione.json) partendo da `slots/tempio-del-sole/art/raw/scarabeo.webp`. Il simbolo è stato messo su fondo scuro uniforme (`#16121c`) in un quadrato 704x704 e poi scontornato fotogramma per fotogramma con BiRefNet.
+24 fotogrammi WebP 512x512 con alfa, da riprodurre a 12 fps per un loop di 2 s. Sono un fotogramma su due dei 49 generati con [`workflows/animazione.json`](../../workflows/animazione.json) partendo da `slots/tempio-del-sole/art/raw/scarabeo.webp`. Il simbolo è stato messo su fondo scuro uniforme (`#16121c`) in un quadrato 704x704 e poi scontornato fotogramma per fotogramma con BiRefNet.
 
-Sono materiale di prova: non sono collegati a nessuna slot.
+Sono passati da `npm run assets -- frames` e ora stanno nel Tempio del Sole, in `slots/tempio-del-sole/art/raw/anim/scarabeo-NN.webp` (campo `animation` dello scarabeo in `art/art.json`).
 
 ## Requisiti
 
