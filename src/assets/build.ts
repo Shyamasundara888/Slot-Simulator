@@ -1,5 +1,5 @@
 import type { SoundEvent } from "../module/parse.js";
-import { framePaths, type ArtSpec, type SoundArt, type SymbolArt } from "./spec.js";
+import { framePaths, type ArtSpec, type SoundArt, type SymbolArt, type SynthSound } from "./spec.js";
 
 /** Lato di una tessera in unità SVG; il disegno occupa il riquadro interno. */
 const TILE = 100;
@@ -9,12 +9,15 @@ const INSET = 10;
 const OUTPUT_SIZE = 320;
 const SAMPLE_RATE = 22050;
 
+/** Nome dei file dei suoni in assets/sounds/, senza estensione. */
 const SOUND_FILES: Record<SoundEvent, string> = {
-  spin: "spin.wav",
-  stop: "stop.wav",
-  win: "win.wav",
-  bigWin: "big-win.wav",
-  feature: "feature.wav",
+  spin: "spin",
+  stop: "stop",
+  win: "win",
+  bigWin: "big-win",
+  feature: "feature",
+  music: "music",
+  bonusMusic: "bonus-music",
 };
 
 const MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
@@ -179,7 +182,7 @@ function backgroundSvg(bg: NonNullable<ArtSpec["background"]>, read: ReadFile): 
 }
 
 /** Sintetizza un suono a 8 bit, mono, come file WAV. */
-export function synthWav({ wave, notes, volume }: SoundArt): Uint8Array {
+export function synthWav({ wave, notes, volume }: SynthSound): Uint8Array {
   const samples: number[] = [];
   let noise = 0x1234;
   for (const [freq, duration] of notes) {
@@ -265,7 +268,13 @@ export function buildAssets(spec: ArtSpec, read: ReadFile): BuiltAssets {
   }
 
   for (const [event, sound] of Object.entries(spec.sounds) as [SoundEvent, SoundArt][]) {
-    const path = `assets/sounds/${SOUND_FILES[event]}`;
+    if ("file" in sound) {
+      const path = `assets/sounds/${SOUND_FILES[event]}.${sound.file.split(".").pop()!.toLowerCase()}`;
+      files.set(path, read(sound.file));
+      scene.sounds[event] = path;
+      continue;
+    }
+    const path = `assets/sounds/${SOUND_FILES[event]}.wav`;
     files.set(path, synthWav(sound));
     scene.sounds[event] = path;
   }

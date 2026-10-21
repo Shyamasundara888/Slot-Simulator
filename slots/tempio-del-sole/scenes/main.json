@@ -20,11 +20,13 @@
     }
   },
   "sounds": {
-    "spin": "assets/sounds/spin.wav",
-    "stop": "assets/sounds/stop.wav",
-    "win": "assets/sounds/win.wav",
-    "bigWin": "assets/sounds/big-win.wav",
-    "feature": "assets/sounds/feature.wav"
+    "spin": "assets/sounds/spin.ogg",
+    "stop": "assets/sounds/stop.ogg",
+    "win": "assets/sounds/win.ogg",
+    "bigWin": "assets/sounds/big-win.ogg",
+    "feature": "assets/sounds/feature.ogg",
+    "music": "assets/sounds/music.ogg",
+    "bonusMusic": "assets/sounds/bonus-music.ogg"
   },
   "backgroundImage": "assets/background.svg"
 }

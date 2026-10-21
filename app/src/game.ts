@@ -311,6 +311,8 @@ export class Game {
   async spin(): Promise<void> {
     if (this.busy || this.balance < this.bet) return;
     this.busy = true;
+    // La musica parte al primo giro, dopo un clic, come chiedono i browser.
+    this.sounds.playMusic("music");
     const turbo = this.ui.turbo.checked;
     const bet = this.bet;
     this.balance -= bet;
@@ -328,6 +330,7 @@ export class Game {
       this.balance += bet;
       this.view.hud.clearForced();
       this.showValues({}, "base", turbo);
+      this.sounds.playMusic("music");
       this.setStatus(t("game.roundError", { error: (err as Error).message }));
     } finally {
       this.hooks?.setAnswers?.([]);
@@ -388,6 +391,7 @@ export class Game {
         turbo,
       );
       this.sounds.play("feature");
+      this.sounds.playMusic("bonusMusic");
       await wait(turbo ? 600 : 1500);
       const ladder = this.module.math.freeSpins?.upgradeLadder ?? [];
       // Le scelte possono cambiare il seguito del round: i free spin si rileggono a ogni passo.
@@ -432,6 +436,7 @@ export class Game {
       this.setStatus(t("game.sequenceStart", { n: n(), label, intro }), "feature");
       this.showValues({ "sequence.total": n(), "sequence.played": 0, "sequence.remaining": n(), multiplier: m, "win.spin": 0 }, mode, turbo);
       this.sounds.play("feature");
+      this.sounds.playMusic("bonusMusic");
       await wait(turbo ? 600 : 1500);
       for (let i = 0; i < n(); i++) {
         const multiplier = m > 1 ? t("game.multiplier", { m }) : "";
@@ -448,6 +453,7 @@ export class Game {
     const won = final.totalWin * bet;
     // A fine bonus la schermata riassume quanto ha reso, se è una vincita grande.
     if (bonus) await this.celebrate(final.totalWin - final.base.win, turbo);
+    this.sounds.playMusic("music");
     this.balance += won;
     this.saveBalance();
     if (final.session) this.sessions.save(bet, final.session);
@@ -462,6 +468,7 @@ export class Game {
   }
 
   destroy(): void {
+    this.sounds.stop();
     this.view.destroy();
   }
 }

@@ -46,14 +46,15 @@ La cartella `art/` contiene le sorgenti e non finisce negli zip dei mod. Un test
 | `win.frames` (`1`) | fotogrammi illuminati, da 1 a 8, seguiti dal simbolo normale |
 | `win.fps` (`6`) | velocità dell'animazione |
 | `background.svg` / `background.image` | sfondo; `prompt` per il generatore esterno |
-| `sounds.<evento>` | `spin`, `stop`, `win`, `bigWin`, `feature` |
+| `sounds.<evento>` | effetti `spin`, `stop`, `win`, `bigWin`, `feature`; musiche in loop `music` (gioco base) e `bonusMusic` (free spin e sequenze degli script) |
+| `sounds.<evento>.file` | suono già pronto in `art/` (OGG, MP3 o WAV), copiato in `assets/sounds/`: per esempio composto con [tools/audio](../tools/audio/README.md). Al posto di `wave`, `notes` e `volume` |
 | `sounds.<evento>.wave` (`square`) | `square` (8 bit), `triangle` (morbido), `sine` (puro), `noise` (rumore, per colpi e scatti) |
 | `sounds.<evento>.notes` | note in sequenza: `[frequenza in Hz, durata in s]` oppure `[[da, a], durata]` per una glissata |
 | `sounds.<evento>.volume` (`0.5`) | da 0 a 1 |
 
 Ogni simbolo deve avere almeno uno tra `pixels`, `svg` e `image`; se ne ha più di uno vince `image`, poi `svg`, poi `pixels`. Così si parte da un disegno di Claude e lo si sostituisce più avanti con un'immagine esterna, senza perdere la riserva. I simboli che `art.json` non descrive restano tessere colorate. Gli id devono esistere in `math/paytable.json`.
 
-File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. I suoni vanno in `assets/sounds/<evento>.wav` (`bigWin` diventa `big-win.wav`).
+File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.svg`, `drago-win-1.svg`, `drago-win-2.svg`; nella scena `winFrames` è `[drago-win-1, drago-win-2, drago]`. I suoni vanno in `assets/sounds/<evento>.wav`, o con l'estensione del `file` (`bigWin` diventa `big-win`, `bonusMusic` diventa `bonus-music`).
 
 ## Linee guida per disegnare
 
@@ -70,6 +71,8 @@ File prodotti per un simbolo `DRAGO` con `win.frames: 2`: `assets/symbols/drago.
 **Sfondo**: SVG 900x520 con `preserveAspectRatio="xMidYMid slice"`, scuro e calmo al centro dove stanno i rulli, dettagli ai bordi.
 
 **Suoni**: `spin` glissata breve in salita (0,2 s); `stop` colpo corto (0,04-0,06 s, anche `noise`); `win` tre note in salita; `bigWin` 6-8 note che finiscono lunghe; `feature` un arpeggio. Una scala coerente col tema (pentatonica per il fantasy, frigia dominante per l'Egitto). Volume 0,3-0,55.
+
+**Musica e suoni composti.** Per un suono da slot vera, con strumenti campionati e musica in loop, si scrive la partitura in Python e la si fa suonare a FluidSynth: vedi [tools/audio/README.md](../tools/audio/README.md) e l'esempio `slots/tempio-del-sole/art/audio/partitura.py`. I file vanno in `art/audio/` e si collegano con `sounds.<evento>.file`. Le musiche (`music`, `bonusMusic`) vanno in OGG Opus: il client le suona in loop con la Web Audio API, che riparte senza stacchi. Un MP3 lascia un attimo di silenzio a ogni giro e un OGG Vorbis, in Chrome, circa 12 ms di troppo. Il client le abbassa rispetto agli effetti e passa dall'una all'altra con una dissolvenza. Senza `bonusMusic` nei bonus resta `music`.
 
 ## Generatore di immagini esterno
 
